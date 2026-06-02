@@ -1,0 +1,1 @@
+import Loader from '../../loader';const loader: Loader = new Loader('playwright', '1.27.1', ['playwright-core']);export default loader;

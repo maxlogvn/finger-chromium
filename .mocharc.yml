@@ -1,0 +1,4 @@
+spec: tests/**/*.ts       # pattern tìm file test
+loader: tsx                    # dùng tsx để chạy .ts trực tiếp
+timeout: 10000                 # 10s timeout mỗi test (tăng nếu cần)
+exit: true                     # thoát process sau khi test xong
