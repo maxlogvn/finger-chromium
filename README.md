@@ -64,32 +64,21 @@ npx playwright install chromium
 
 ## Sử dụng nhanh
 
-> **Ghi chú:** Key bảo mật được set qua biến môi trường `BABLOSOFT_KEY`, không phải qua method riêng.
 
 ```ts
-import { Chromium } from 'fingerprint-chromium-engine';
-
-const context = await Chromium
-  .useFingerprint(fingerprintData, {
-    usePerfectCanvas: true,
-    safeWebGL: true,
-    safeAudio: true,
-  })
-  .useProxy('http://user:pass@host:port', {
-    changeTimezone: true,
-    changeWebRTC: 'replace',
-  })
-  .useProfile('./profiles/user_01', {
-    loadProxy: true,
-    loadFingerprint: true,
-  })
-  .launch({ headless: false })
-  .newContext();
-
-const page = await context.newPage();
-await page.goto('https://example.com');
-
-await Chromium.quit(); // đóng và lưu profile
+import {Chromium, PluginLaunchOptions} from 'fingerprint-chromium-engine';
+// Mở chế độ GUI để kiểm tra
+const CONTEXT_OPTIONS = {headless: false} as PluginLaunchOptions;
+(async () => {
+    const browser = Chromium.launch();
+    const context = await browser.newContext(CONTEXT_OPTIONS);
+    const page = await context.newPage();
+    await page.goto("https://google.com", {waitUntil: "domcontentloaded"});
+    // Chờ 10s để xác nhận kết quả
+    await page.waitForTimeout(10_000);
+    await page.close();
+    await browser.quit();
+})();
 ```
 
 ## API

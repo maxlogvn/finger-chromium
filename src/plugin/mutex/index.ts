@@ -13,9 +13,25 @@ const requireNative = createRequire(import.meta.url);
 
 // ─── Package Root ─────────────────────────────────────────────────────────────
 
+function resolvePackageRoot(startDir: string): string {
+  let current = startDir;
+  while (true) {
+    try {
+      const pkg = requireNative(path.join(current, 'package.json'));
+      if (pkg.name === 'fingerprint-chromium-engine') return current;
+    } catch {
+      // chưa tìm thấy -- tiếp tục đi lên
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      throw new Error('[Mutex] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.');
+    }
+    current = parent;
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PACKAGE_PATH = path.resolve(__dirname, '../../../');
+const PACKAGE_PATH = resolvePackageRoot(path.dirname(__filename));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
