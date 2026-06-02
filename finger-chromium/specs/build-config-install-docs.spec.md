@@ -24,7 +24,7 @@ Cập nhật `package.json` và tài liệu hướng dẫn cài đặt để h�
 Luồng hoạt động:
 
 ```
-User chạy: npm install maxlogvn/finger-chromium
+User chạy: npm install github:maxlogvn/finger-chromium
                                    |
                                    v
               npm chạy lifecycle hook: prepare
