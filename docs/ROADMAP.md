@@ -32,7 +32,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Mocha test runner + tsx loader
   - dotenv, jiti cho dev
   - package.json scripts: lint, test, build (tsup), prepare (auto-build khi cài từ GitHub), dev
-  - `npm run clean` dùng `tsup --clean` thay `rm -rf` để tương thích Windows
+  - `npm run clean` -- xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #5 (fix Windows compatibility)
 
 ---
 
@@ -129,7 +129,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Native C++ addon (`mutex.node`)
   - Hỗ trợ win32 32-bit + 64-bit
   - `create(name)` -- tạo named mutex
-  - **Bug fix (2026-06-03):** Hardcoded `../../../` trong path resolve bị sai sau khi tsup bundle. Đã fix bằng walk-up algorithm tìm package root (`resolvePackageRoot`). Xác nhận: dist load thành công, lint pass.
+  - **Bug fix (2026-06-03):** Hardcoded path resolve bị sai sau khi tsup bundle. Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #6.
 
 ---
 
@@ -331,6 +331,13 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
 - **Tài liệu:** [Design](designs/build-config-install-docs.design.md) | [Spec](specs/build-config-install-docs.spec.md) | [Plan](plans/build-config-install-docs.plan.md) | [Overview](overviews/build-config-install-docs.overview.md)
+- **Ghi chú:**
+  - Thêm `prepare` script (`npm run build`) để tự động build `dist/` khi cài từ GitHub
+  - Đơn giản hóa `build` script: bỏ `npm run clean` ở trước vì tsup đã có `clean: true`
+  - `clean` script dùng `tsup --clean` thay `rm -rf` để tương thích Windows
+  - Cập nhật hướng dẫn cài đặt trong README.md, product, design, spec docs
+  - Fix tiếng Việt thiếu dấu trong debug-logging.spec.md
+  - Fix ghi chú `npm run clean` cũ trong Welcome.md, overviews, design docs
 
 ---
 
@@ -345,10 +352,3 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Tách phần Known Issues từ Welcome.md sang KNOWN_ISSUES.md
   - Welcome.md giữ lại link tóm tắt đến KNOWN_ISSUES.md
   - Cập nhật cấu trúc thư mục docs trong Welcome.md và WORKFLOW.md
-- **Ghi chú:**
-  - Thêm `prepare` script (`npm run build`) để tự động build `dist/` khi cài từ GitHub
-  - Đơn giản hóa `build` script: bỏ `npm run clean` ở trước vì tsup đã có `clean: true`
-  - `clean` script dùng `tsup --clean` thay `rm -rf` để tương thích Windows
-  - Cập nhật hướng dẫn cài đặt trong README.md, product, design, spec docs
-  - Fix tiếng Việt thiếu dấu trong debug-logging.spec.md
-  - Fix ghi chú `npm run clean` cũ trong Welcome.md, overviews, design docs
