@@ -331,6 +331,20 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
 - **Tài liệu:** [Design](designs/build-config-install-docs.design.md) | [Spec](specs/build-config-install-docs.spec.md) | [Plan](plans/build-config-install-docs.plan.md) | [Overview](overviews/build-config-install-docs.overview.md)
+
+---
+
+### Tách Known Issues ra file riêng
+
+- **Trạng thái:** [/] Đang làm
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/known-issues-separate.design.md) | [Spec](specs/known-issues-separate.spec.md) | [Plan](plans/known-issues-separate.plan.md)
+- **Ghi chú:**
+  - Non-feature task (bảo trì tài liệu): chỉ cần overview, không cần product doc
+  - Tách phần Known Issues từ Welcome.md sang KNOWN_ISSUES.md
+  - Welcome.md giữ lại link tóm tắt đến KNOWN_ISSUES.md
+  - Cập nhật cấu trúc thư mục docs trong Welcome.md và WORKFLOW.md
 - **Ghi chú:**
   - Thêm `prepare` script (`npm run build`) để tự động build `dist/` khi cài từ GitHub
   - Đơn giản hóa `build` script: bỏ `npm run clean` ở trước vì tsup đã có `clean: true`

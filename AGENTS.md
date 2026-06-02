@@ -37,6 +37,13 @@ Kết cấu nhất quán giữa các feature: cùng loại tài liệu có cùng
 
 ---
 
+## Quy ước code và phong cách viết
+
+Đọc và tuân thủ toàn bộ [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) -- không dựa vào tóm tắt hay trí nhớ.
+ 
+
+---
+
 ## Cấu trúc thư mục
 
 | Thư mục | Mô tả |
@@ -64,21 +71,6 @@ Tất cả tài liệu (design, spec, plan, product, overview) và code comment 
 
 ---
 
-## Quy ước code quan trọng
-
-Áp dụng nhất quán trong toàn bộ codebase:
-
-- **TypeScript strict mode** -- không dùng `any` nếu có thể tránh.
-- **Class naming:** `PascalCase` (ví dụ `BrowserEngine`, `AdapterDataManager`).
-- **File naming:** `kebab-case`.
-- **Error handling:** Dùng `PluginError` hierarchy. Không để lỗi raw bubble lên.
-- **Section divider:** Dùng `// --- Tên phần ---` để chia file.
-- **JSDoc:** Bắt buộc với mọi `export` public.
-- **Locking:** Dùng `async-lock` cho đồng bộ tài nguyên, `proper-lockfile` cho lock file.
-- **Logging:** Dùng `debug` package, namespace theo module.
-
----
-
 ## Biến môi trường
 
 | Biến | Phạm vi sử dụng |
@@ -103,4 +95,3 @@ npm run build      # tsup bundle
 
 - Dự án chỉ hỗ trợ **Windows** (win32).
 - Không mock Playwright browser trong test -- test với browser thật.
-- Fingerprint được inject ở cấp độ C/C++, không để lại vết override trong JS context.

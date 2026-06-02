@@ -1,27 +1,62 @@
+# fingerprint-chromium-engine
 
-Chào mừng bạn đến với tài liệu dự án **fingerprint-chromium-engine**.
+Thư viện Node.js giúp điều khiển trình duyệt Chromium với fingerprint thật, bypass bot detection hiệu quả.
+
+---
 
 ## Ngữ cảnh dự án
 
-- **Loại dự án:** Thư viện Node.js điều khiển trình duyệt Chromium chống bot detection
-- **Người dùng cuối:** Developer sử dụng Playwright cần fingerprint thật, proxy đồng bộ và profile bền vững
-- **Platform:** Windows (32 bit + 64 bit)
-- **Ghi chú đặc biệt:** Sử dụng fingerprint thu thập từ thiết bị thực tế, inject ở cấp độ C/C++ trước khi trình duyệt chạy -- không có dấu hiệu bị override
+| Thuộc tính | Mô tả |
+|---|---|
+| **Loại dự án** | Thư viện Node.js điều khiển Chromium chống bot detection |
+| **Người dùng cuối** | Developer dùng Playwright cần fingerprint thật, proxy đồng bộ, profile bền vững |
+| **Platform** | Windows 32-bit & 64-bit |
+| **Cơ chế cốt lõi** | Fingerprint thu thập từ thiết bị thực tế, inject ở tầng C/C++ trước khi trình duyệt khởi động — không có dấu hiệu bị override ở JS layer |
+
+> **Kỹ thuật inject:** Engine nhị phân (C/C++) được load trước khi Chromium chạy, ghi đè các browser API ở tầng native. Xem chi tiết tại [STACK.md](STACK.md) và các file `*.design.md` trong `docs/designs/`.
+
+---
+
+## Bắt đầu nhanh
+
+Đọc theo thứ tự này để onboard nhanh nhất:
+
+**Bắt buộc đọc trước:**
+1. [README tổng quan](../README.md) — mô tả dự án, cách cài đặt, ví dụ sử dụng
+2. [Hướng dẫn cho OpenCode agent](../AGENTS.md) — quy tắc làm việc với codebase
+3. [Quy ước code](CONVENTIONS.md) — naming, formatting, patterns bắt buộc tuân theo
+
+**Đọc khi cần:**
+4. [Công nghệ sử dụng](STACK.md) — dependencies, lý do chọn từng công nghệ
+5. [Quy trình phát triển tính năng](WORKFLOW.md) — flow từ design → spec → plan → implement
+6. [Roadmap dự án](ROADMAP.md) — tiến độ các tính năng
+
+---
 
 ## Cấu trúc thư mục tài liệu
 
 ```
 docs/
-├── designs/       # <tên>.design.md -- tài liệu thiết kế, brainstorm
-├── specs/         # <tên>.spec.md   -- đặc tả chi tiết tính năng
-├── plans/         # <tên>.plan.md   -- kế hoạch thực hiện
-├── overviews/     # <tên>.overview.md   -- báo cáo tổng quan kết quả thực hiện plan
-├── products/      # <tên>.product.md    -- tài liệu tính năng (đọc để hiểu tính năng)
+├── designs/       # <tên>.design.md      -- tài liệu thiết kế, brainstorm
+├── specs/         # <tên>.spec.md        -- đặc tả chi tiết tính năng
+├── plans/         # <tên>.plan.md        -- kế hoạch thực hiện
+├── overviews/     # <tên>.overview.md    -- báo cáo tổng quan kết quả thực hiện plan
+├── products/      # <tên>.product.md     -- tài liệu tính năng (đọc để hiểu tính năng)
+├── templates/     # template cho từng loại tài liệu
+│   ├── design.template.md
+│   ├── spec.template.md
+│   ├── plan.template.md
+│   ├── overview.template.md
+│   └── product.template.md
+├── KNOWN_ISSUES.md -- danh sách bug và vấn đề đã biết
 ├── ROADMAP.md     -- theo dõi tiến độ tất cả tính năng
 ├── CONVENTIONS.md -- quy ước code
 ├── STACK.md       -- công nghệ sử dụng
-└── Welcome.md     -- giới thiệu tài liệu
+├── WORKFLOW.md    -- quy trình phát triển tính năng
+└── Welcome.md     -- giới thiệu tài liệu (file này)
 ```
+
+---
 
 ## Cấu trúc thư mục source
 
@@ -32,35 +67,11 @@ src/
 ├── loader/         # Tải xuống engine, quản lý file nhị phân
 ├── plugin/         # Plugin hệ thống (launcher, connector, mutex, browser, ...)
 ├── types/          # TypeScript type definitions
-├── index.ts        # Export công khai
+└── index.ts        # Export công khai
 ```
 
-## Bắt đầu
+---
 
-Đọc các file sau để hiểu dự án:
-- [README tổng quan](../README.md)
-- [Hướng dẫn cho OpenCode agent](../AGENTS.md)
-- [Quy ước code](CONVENTIONS.md)
-- [Công nghệ sử dụng](STACK.md)
-- [Quy trình phát triển tính năng](WORKFLOW.md)
-- [Roadmap dự án](ROADMAP.md)
+## Known Issues
 
-## Cấu trúc docs
-
-- `designs/*.design.md` -- tài liệu thiết kế
-- `specs/*.spec.md` -- đặc tả chi tiết
-- `plans/*.plan.md` -- kế hoạch thực hiện
-- `overviews/*.overview.md` -- báo cáo tổng quan kết quả thực hiện plan
-- `products/*.product.md` -- tài liệu tính năng
-
-## Ghi chú quan trọng (code issues cần sửa)
-
-1. **`notify()` dead code** (`src/plugin/connector/utils.ts`, `src/plugin/connector/index.ts`): `notify()` được định nghĩa và export nhưng không file nào import. `notifyTimer` được khai báo và `clearTimeout(notifyTimer)` trong `finally`, nhưng không bao giờ được gán giá trị.
-
-2. **Error classes không export trong public API** (`src/index.ts`): `PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError` trong `src/plugin/errors.ts` không được re-export. Người dùng không thể `import { PluginError } from 'fingerprint-chromium-engine'`.
-
-3. **`quit()` xoá toàn bộ BROWSER_RUNNING_DIR** (`src/adapter/playwright/chromium.ts:211`): `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc (`.tmp/browser/running/`), không chỉ temp dir của instance -- ảnh hưởng đến instance khác đang chạy. (Task [quit handle cleanup](plans/quit-handle-cleanup.plan.md) không xử lý issue này -- vẫn cần fix riêng.)
-
-4. **`PWChromium.ts` JSDoc gọi `usePrivateKey()` không tồn tại** (`src/types/PWChromium.ts:17,25`): JSDoc example đề cập method `usePrivateKey()` không có trong interface. Method thật là `setServiceKey(key)` trong `FingerprintPlugin`.
-
-5. **`npm run clean` dùng `tsup --clean`** (`package.json`): Đã fix -- dùng tsup built-in clean thay vì `rm -rf` để tương thích Windows.
+Hiện có **4 issue OPEN** đang cần xử lý. Xem chi tiết tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
