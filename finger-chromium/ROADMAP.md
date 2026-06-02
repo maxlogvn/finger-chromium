@@ -309,12 +309,12 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
-### Cấu hình build và tài liệu cài đặt (Build Config & Install Docs)
+### Cấu hình build pakage 
 
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Overview](overviews/build-config-install-docs.overview.md)
+- **Tài liệu:** [Design](designs/build-config-install-docs.design.md) | [Spec](specs/build-config-install-docs.spec.md) | [Plan](plans/build-config-install-docs.plan.md) | [Overview](overviews/build-config-install-docs.overview.md)
 - **Ghi chú:**
   - Thêm `prepare` script (`npm run build`) để tự động build `dist/` khi cài từ GitHub
   - Đơn giản hóa `build` script: bỏ `npm run clean` ở trước vì tsup đã có `clean: true`
