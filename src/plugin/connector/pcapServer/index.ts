@@ -10,6 +10,8 @@ import debug from 'debug';
 
 const log = debug('browser-with-fingerprints:connector:pcapServer');
 
+let server: net.Server | undefined;
+
 /**
  * Khởi động PCAP mock server -- lắng nghe TCP, phản hồi 2 loại lệnh binary.
  * Dùng once() để đảm bảo chỉ một server được tạo.
@@ -21,7 +23,7 @@ const log = debug('browser-with-fingerprints:connector:pcapServer');
 export const listen = once((port = 0, host = '127.0.0.1'): Promise<number> => {
   let id = 0;
   return new Promise<number>((resolve) => {
-    const server = net.createServer((socket) => {
+    server = net.createServer((socket) => {
       socket.on('data', (data: Buffer) => {
         if (data.length === 0) return;
         const byte = data[0];
@@ -50,3 +52,20 @@ export const listen = once((port = 0, host = '127.0.0.1'): Promise<number> => {
     });
   });
 });
+
+/**
+ * Dừng PCAP server -- close TCP connection, giải phóng port.
+ * Set undefined trong callback để tránh race condition.
+ */
+export const close = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (server) {
+      server.close(() => {
+        server = undefined;
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
+};

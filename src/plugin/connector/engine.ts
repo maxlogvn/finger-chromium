@@ -145,6 +145,7 @@ export default class RemoteEngine extends EventEmitter {
   #args: string[] = [];
   #engineTimeout: number = DEFAULT_TIMEOUT;
   #requestTimeout: number = DEFAULT_TIMEOUT;
+  #process: ChildProcess | undefined = undefined;
 
   constructor(options: EngineOptions = {}) {
     super();
@@ -314,8 +315,20 @@ export default class RemoteEngine extends EventEmitter {
           }
         }
       );
+      this.#process = proc;
       resolve(proc);
     });
+  }
+
+  /**
+   * Kill engine process -- dừng FastExecuteScript.exe.
+   * An toàn khi gọi nhiều lần (kiểm tra #process trước khi kill).
+   */
+  kill(): void {
+    if (this.#process && !this.#process.killed) {
+      this.#process.kill();
+      this.#process = undefined;
+    }
   }
 
   /**

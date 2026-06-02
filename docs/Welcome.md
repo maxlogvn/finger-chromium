@@ -59,7 +59,7 @@ src/
 
 2. **Error classes không export trong public API** (`src/index.ts`): `PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError` trong `src/plugin/errors.ts` không được re-export. Người dùng không thể `import { PluginError } from 'fingerprint-chromium-engine'`.
 
-3. **`quit()` xoá toàn bộ BROWSER_RUNNING_DIR** (`src/adapter/playwright/chromium.ts:207`): `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc (`.tmp/browser/running/`), không chỉ temp dir của instance -- ảnh hưởng đến instance khác đang chạy.
+3. **`quit()` xoá toàn bộ BROWSER_RUNNING_DIR** (`src/adapter/playwright/chromium.ts:211`): `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc (`.tmp/browser/running/`), không chỉ temp dir của instance -- ảnh hưởng đến instance khác đang chạy. (Task [quit handle cleanup](plans/quit-handle-cleanup.plan.md) không xử lý issue này -- vẫn cần fix riêng.)
 
 4. **`PWChromium.ts` JSDoc gọi `usePrivateKey()` không tồn tại** (`src/types/PWChromium.ts:17,25`): JSDoc example đề cập method `usePrivateKey()` không có trong interface. Method thật là `setServiceKey(key)` trong `FingerprintPlugin`.
 

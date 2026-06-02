@@ -75,6 +75,27 @@ class SettingsCleaner {
     }
   }
 
+  /**
+   * Dừng cleaner -- clear interval, unlock files còn locked, clear folders.
+   */
+  async stop(): Promise<void> {
+    if (this.#timer) {
+      clearInterval(this.#timer);
+      this.#timer = null;
+    }
+    for (const folder of this.#folders) {
+      const pattern = path.join(folder, '{t,s}', '*');
+      const entries = await fg(pattern, { stats: true, onlyFiles: false });
+      for (const { path: entryPath } of entries) {
+        const isLocked = await lock.check(entryPath).catch(() => false);
+        if (isLocked) {
+          await lock.unlock(entryPath).catch(() => {});
+        }
+      }
+    }
+    this.#folders = [];
+  }
+
   async #cleanup(): Promise<void> {
     for (const folder of this.#folders) {
       const pattern = path.join(folder, `{${['t', 's'].join(',')}}`, '*');

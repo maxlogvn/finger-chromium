@@ -1,4 +1,5 @@
 spec: tests/**/*.ts       # pattern tìm file test
-loader: tsx                    # dùng tsx để chạy .ts trực tiếp
+node-option:
+  - import=tsx/esm            # dùng tsx/esm để chạy .ts (Node >= 20.6)
 timeout: 10000                 # 10s timeout mỗi test (tăng nếu cần)
 exit: true                     # thoát process sau khi test xong

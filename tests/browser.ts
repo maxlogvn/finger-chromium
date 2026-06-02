@@ -1,4 +1,5 @@
-import { Chromium, PWChromium } from '../src';
+import { Chromium } from '../src';
+import type { PWChromium } from '../src';
 
 export const DRIVEN_TEST_SITES = ['https://abrahamjuliot.github.io/creepjs/', 'https://fingerprint.com/'];
 

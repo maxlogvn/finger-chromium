@@ -62,3 +62,14 @@ const mutex: MutexModule = (() => {
 
 export default mutex;
 export const create = mutex.create;
+
+/**
+ * Release named mutex -- gọi native close() nếu được hỗ trợ.
+ * Nếu native chưa có method close(), skip silently.
+ * Windows kernel tự cleanup handle mutex khi process thoát.
+ */
+export const release = (name: string): void => {
+  if (typeof mutex.close === 'function') {
+    mutex.close(name);
+  }
+};

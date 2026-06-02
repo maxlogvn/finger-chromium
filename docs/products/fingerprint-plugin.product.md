@@ -21,10 +21,20 @@ User config: useFingerprint() → useProxy() → useProfile()
         └── 6. configure() ── resize viewport + sync .ini
                           ↓
                     Return Browser
+                    ↓
+                    6. configure() ── resize viewport + sync .ini
+                          ↓
+                    Return Browser
                           ↓
                     User dùng page
                           ↓
-                    Cleanup tự động
+                    cleanup() ── thủ công hoặc qua quit()
+                      ├── browser.close()      taskkill worker.exe
+                      ├── connector.cleanup()
+                      │   ├── engine.kill()    kill FastExecuteScript.exe
+                      │   └── pcapServer.close()
+                      ├── mutex.release()      release BASProcess{pid}
+                      └── cleaner.stop()       clearInterval + unlock
 ```
 
 ## API chính
@@ -84,11 +94,25 @@ const browser = await plugin.spawn({
 
 Ở chế độ bridge, `configure()` được override để nhận `BrowserContext` thay vì `Browser`.
 
+## Cleanup
+
+Gọi `cleanup()` để dọn dẹp tài nguyên sau khi dùng browser xong:
+
+```ts
+const plugin = new FingerprintPlugin();
+const browser = await plugin.spawn({...});
+// ... dùng browser ...
+await plugin.cleanup();  // kill worker.exe + engine + PCAP + mutex + cleaner
+```
+
+Khi dùng qua `PlaywrightFingerprintPlugin`, cleanup được gọi tự động trong `Chromium.quit()`.
+
 ## Lưu ý
 
 - `headless: false` luôn được force -- fingerprint check phát hiện headless.
 - `serviceKey` là global -- gọi `setServiceKey()` trên bất kỳ instance nào cũng ảnh hưởng tất cả.
 - Profile có fallback tự động nếu không gọi `useProfile()`: engine tự tìm `--user-data-dir` từ args.
 - Mutex name `BASProcess${pid}` dùng `randomUUID()` -- mỗi lần launch một mutex riêng, không conflict.
+- `cleanup()` an toàn khi gọi nhiều lần (idempotent).
 
 ---

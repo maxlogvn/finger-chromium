@@ -1,5 +1,5 @@
-import { BrowserContext } from 'playwright-core';
-import { Chromium } from '@src/adapter/playwright/chromium';
+import type { BrowserContext } from 'playwright-core';
+import { Chromium } from '../src/adapter/playwright/chromium';
 
 export const LIST_PROFILE_DIR_PATH = ['.tmp/test/profile/user_test_1', '.tmp/test/profile/user_test_2'];
 

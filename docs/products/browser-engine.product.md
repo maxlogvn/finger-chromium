@@ -44,13 +44,29 @@ await Chromium.quit();
 ## Lifecycle Rules
 
 | Gọi method | Khi chưa launch | Sau launch | Sau quit |
-|---|---|---|---|
+|---|---|---|---|---|
 | `launch()` | OK | Throw (1 lần) | OK |
 | `newContext()` | Throw | OK (1 lần) | Throw |
 | `quit()` | No-op | OK | No-op |
 | `useFingerprint()` | OK | OK | OK |
 | `useProxy()` | OK | OK | OK |
 | `useProfile()` | OK | OK | OK |
+
+## Cleanup Chain
+
+Khi gọi `quit()` (sau `newContext()`), các tài nguyên được dọn dẹp theo thứ tự:
+
+```
+1. BrowserContext.close()          -- đóng context, giải phóng port
+2. browser.close()                 -- taskkill worker.exe
+3. engine.kill()                   -- kill FastExecuteScript.exe
+4. pcapServer.close()              -- close TCP mock server
+5. mutex.release()                 -- release BASProcess{pid}
+6. cleaner.stop()                  -- clearInterval + unlock files
+7. dataManager.unmap()             -- xoá thư mục tạm
+```
+
+Tất cả các bước đều an toàn khi gọi nhiều lần (idempotent), dùng try/catch nội bộ.
 
 ## Profile Safety
 

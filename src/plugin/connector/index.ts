@@ -87,4 +87,13 @@ export const api = async (name: string, params: ApiParams = {}): Promise<unknown
   });
 };
 
+/**
+ * Dọn dẹp connector -- kill engine process và close PCAP server.
+ * Gọi khi kết thúc session để giải phóng tài nguyên nền.
+ */
+export const cleanup = async (): Promise<void> => {
+  engine.kill();
+  await pcapServer.close();
+};
+
 export { engine };

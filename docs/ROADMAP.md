@@ -310,6 +310,21 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Fix quit() không dọn dẹp hết handles (child processes, connections)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/quit-handle-cleanup.design.md) | [Spec](specs/quit-handle-cleanup.spec.md) | [Plan](plans/quit-handle-cleanup.plan.md) | [Overview](overviews/quit-handle-cleanup.overview.md)
+- **Ghi chú:**
+  - `quit()` chỉ close BrowserContext + unmap profile -- bỏ sót worker.exe, engine process, PCAP server, watcher, cleaner timer, mutex
+  - Cần lưu Browser reference từ `_launch()` để có thể kill process sau này
+  - Cần expose engine kill + PCAP server close + cleaner stop
+  - **Status:** Đã implement 7/7 steps theo plan. Sai lệch: bỏ `isConnected()` (interface không có), bỏ Step 7 (không cần override).
+  - Lint: 0 errors. Build: success.
+
+---
+
 ### Cấu hình build pakage 
 
 - **Trạng thái:** [X] Hoàn thành

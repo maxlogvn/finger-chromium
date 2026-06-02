@@ -14,7 +14,7 @@ import * as mutex from './mutex';
 import cleaner from './cleaner';
 import type { Browser, LaunchOptions as SpawnOptions } from './launcher';
 import { launch } from './launcher';
-import { api, engine } from './connector';
+import { api, engine, cleanup as connectorCleanup } from './connector';
 import { configure, synchronize } from './config';
 import { defaultArgs, getProfilePath, validateConfig, validateLauncher } from './utils';
 import type { Version } from 'chrome-remote-interface';
@@ -72,6 +72,8 @@ export default class FingerprintPlugin {
   protected fingerprint?: PluginConfig;
   protected profile?: PluginConfig;
   protected proxy?: PluginConfig;
+  protected browser?: Browser;
+  protected processId?: string;
 
   /**
    * @param launcherInstance - Launcher tuỳ chỉnh, nếu không có thì dùng mặc định
@@ -246,6 +248,7 @@ export default class FingerprintPlugin {
       key: typeof options.key === 'string' ? options.key : serviceKey,
     } as any)) as SetupResponse;
     const { id, pid, pwd, path: browserPath, bounds, ...config } = setupData;
+    this.processId = pid;
 
     // --- Bước 3: Đăng ký cleaner + tạo mutex -- dọn dẹp khi process kết thúc
     await cleaner.watch(pwd).ignore(pwd, pid, id);
@@ -265,11 +268,28 @@ export default class FingerprintPlugin {
       executablePath: `${browserPath}/worker.exe`,
       args: [`--parent-process-id=${pid}`, `--unique-process-id=${id}`, ...defaultArgs({ ...options, ...config })],
     } as any);
+    this.browser = browser;
 
     // --- Bước 6: Cấu hình và đồng bộ -- inject fingerprint, proxy vào browser
     const configFn = useDefaultLauncher ? configure : this.configure.bind(this);
     await configFn(() => cleaner.include(pwd, pid, id), browser, bounds, synchronize.bind(null, id, pwd, bounds));
     return browser;
+  }
+
+  /**
+   * Dọn dẹp tài nguyên -- kill browser process, engine, PCAP server, cleaner, mutex.
+   * Thứ tự: browser trước (worker.exe), connector (engine + PCAP) sau, cleaner cuối cùng.
+   */
+  async cleanup(): Promise<void> {
+    if (this.browser) {
+      await this.browser.close().catch(() => {});
+      this.browser = undefined;
+    }
+    await connectorCleanup();
+    if (this.processId) {
+      mutex.release(`BASProcess${this.processId}`);
+    }
+    await cleaner.stop();
   }
 }
 
