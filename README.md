@@ -49,6 +49,12 @@
 npm install https://github.com/maxlogvn/finger-chromium
 ```
 
+Sau khi cài, npm tự động chạy `prepare` script để build thư viện. Nếu build không tự động chạy (do `--ignore-scripts`), hãy chạy thủ công:
+
+```bash
+npm run build
+```
+
 Đảm bảo bạn đã cài `playwright-core` và tải Chromium:
 
 ```bash
