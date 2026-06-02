@@ -227,3 +227,22 @@ Ngoại lệ: file adapter có thể re-export type để tiện import (`export
 - Dùng `tsup` để bundle
 - Output: ESM (`dist/index.js`) + CJS (`dist/index.cjs`)
 - Build trước khi publish: `npm run build`
+
+---
+
+## Tài liệu (Documentation)
+
+### Quy tắc tập trung Known Issues
+
+`docs/KNOWN_ISSUES.md` là **entry point duy nhất** cho mọi bug, known issue, và fix đã được ghi nhận.
+
+- **Roadmap** (`ROADMAP.md`): Không link trực tiếp đến bug fix docs trong trường `Tài liệu`. Nếu feature có bug fix, thêm ghi chú ngắn trong trường `Ghi chú` kèm link `KNOWN_ISSUES.md #N`.
+- **Welcome** (`Welcome.md`): Chỉ giữ link tóm tắt đến `KNOWN_ISSUES.md` (ví dụ: "Hiện có N issue OPEN"). Không chứa chi tiết issue nào.
+- **Khi fix bug**: Cập nhật `KNOWN_ISSUES.md` trước -- chuyển từ OPEN sang FIXED, thêm link đến design/spec/plan/overview của bug fix. Không sửa Roadmap hay Welcome để thêm chi tiết fix.
+- **Quét định kỳ**: Khi thêm issue mới, kiểm tra ROADMAP.md và Welcome.md có tham chiếu inline đến issue đó không; nếu có, thay bằng link `KNOWN_ISSUES.md #N`.
+
+### Mục đích
+
+- Tránh trùng lặp thông tin giữa các file.
+- Giữ cho Roadmap và Welcome gọn, tập trung vào đúng mục đích của chúng (theo dõi tiến độ và onboarding).
+- Người đọc chỉ cần nhớ một nơi để tra cứu issue: `KNOWN_ISSUES.md`.
