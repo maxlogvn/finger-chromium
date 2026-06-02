@@ -39,6 +39,7 @@
   ],
   "files": [
     "dist",
+    "plugin",
     "project.xml",
     "README.md"
   ],
