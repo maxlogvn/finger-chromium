@@ -170,7 +170,7 @@ Bước 2 — Với từng file, đối chiếu nội dung với tính năng v�
 | `CONVENTIONS.md` | Tính năng giới thiệu pattern, quy ước, hoặc cấu trúc code mới |
 | `STACK.md` | Tính năng thêm hoặc thay thế thư viện, công nghệ |
 | `Welcome.md` | Tính năng thay đổi cách onboard hoặc tổng quan dự án |
-| `specs/*.spec.md` | Spec tính năng khác có mô tả hành vi nay đã thay đổi |
+| `specs/*.spec.md` | Spec tính năng khác có mô tả hành vi này đã thay đổi |
 | `products/*.product.md` | Product doc tính năng khác bị ảnh hưởng về luồng hoặc API |
 
 Bước 3 — Với mỗi file cần cập nhật: thực hiện chỉnh sửa, ghi rõ lý do thay đổi.
