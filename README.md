@@ -17,6 +17,8 @@
   &nbsp;|&nbsp;
   <a href="#biến-môi-trường">Biến môi trường</a>
   &nbsp;|&nbsp;
+  <a href="#tài-liệu">Tài liệu</a>
+  &nbsp;|&nbsp;
   <a href="#phát-triển">Phát triển</a>
 </p>
 
@@ -24,12 +26,13 @@
 
 ## Tính năng
 
-- **Fingerprint thật** — Inject fingerprint thu thập từ thiết bị thực tế ở cấp độ C/C++ thông qua CDP, không để lại vết override trong JavaScript context.
+- **Fingerprint thật** — Inject fingerprint thu thập từ thiết bị thực tế ở cấp độ C/C++ thông qua CDP, không để lại vết override trong JavaScript context. [Chi tiết](docs/products/fingerprint-config.product.md)
 - **PerfectCanvas** — Render canvas chính xác theo fingerprint đích (cần request từ CanvasInspector).
-- **Proxy đồng bộ** — Tương thích HTTP/HTTPS/SOCKS4/SOCKS5, tự động đồng bộ timezone, geolocation, ngôn ngữ và WebRTC theo IP proxy.
+- **Proxy đồng bộ** — Tương thích HTTP/HTTPS/SOCKS4/SOCKS5, tự động đồng bộ timezone, geolocation, ngôn ngữ và WebRTC theo IP proxy. [Chi tiết](docs/products/proxy-config.product.md)
 - **Hỗ trợ WebRTC** — Thay thế IP thật bằng IP proxy trong WebRTC, hoặc tắt hoàn toàn.
-- **Profile bền vững** — Lưu và tải cookies, localStorage, session, lịch sử đăng nhập giữa các phiên.
+- **Profile bền vững** — Lưu và tải cookies, localStorage, session, lịch sử đăng nhập giữa các phiên. [Chi tiết](docs/products/profile-management.product.md)
 - **Nhiều kỹ thuật chống detect** — Nhiễu WebGL, nhiễu Canvas/Web Audio, che giấu DOM element, giả lập Sensor API, Battery API, và màn hình HiDPI.
+- **Quản lý viewport tự động** — Resize viewport qua CDP, đồng bộ kích thước fingerprint. [Chi tiết](docs/products/viewport-management.product.md)
 - **Chỉ Windows** — Được xây dựng dành riêng cho Windows (win32, cả 32-bit và 64-bit).
 
 ## Yêu cầu
@@ -55,11 +58,12 @@ npx playwright install chromium
 
 ## Sử dụng nhanh
 
+> **Ghi chú:** Key bảo mật được set qua biến môi trường `BABLOSOFT_KEY`, không phải qua method riêng.
+
 ```ts
 import { Chromium } from 'fingerprint-chromium-engine';
 
 const context = await Chromium
-  .usePrivateKey('your-bablosoft-key')
   .useFingerprint(fingerprintData, {
     usePerfectCanvas: true,
     safeWebGL: true,
@@ -84,17 +88,11 @@ await Chromium.quit(); // đóng và lưu profile
 
 ## API
 
+Chi tiết đầy đủ tại [BrowserEngine product doc](docs/products/browser-engine.product.md).
+
 ### `Chromium`
 
 Instance singleton của `BrowserEngine`. Các method gọi chain được, **phải gọi trước `launch()`**.
-
-#### `usePrivateKey(key: string): this`
-
-Thiết lập key bảo mật bablosoft.
-
-```ts
-Chromium.usePrivateKey('your-key')
-```
 
 #### `useFingerprint(data: string, options?: FingerprintOptions): this`
 
@@ -112,6 +110,8 @@ Gắn fingerprint vào trình duyệt. `data` là chuỗi fingerprint từ servi
 | `safeBattery` | `true` | Giả lập Battery API |
 | `safeElementSize` | `false` | Che giấu tọa độ DOM element thật |
 
+Xem thêm: [Fingerprint Config product doc](docs/products/fingerprint-config.product.md)
+
 #### `useProxy(data: string, options?: ProxyOptions): this`
 
 Định tuyến toàn bộ traffic qua proxy. Định dạng: `protocol://user:pass@host:port`.
@@ -128,6 +128,8 @@ Gắn fingerprint vào trình duyệt. `data` là chuỗi fingerprint từ servi
 | `ipInfoMethod` | `'database'` | `'database'` / `'ip-api.com'` |
 | `detectExternalIP` | `true` | Tự động phát hiện IP công khai |
 
+Xem thêm: [Proxy Config product doc](docs/products/proxy-config.product.md)
+
 #### `useProfile(dirPath: string, options?: ProfileOptions): this`
 
 Liên kết thư mục profile để duy trì trạng thái giữa các phiên.
@@ -136,6 +138,8 @@ Liên kết thư mục profile để duy trì trạng thái giữa các phiên.
 |---|---|---|
 | `loadProxy` | `true` | Tải proxy đã dùng lần trước từ profile |
 | `loadFingerprint` | `true` | Tải fingerprint đã dùng lần trước từ profile |
+
+Xem thêm: [Profile Management product doc](docs/products/profile-management.product.md)
 
 #### `launch(options?: PluginLaunchOptions): this`
 
@@ -166,6 +170,8 @@ const fp = await Chromium.newFingerprint({
 })
 ```
 
+Xem thêm: [Type System product doc](docs/products/type-system.product.md) (FetchOptions)
+
 #### `quit(saveDataPath?: string): Promise<void>`
 
 Đóng trình duyệt, giải phóng tài nguyên và lưu profile. Có thể ghi đè đường dẫn lưu profile.
@@ -179,10 +185,10 @@ await Chromium.quit('./profiles/user_backup')
 
 | Biến | Mặc định | Mô tả |
 |---|---|---|
-| `BABLOSOFT_KEY` | `''` | Key bảo mật cho engine (chỉ cần khi dùng fingerprint không phải Windows) |
+| `BABLOSOFT_KEY` | `''` | Key bảo mật cho engine (bắt buộc để dùng fingerprint) |
 | `BROWSER_RUNNING_DIR` | `.tmp/browser/running` | Thư mục tạm cho trình duyệt đang chạy |
 | `ENGINE_WORKING_DIR` | `.tmp/browser/engine` | Thư mục làm việc của engine |
-| `DEBUG` | — | Bật debug log: `fingerprint:*`, `fingerprint:plugin`, ...|
+| `DEBUG` | — | Bật debug log: `browser-with-fingerprints:*` |
 
 ## Kiến trúc
 
@@ -197,6 +203,29 @@ src/
 ```
 
 Fingerprint được inject ở cấp độ **C/C++** thông qua CDP message trước khi trình duyệt chạy, không để lại vết override trong JavaScript context.
+
+## Tài liệu
+
+| Tài liệu | Mô tả |
+|---|---|
+| [Tổng quan dự án](docs/Welcome.md) | Giới thiệu, cấu trúc docs, ghi chú code issues |
+| [Hướng dẫn phát triển](docs/WORKFLOW.md) | Quy trình phát triển tính năng từ đầu đến cuối |
+| [Quy ước code](docs/CONVENTIONS.md) | Đặt tên, comment, error handling, CDP, testing |
+| [Công nghệ sử dụng](docs/STACK.md) | TypeScript, Playwright, dependencies |
+| [Roadmap](docs/ROADMAP.md) | Trạng thái tất cả tính năng |
+
+### Product docs
+
+| Tính năng | Mô tả |
+|---|---|
+| [BrowserEngine](docs/products/browser-engine.product.md) | Fluent API tổng quan: launch, newContext, quit |
+| [Fingerprint Config](docs/products/fingerprint-config.product.md) | Tùy chọn fingerprint: PerfectCanvas, WebGL, Audio... |
+| [Proxy Config](docs/products/proxy-config.product.md) | Proxy: HTTP/SOCKS, DNS, WebRTC, timezone sync |
+| [Profile Management](docs/products/profile-management.product.md) | Profile: lưu/tải cookies, proxy, fingerprint |
+| [Viewport Management](docs/products/viewport-management.product.md) | Resize viewport tự động qua CDP |
+| [Hook Binding](docs/products/hook-binding.product.md) | Tự động resize, chặn thay đổi viewport |
+| [Type System](docs/products/type-system.product.md) | TypeScript types: FingerprintOptions, ProxyOptions... |
+| [Error Hierarchy](docs/products/error-hierarchy.product.md) | Xử lý lỗi: PluginError, MissingKeyError... |
 
 ## Phát triển
 
@@ -215,7 +244,7 @@ npm run dev         # Watch mode
 ## Ghi chú quan trọng
 
 - **Chỉ hỗ trợ Windows.** Đảm bảo hệ thống của bạn là Windows trước khi sử dụng.
-- **Key bablosoft** — chỉ cần khi sử dụng fingerprint không phải Windows.
+- **Key bablosoft** — set qua biến môi trường `BABLOSOFT_KEY`.
 - **PerfectCanvas** yêu cầu lấy request từ ứng dụng CanvasInspector (xem wiki bablosoft).
 - **FontPack** có thể tải tại [bablosoft wiki](https://wiki.bablosoft.com/doku.php?id=fontpack).
 
