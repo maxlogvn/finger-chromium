@@ -24,15 +24,14 @@ Các tài liệu dưới đây chứa toàn bộ ngữ cảnh quan trọng của
 
 Mọi tính năng thay đổi **phải** tuân theo quy trình trong [`docs/WORKFLOW.md`](docs/WORKFLOW.md):
 
-1. **Cập nhật ROADMAP.md** -> đánh dấu "Đang làm"
-2. **Viết docs/designs/** -> brainstorm, đề xuất giải pháp
-3. **Viết docs/specs/** -> đặc tả chi tiết
-4. **Viết docs/plans/** -> kế hoạch từng bước
-5. **Review** -> cho người dùng duyệt spec + plan
-6. **Code** -> thực hiện theo plan
-7. **Kiểm tra** -> lint, type-check, test
-8. **Viết docs/products/ + docs/overviews/** -> tài liệu tính năng + báo cáo tổng quan kết quả (feature task cần product, non-feature task chỉ overview)
-9. **Cập nhật ROADMAP.md** -> đánh dấu "Hoàn thành"
+Viết bằng tiếng Việt, dùng từ ngữ thân thiện, dễ hiểu, như đang giải thích cho một developer đồng nghiệp mới vào dự án.
+Tránh lạm dụng thuật ngữ khiến nội dung khó đọc. Nếu bắt buộc dùng thuật ngữ chuyên ngành (ví dụ BrowserContext, launchPersistentContext, CDP), giải thích ngắn gọn ngay kế bên.
+Không dùng câu phức tạp -- ưu tiên rõ ràng, đi thẳng vào vấn đề.
+Giải thích "tại sao" chứ không chỉ "làm gì" -- đặc biệt trong code comment và overview.
+Ví dụ code phải chạy được (copy-paste là dùng được). Có đủ import và context.
+JSDoc/public API phải có trong spec: ghi đúng tên method, tham số, kiểu trả về, giá trị mặc định.
+Mỗi section nên ở mức vừa phải, không quá ngắn (thiếu thông tin) nhưng cũng không quá dài (khó đọc). Khoảng 5-15 dòng cho mỗi section nhỏ, 15-30 dòng cho section chính.
+Kết cấu nhất quán giữa các feature: cùng loại tài liệu có cùng cấu trúc section, để developer biết chỗ nào tìm thông tin gì.
 
 > **Không được bỏ qua bất kỳ bước nào.** Đặc biệt, KHÔNG được chuyển thẳng sang bước 6 (Code) mà không có design, spec, plan, và review từ người dùng.
 

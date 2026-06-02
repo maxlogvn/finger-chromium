@@ -1,47 +1,73 @@
-# Design: Hệ thống lỗi
+# Design: Hệ thống lỗi (Error Hierarchy)
 
-## Vấn đề
+## Vấn đề cần giải quyết
 
-Các lỗi từ nhiều tầng (engine binary, network, config) cần được chuẩn hoá thành dạng có tổ chức, tránh `Error` raw.
+Khi thư viện gặp lỗi, người dùng cần biết:
+1. **Có lỗi gì xảy ra?** (mô tả lỗi)
+2. **Loại lỗi gì?** (timeout, thiếu key, engine lỗi...)
+3. **Cách khắc phục?** (hướng dẫn trong message)
 
-## Giải pháp
+Nếu chỉ dùng `throw new Error('something wrong')`, người dùng không thể phân biệt được các loại lỗi để xử lý khác nhau. Ví dụ: lỗi timeout cần retry, lỗi thiếu key cần cấu hình lại, lỗi engine cần tải lại.
 
-Dùng class hierarchy với `PluginError` làm base, kế thừa `Error`:
+## Các phương án đã cân nhắc
 
-```
-Error
-└── PluginError
-    ├── MissingKeyError   -- thiếu key bảo mật
-    ├── InvalidEngineError -- engine chưa tải/giải nén
-    ├── EngineTimeoutError -- timeout engine startup
-    └── RequestTimeoutError -- timeout request
-```
+### 1. Dùng Error code (số)
 
-### Cơ chế
-
-- `PluginError` tự set `this.name = constructor.name` -- giúp `instanceof` hoạt động ngay cả khi class bị minified.
-- Dùng `Error.captureStackTrace` để clean stack trace -- tránh noise từ chính error constructor.
-- `Symbol.toStringTag` getter trả về `constructor.name` -- cho phép `Object.prototype.toString.call(err)` trả đúng tên class.
-
-### Message pattern
-
-Dùng `dedent` template literal để viết message nhiều dòng -- kết hợp tiếng Việt với thuật ngữ tiếng Anh.
-
-Ví dụ `MissingKeyError`:
-```
-Key bi thieu hoac khong hop le!
-Key can de apply fingerprint, khong chi de fetch.
-Nang cap len BASIC/PRO de co service key."
+```ts
+throw { code: 1001, message: 'Timeout' };
 ```
 
-### Xử lý lỗi ở tầng connector
+**Ưu điểm:** Nhẹ, dễ so sánh.
 
-Trong `connector/index.ts`, khi nhận response từ engine binary có field `error`, code kiểm tra nội dung:
-- Nếu error chứa `'key is missing'` -> throw `MissingKeyError`
-- Nếu khác -> throw `PluginError`
+**Nhược điểm:** Không có stack trace, không tận dụng được `instanceof`, khó debug.
 
-Đây là điểm chuẩn hoá lỗi duy nhất từ raw engine response.
+### 2. Dùng Error class hierarchy (chọn)
+
+Kế thừa từ `Error`, mỗi loại lỗi là một class riêng.
+
+**Ưu điểm:**
+- Dùng được `instanceof` để phân loại.
+- Có stack trace đầy đủ.
+- Có thể thêm message hướng dẫn khắc phục.
+- TypeScript hỗ trợ type narrowing qua `instanceof`.
+
+**Nhược điểm:** Nặng hơn một chút so với Error code, nhưng không đáng kể.
+
+## Giải pháp chọn
+
+### PluginError (base class)
+
+```ts
+class PluginError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+```
+
+**Tại sao tự set `this.name`?** Vì JavaScript `Error` class không tự động set `name` khi kế thừa -- nó luôn để là `'Error'`. Set `this.constructor.name` giúp `instance.name` trả về tên class thật.
+
+**Tại sao dùng `Error.captureStackTrace`?** V8 (Node.js) có method này để loại bỏ constructor khỏi stack trace, giúp stack trace sạch hơn. Trên các runtime khác, nó chỉ là no-op.
+
+**Tại sao có `Symbol.toStringTag`?** Khi bạn log `String(error)`, nó hiển thị `PluginError: message` thay vì `Error: message`.
+
+### Các lỗi cụ thể
+
+| Class | Khi nào throw | Message hướng dẫn |
+|---|---|---|
+| `PluginError` | Lỗi cơ bản, không thuộc loại nào khác | Message gốc |
+| `MissingKeyError` | Thiếu key bảo mật | Giải thích cần set key cho cả fetch và apply |
+| `InvalidEngineError` | Engine chưa được tải/giải nén đúng | Hướng dẫn xoá engine cũ, tải lại |
+| `EngineTimeoutError` | Timeout khi khởi động engine | Hướng dẫn tăng timeout |
+| `RequestTimeoutError` | Timeout khi chờ request | Hướng dẫn tăng request timeout |
+
+### Tại sao message lại dài?
+
+Các message lỗi được viết bằng `dedent` template, chứa hướng dẫn khắc phục chi tiết. Lý do:
+- Người dùng mới không biết `setEngineTimeout` là gì -- cần hướng dẫn cụ thể.
+- Giảm số lần người dùng phải mở docs/tài liệu.
+- Lỗi càng rõ ràng, càng ít support request.
 
 ---
-
-Xem thêm: [Spec](../specs/error-hierarchy.spec.md) | [Plan](../plans/error-hierarchy.plan.md)

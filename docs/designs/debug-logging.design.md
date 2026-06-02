@@ -2,47 +2,40 @@
 
 ## Vấn đề
 
-Cần logging theo module để debug từng layer: connector (IPC với engine), plugin (lifecycle orchestration), adapter (Playwright bridge). Dễ bật/tắt không ảnh hưởng production.
+Cần logging theo module để debug từng layer: connector (IPC với engine), plugin (lifecycle orchestration), adapter (Playwright bridge). Dễ bật/tắt, không ảnh hưởng production.
 
 ## Giải pháp: `debug` package
 
-Namespace convention: `fingerprint:<module>`
-
-```ts
-import debug from 'debug';
-
-const logConnector = debug('fingerprint:connector');
-const logPlugin = debug('fingerprint:plugin');
-const logAdapter = debug('fingerprint:adapter');
-```
+Namespace convention: `browser-with-fingerprints:<module>`
 
 ### Namespace map
 
 | Namespace | File | Mục đích |
 |---|---|---|
-| `fingerprint:connector` | `connector/engine.ts`, `connector/index.ts` | Engine IPC, download, extract, setup |
-| `fingerprint:plugin` | `plugin/index.ts` | Lifecycle, config methods |
-| `fingerprint:adapter` | `adapter/*.ts` | Playwright bridge, hooks, viewport |
+| `browser-with-fingerprints:connector` | `connector/index.ts` | API Connector, PCAP server start |
+| `browser-with-fingerprints:connector:engine` | `connector/engine.ts` | Engine IPC, download, extract, spawn |
+| `browser-with-fingerprints:connector:pcapServer` | `connector/pcapServer/index.ts` | PCAP server lifecycle |
+| `browser-with-fingerprints:cleaner` | `plugin/cleaner.ts` | File cleanup daemon |
 
 ### Cách bật
 
 ```bash
 # Tất cả
-set DEBUG=fingerprint:* & node app.js
+set DEBUG=browser-with-fingerprints:* & node app.js
 
 # Một module
-set DEBUG=fingerprint:connector & node app.js
+set DEBUG=browser-with-fingerprints:connector & node app.js
 
 # Nhiều module
-set DEBUG=fingerprint:connector,fingerprint:plugin & node app.js
+set DEBUG=browser-with-fingerprints:connector,browser-with-fingerprints:cleaner & node app.js
 ```
 
 ### Tại sao chọn `debug`?
 
-- Zero dependency (nhẹ)
-- Namespace với wildcard support
-- Output có màu (terminal), format `namespace message`
-- Không ảnh hưởng performance khi tắt (vì property getter bypass)
+- Zero dependency (nhẹ).
+- Namespace với wildcard support.
+- Output có màu (terminal), format `namespace message +elapsed-time`.
+- Zero overhead khi tắt -- nếu DEBUG env không match, function là no-op.
 
 ---
 

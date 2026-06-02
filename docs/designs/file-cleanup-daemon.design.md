@@ -2,42 +2,36 @@
 
 ## Vấn đề
 
-Thư mục làm việc của engine (`data/t/`, `data/s/`) tích tụ file rác sau nhiều lần chạy (temp files, orphaned request files). Cần dọn dẹp tự động mà không xoá file đang dùng.
+Thư mục làm việc của engine (`data/t/`, `data/s/`) tích tụ file rác sau nhiều lần chạy (temp files, orphaned request/response files). Cần dọn dẹp tự động mà không xoá file đang được process sở hữu.
 
-## Giải pháp: SettingsCleaner class
+## Giải pháp: SettingsCleaner singleton
 
-Singleton pattern với private fields (#).
+### 3 thao tác chính
 
-### Quy trình cleanup
+1. **watch(folder)**: Đăng ký thư mục cần dọn, khởi động timer 15s nếu chưa có.
+2. **ignore(folder, pid, id)**: Lock 3 file `t/${pid}`, `s/${id}.ini`, `s/${id}1.ini` -- không cho cleaner xoá.
+3. **include(folder, pid, id)**: Unlock -- cho phép cleaner xoá khi process kết thúc.
 
-1. **Watch folder**: `cleaner.watch(pwd)` đăng ký thư mục cần dọn
-2. **Ignore (lock)**: `cleaner.ignore(pwd, pid, id)` khoá file của process đang chạy
-3. **Include (unlock)**: `cleaner.include(pwd, pid, id)` mở khoá khi process kết thúc
-4. **Cleanup timer**: Mỗi 15s quét các thư mục đã watch
+### Cleanup cycle (mỗi 15s)
 
-### Lock file mechanism
-
-Dùng `proper-lockfile` để lock/unlock. Lock file trên các items:
 ```
-t/${pid}
-s/${id}.ini
-s/${id}1.ini
-```
-
-### Cleanup logic
-
-```ts
 #cleanup():
   1. Glob {t,s}/* trong mỗi watched folder
-  2. Filter: bỏ qua file modified trong 15s gần nhất
-  3. Với file .txt: kiểm tra lock trên file .ini tương ứng
+  2. Filter: bỏ qua file modified < 15s (có thể đang được ghi)
+  3. Với file .txt trong thư mục s/: kiểm tra lock trên file .ini cùng prefix
   4. Với file khác: kiểm tra lock trực tiếp
-  5. Nếu không locked → rm(path, { recursive: true, force: true })
+  5. Nếu không locked -> rm(path, { recursive: true, force: true })
 ```
+
+### Lock mechanism
+
+Dùng `proper-lockfile` -- tạo file `.lock` bên cạnh file gốc, dùng `fs.open` với flag `O_EXCL`. Cross-platform.
+
+`onCompromised` callback log warning, không throw -- lock compromised không crash cleanup.
 
 ### Timer
 
-Dùng `setInterval(15000)` với `.unref()` -- không giữ process alive.
+`setInterval(15000)` với `.unref()` -- không giữ process alive. Process có thể exit ngay cả khi timer còn chạy.
 
 ---
 

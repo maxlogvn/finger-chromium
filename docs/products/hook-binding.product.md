@@ -10,21 +10,18 @@ Hook Binding intercept Playwright methods để tự động resize viewport và
 
 ```
 Browser.newContext()
-  → force viewport: null (chống Playwright tự resize)
-  → patch context
+  -> force viewport: null (chống Playwright tự resize)
+  -> patch context
 
 BrowserContext.newPage()
-  → onPageCreated hook
-  → CDP resize → viewport theo fingerprint
-  → patch page
+  -> onPageCreated hook -> CDP resize theo fingerprint
+  -> patch page
 
 Page.setViewportSize()
-  → bị chặn → in warning
+  -> bị chặn -> in warning
 ```
 
 ### onClose
-
-Khi Browser disconnected hoặc BrowserContext closed, cleanup handler được gọi:
 
 ```ts
 onClose(browser, () => cleanup());
@@ -35,10 +32,9 @@ onClose(browser, () => cleanup());
 ### bindHooks
 
 ```ts
-bindHooks(browser, {
+bindHooks(context, {
   onPageCreated: async (page) => {
     await setViewport(page, { width: 1920, height: 1080 });
-    console.log('Viewport resized');
   },
 });
 ```
@@ -52,11 +48,13 @@ const page = await context.newPage();
 
 // Không thể thay đổi:
 await page.setViewportSize({ width: 800, height: 600 });
-// Warning: "Khong the thay doi viewport: kich thuoc da bi khoa boi fingerprint"
+// Warning: "[Fingerprint] Không thể thay đổi viewport: kích thước đã bị khoá bởi fingerprint."
 ```
 
 ## Lưu ý
 
-- Hook chỉ áp dụng cho Pages mới, không resize page đã tồn tại
-- `resetOptions()` force `viewport: null` để Playwright không resize trước -- engine tự resize qua CDP
-- `patchPage` proxy `setViewportSize` in warning, không throw -- để không crash code
+- Hook chỉ áp dụng cho Pages mới, không resize page đã tồn tại.
+- `resetOptions()` force `viewport: null` để Playwright không resize trước.
+- `patchPage` proxy `setViewportSize` in warning, không throw -- để không crash code.
+
+---

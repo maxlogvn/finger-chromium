@@ -2,32 +2,47 @@
 
 ## Tổng quan
 
-Native Windows named mutex ngăn nhiều instance browser dùng chung profile. Khác với `async-lock` (chỉ đồng bộ trong process), mutex này hoạt động cross-process.
+Native Mutex tạo Windows named mutex -- một cơ chế đồng bộ ở cấp độ kernel -- cho engine binary. Engine dùng mutex để đảm bảo chỉ một instance của nó chạy tại một thời điểm.
 
-## Tại sao cần mutex?
-
-```
-Instance 1: chrome.exe --profile-dir=./profiles/user1
-Instance 2: chrome.exe --profile-dir=./profiles/user1  ← crash hoặc corrupt!
-```
-
-Nếu 2 browser cùng ghi vào một profile, dữ liệu sẽ bị corrupt. Mutex `BASProcess<pid>` đảm bảo chỉ một process dùng profile tại một thời điểm.
+Bạn không cần dùng Native Mutex trực tiếp. Nó được gọi tự động bởi FingerprintPlugin.
 
 ## Cách hoạt động
 
-Khi `_launch()` chạy:
+```
+mutex.create('BASProcess')
+    │
+    └── Windows kernel tạo named mutex "BASProcess"
+        │
+        ├── Nếu chưa có → tạo mới
+        └── Nếu đã có → engine dùng mutex hiện tại
+```
 
-1. Engine trả về `pid` trong setup response
-2. `mutex.create('BASProcess' + pid)` -- tạo Windows named mutex
-3. Nếu process khác cố launch với cùng profile → `mutex.create()` cùng tên → Windows block
-4. Khi process kết thúc → Windows kernel tự động release mutex
+## API
 
-## Tại sao không dùng file lock?
+### `create(name)`
 
-`proper-lockfile` lock file có thể bị bỏ qua nếu process dùng `rm -rf`. Native mutex ở kernel level, không thể bypass.
+| Tham số | Kiểu | Mô tả |
+|---|---|---|
+| `name` | `string` | Tên mutex (VD: `'BASProcess'`) |
 
-## Lưu ý với Windows
+```ts
+import { create } from 'fingerprint-chromium-engine/plugin/mutex';
 
-- Mutex chỉ hoạt động trên Windows (win32)
-- Native addon prebuilt cho win32-x64 và win32-ia32
-- Nếu file `.node` không load được, throw error chi tiết
+create('BASProcess');
+// Windows named mutex "BASProcess" được tạo
+```
+
+## Xử lý lỗi
+
+| Lỗi | Nguyên nhân |
+|---|---|
+| `Unsupported OS architecture` | Kiến trúc Windows không phải ia32/x64 |
+| `Unsupported OS platform` | Hệ điều hành không phải Windows |
+
+## Lưu ý
+
+- **Chạy trên Windows** -- đây là native Windows API, không chạy trên Linux/macOS.
+- **Cần file .node** -- mutex.node được compile sẵn cho win32-x64 và win32-ia32.
+- **Tự động load** -- module chọn đúng .node file dựa trên `process.arch`.
+
+---

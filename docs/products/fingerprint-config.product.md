@@ -2,7 +2,7 @@
 
 ## Tổng quan
 
-Fingerprint được inject ở cấp C/C++ (không phải JavaScript override) -- không để lại dấu vết cho bot detection. Bạn cung cấp JSON fingerprint (từ bablosoft service), engine binary sẽ inject vào browser process.
+Fingerprint được inject ở cấp C/C++ (không phải JavaScript override) -- không để lại dấu vết cho bot detection. Bạn cung cấp JSON fingerprint (từ bablosoft service) và `FingerprintOptions` để kiểm soát từng kỹ thuật giả lập.
 
 ## Cách dùng
 
@@ -26,44 +26,39 @@ const fp = await Chromium.newFingerprint({
   minWidth: 1920,
   minHeight: 1080,
 });
-Chromium.useFingerprint(fp);
+Chromium.useFingerprint(fp, { usePerfectCanvas: true });
 ```
 
-## Từng option chi tiết
+## Từng Option Chi Tiết
 
-### usePerfectCanvas (default: true)
+### `usePerfectCanvas` (mặc định: `true`)
+Canvas rendering khớp chính xác với fingerprint thật. Yêu cầu fingerprint có PerfectCanvas data.
 
-Canvas rendering khớp chính xác với fingerprint thật. Nếu tắt, canvas có thể bị phát hiện là giả.
-
-### safeWebGL / safeAudio / safeCanvas
-
-Thêm nhiễu vào các API đồ hoạ và âm thanh để che dấu hardware thật:
+### `safeWebGL` / `safeAudio` / `safeCanvas` (mặc định: `true`)
+Thêm nhiễu vào các API đồ hoạ và âm thanh:
 - **WebGL**: che GPU, driver, renderer
 - **Audio**: che sample rate, audio buffer
-- **Canvas**: canvas fingerprinting
+- **Canvas**: canvas fingerprinting 2D
 
-### safeBattery (default: true)
+### `safeBattery` (mặc định: `true`)
+Mỗi session giá trị pin khác nhau. Nếu thiết bị gốc không có Battery API, luôn trả về 100%.
 
-Mỗi session giá trị pin khác nhau. Tránh bị track theo battery pattern.
+### `safeElementSize` (mặc định: `false`)
+Che giấu kích thước DOM element qua ClientRects. **Mặc định tắt** vì có thể ảnh hưởng layout website.
 
-### safeElementSize (default: false)
+### `emulateDeviceScaleFactor` (mặc định: `true`)
+HiDPI/Retina emulation. `devicePixelRatio` luôn được thay thế đúng dù bật hay tắt.
 
-Che giấu kích thước DOM element thật qua ClientRects. **Mặc định tắt** vì có thể ảnh hưởng layout website.
+### `emulateSensorAPI` (mặc định: `true`)
+Giả lập gia tốc kế, con quay hồi chuyển, cảm biến ánh sáng. Nên bật cho fingerprint di động.
 
-### emulateDeviceScaleFactor (default: true)
-
-HiDPI/Retina emulation. Nếu fingerprint có `deviceScaleFactor: 2`, màn hình sẽ hoạt động như Retina.
-
-### emulateSensorAPI (default: true)
-
-Giả lập gia tốc kế, con quay hồi chuyển, cảm biến ánh sáng dựa trên fingerprint.
-
-### useFontPack (default: true)
-
-Đồng bộ danh sách font chữ với fingerprint target. FontPack thường ~5-10MB, chứa font hệ thống của thiết bị thật.
+### `useFontPack` (mặc định: `true`)
+Đồng bộ danh sách font chữ với fingerprint target. FontPack thường ~5-10MB, tải tại https://wiki.bablosoft.com/doku.php?id=fontpack
 
 ## Lưu ý
 
-- **safeWebGL** và **usePerfectCanvas** có thể ảnh hưởng performance trên GPU yếu
-- **safeElementSize** nên chỉ bật khi cần tránh detection từ các script đo kích thước element
-- Fingerprint JSON không được validate ở JS layer -- lỗi format sẽ xuất hiện từ engine response
+- `safeWebGL` và `usePerfectCanvas` có thể ảnh hưởng performance trên GPU yếu.
+- `safeElementSize` nên chỉ bật khi cần tránh detection từ script đo kích thước element.
+- Fingerprint JSON không được validate ở JS layer -- lỗi format xuất hiện từ engine response.
+
+---

@@ -1,24 +1,35 @@
 # Plan: Cấu hình Proxy
 
-- [x] Bước 1: Định nghĩa ProxyOptions interface -- 19 fields, IPString brand type
-  - `IPString = string & {}`: branded type cho compile-time checking
-  - Nhiều field hỗ trợ `{ v4, v6 }` object (IPv4/IPv6 riêng)
+## Các bước thực hiện
 
-- [x] Bước 2: Implement useProxy() trong FingerprintPlugin
-  - Lưu `PluginConfig { value: proxyUrl, options: ProxyOptions }`
-  - `validateConfig('proxy', value, options)`: value là URL string, options là object
+- [x] **Bước 1: Định nghĩa `src/types/proxy.ts`**
+  - Interface `ProxyOptions` với 18 fields.
+  - `IPString = string & {}` -- branded type cho compile-time checking.
+  - Types hỗ trợ: `IPExtractionMethod`, `PrivateIPReplacement`, `PublicIPReplacement`.
 
-- [x] Bước 3: Implement setProxyFromArguments() -- fallback khi proxy config từ args
-  - Parse `--proxy-server=<url>` từ mảng args
-  - Chỉ set nếu proxy chưa được cấu hình qua useProxy()
+- [x] **Bước 2: Implement `useProxy()` trong `FingerprintPlugin`**
+  - Lưu `PluginConfig { value: proxyUrl, options: ProxyOptions }`.
+  - `validateConfig('proxy', value, options)`.
 
-- [x] Bước 4: Tích hợp proxy vào api('setup') parameters
-  - `{ ..., proxy: { value, options } }` → engine binary xử lý routing
+- [x] **Bước 3: Implement `setProxyFromArguments()`**
+  - Parse `--proxy-server=<url>` từ mảng args.
+  - Chỉ set nếu proxy chưa được cấu hình (first-call-wins).
 
-## Edge cases
+- [x] **Bước 4: Tích hợp proxy vào API setup**
+  - `{ ..., proxy: { value, options } }` trong `api('setup', ...)`.
+  - Engine binary xử lý routing và apply options.
 
-- Proxy URL không hợp lệ → engine binary reject khi setup
-- setProxyFromArguments() ghi đè proxy config -- có thể gây unexpected behavior nếu dùng cả 2 cách
-- `changeGeolocation` default false → không ảnh hưởng tới popup permission
-- `enableQUIC` default false → QUIC có thể bypass proxy tunnel
-- `ipExtractionMethod` phải match với response format của ipExtractionURL
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/types/proxy.ts` | ProxyOptions interface (210 dòng) |
+| `src/plugin/index.ts` | `useProxy()`, `setProxyFromArguments()` |
+| `src/plugin/utils.ts` | `validateConfig()` |
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors.
+- Test: `setProxyFromArguments()` sau `useProxy()` không ghi đè.
+
+---

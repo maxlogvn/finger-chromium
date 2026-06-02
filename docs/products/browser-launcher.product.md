@@ -2,40 +2,63 @@
 
 ## Tổng quan
 
-Browser Launcher spawn Chromium từ engine binary và phát hiện CDP URL tự động. Dùng `taskkill` để dọn process tree sạch sẽ.
+Browser Launcher chịu trách nhiệm khởi chạy Chromium và phát hiện CDP (Chrome DevTools Protocol) endpoint để các thành phần khác (như FingerprintPlugin) có thể inject fingerprint qua CDP.
+
+Bạn không dùng Browser Launcher trực tiếp -- nó được gọi ngầm bởi `Chromium.launch()`.
 
 ## Cách hoạt động
 
-Khi launch được gọi:
+1. **Spawn Chromium** với `--remote-debugging-port` và các arguments.
+2. **Đọc output** của Chromius (stderr + stdout) dòng từng dòng.
+3. **Tìm dòng** `DevTools listening on ws://127.0.0.1:<port>/...`.
+4. **Parse port** từ URL.
+5. **Trả về** `Browser` object với method `close()` để tắt.
 
-1. **Spawn**: `child_process.spawn('worker.exe', [...args, '--remote-debugging-port=<port>'])`
-2. **Detect CDP**: Parse stderr với regex `DevTools listening on (ws://...)`
-3. **Return**: Browser object `{ process, port, url, configure, close }`
+## API
 
-## Safer Close
+### `launch(options)`
 
-Khi bạn gọi `close()`:
+| Tham số | Kiểu | Mặc định | Mô tả |
+|---|---|---|---|
+| `args` | `string[]` | `[]` | Arguments cho Chromium |
+| `timeout` | `number` | `30000` | Thời gian chờ tối đa (ms) |
+| `userDataDir` | `string` | `''` | Thư mục profile |
+| `debuggingPort` | `number` | `0` | Port debugging (`0` = random) |
+| `executablePath` | `string` | `''` | Đường dẫn Chromium |
 
 ```ts
-// Luôn dùng taskkill để giết toàn bộ process tree
-taskkill /pid <pid> /T /F
-
-// Fallback nếu taskkill không có
-process.kill('SIGKILL')
+const browser = await launch({
+  executablePath: 'C:\\Program Files\\Chromium\\chrome.exe',
+  args: ['--disable-web-security'],
+  debuggingPort: 9222,
+  timeout: 60000,
+});
+console.log(`DevTools URL: ${browser.url}`);
+await browser.close();
 ```
 
-`/T` giết worker.exe và tất cả Chromium process con. Process.kill thông thường chỉ giết được process cha.
+### `Browser` object
 
-## CDP Connection
+| Property | Mô tả |
+|---|---|
+| `process` | ChildProcess của Chromium |
+| `port` | Port debugging |
+| `url` | WebSocket URL của DevTools |
+| `close()` | Kill Chromium và toàn bộ process con |
+| `configure()` | (Hiện tại chưa làm gì) |
 
-Browser object chứa `url` (WebSocket URL) và `port` (port number). CDP Inspector có thể kết nối trực tiếp:
+## Xử lý lỗi
 
-```
-DevTools listening on ws://127.0.0.1:54213/devtools/browser/abc123
-```
+| Lỗi | Nguyên nhân |
+|---|---|
+| Timeout | Chromium không in DevTools URL kịp |
+| taskkill lỗi | Fallback về `childProcess.kill()` |
 
 ## Lưu ý
 
-- `configure()` là no-op mặc định -- được override sau bởi viewport config
-- CDP URL có thể xuất hiện ở stdout hoặc stderr -- launcher scan cả 2
-- Nếu worker.exe crash trước khi in CDP URL, Promise sẽ treo -- cần timeout riêng ở tầng trên
+- **`close()` dùng `taskkill /T /F`** -- Windows-specific. Kill toàn bộ process tree (kể cả renderer, GPU).
+- **Timeout mặc định 30 giây** -- nếu Chromium chậm, có thể tăng lên.
+- **`configure()` là no-op** -- dự phòng cho tương lai.
+- Cần parse cả stderr và stdout vì mỗi phiên bản Chromium có thể in DevTools URL ở nơi khác nhau.
+
+---

@@ -1,23 +1,36 @@
 # Plan: Cấu hình Fingerprint
 
-- [x] Bước 1: Định nghĩa FingerprintOptions interface -- 9 boolean flags (8 default true, 1 false)
-  - `safeElementSize`: default false (có thể ảnh hưởng layout)
-  - Còn lại: default true (bảo vệ tối đa)
+## Các bước thực hiện
 
-- [x] Bước 2: Implement useFingerprint() trong FingerprintPlugin
-  - Lưu `PluginConfig { value: fingerprintJson, options: FingerprintOptions }`
-  - `validateConfig('fingerprint', value, options)`: value phải là string (JSON), options là object
+- [x] **Bước 1: Định nghĩa `src/types/fingerprint.ts`**
+  - Interface `FingerprintOptions` với 9 boolean fields.
+  - 8 fields default `true`, 1 field (`safeElementSize`) default `false`.
+  - JSDoc cho mỗi field giải thích tại sao.
 
-- [x] Bước 3: Tích hợp fingerprint vào api('setup') parameters
-  - `{ ..., fingerprint: { value, options } }` → gửi xuống engine binary
-  - Engine binary chịu trách nhiệm parse và inject ở C level
+- [x] **Bước 2: Implement `useFingerprint()` trong `FingerprintPlugin`**
+  - Lưu `PluginConfig { value: fingerprintJson, options: FingerprintOptions }`.
+  - Validate bằng `validateConfig('fingerprint', value, options)`.
 
-- [x] Bước 4: Hỗ trợ fingerprint fetching qua api('fetch')
-  - `fetch(FetchOptions)`: gọi `api('fetch', { key, options, version })`
-  - Filter theo tags, timeLimit, screen size, browser version
+- [x] **Bước 3: Tích hợp fingerprint vào API setup**
+  - `{ ..., fingerprint: { value, options } }` trong `api('setup', ...)`.
+  - Engine binary parse và inject ở C level.
 
-## Edge cases
+- [x] **Bước 4: Hỗ trợ fetch fingerprint qua API**
+  - `fetch(FetchOptions)` gọi `api('fetch', { key, options, version })`.
+  - Filter theo tags, timeLimit, screen size, browser version.
 
-- Fingerprint JSON không hợp lệ → lỗi xuất hiện từ engine response, không validate ở JS layer
-- `fetch()` không có key hợp lệ → engine trả error 'key is missing' → throw MissingKeyError
-- `emulateDeviceScaleFactor` không tương thích với một số GPU → engine tự fallback
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/types/fingerprint.ts` | FingerprintOptions interface |
+| `src/plugin/index.ts` | `useFingerprint()` trong FingerprintPlugin |
+| `src/plugin/utils.ts` | `validateConfig()` |
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors.
+- Verify: `useFingerprint()` validate value là string.
+- Verify: `safeElementSize` default `false` trong JSDoc.
+
+---

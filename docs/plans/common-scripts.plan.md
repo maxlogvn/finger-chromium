@@ -1,19 +1,28 @@
 # Plan: Common Scripts
 
-- [x] Bước 1: Viết `waitForResize` function -- ResizeObserver trên document.body, double requestAnimationFrame
-  - ResizeObserver disconnect ngay sau khi observe để tránh memory leak
-  - Double rAF: lần 1 cho layout, lần 2 cho paint -- đảm bảo kích thước chính xác
-  - Script chạy qua `page.evaluate()` hoặc CDP `Runtime.evaluate` (stringified function)
+## Các bước thực hiện
 
-- [x] Bước 2: Viết `getViewport` function -- return `{ width: window.innerWidth, height: window.innerHeight }`
-  - Dùng `innerWidth` thay vì `clientWidth` vì viewport fingerprint dùng inner (bao gồm scrollbar)
+- [x] **Bước 1: Viết `waitForResize` function**
+  - `ResizeObserver` trên `document.body`, disconnect ngay sau observe -> double `requestAnimationFrame`.
 
-- [x] Bước 3: Export scripts object `Record<string, (...args) => unknown>`
-  - Scripts được lưu trong object, gọi `.toString()` để serialize
-  - Không dùng closure variables -- function phải self-contained để evaluate trong browser context
+- [x] **Bước 2: Viết `getViewport` function**
+  - `return { width: window.innerWidth, height: window.innerHeight }`.
+  - Dùng `innerWidth` thay `clientWidth` -- fingerprint service dùng `innerWidth`.
 
-## Edge cases
+- [x] **Bước 3: Export `scripts` object**
+  - Type: `Record<string, (...args: unknown[]) => unknown>`.
+  - Scripts self-contained -- không closure variables.
 
-- `document.body` có thể null nếu trang chưa load → cần gọi scripts sau khi page đã ready
-- `waitForResize` không có timeout -- nếu resize không xảy ra, Promise treo vô hạn
-- Scripts chạy trong isolated context -- không thể import external modules
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/common/index.ts` | 2 scripts (25 dòng) |
+| `src/plugin/browser.ts` | CDP Runtime.evaluate |
+| `src/adapter/playwright/utils.ts` | page.evaluate |
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors.
+
+---

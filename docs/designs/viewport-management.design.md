@@ -2,46 +2,56 @@
 
 ## Vấn đề
 
-Kích thước viewport là một phần của fingerprint. Khi spawn browser với viewport mặc định (hoặc null), cần resize về đúng kích thước fingerprint. Cần đồng bộ `availWidth`/`availHeight` vào engine `.ini` file.
+Kích thước viewport là một phần của fingerprint. Khi spawn browser với viewport mặc định, cần resize về đúng kích thước fingerprint. Cần đồng bộ `availWidth`/`availHeight` vào file `.ini` của engine để engine biết kích thước màn hình thật.
 
-## Giải pháp: CDP-based resize
+## Giải pháp: CDP-based resize + .ini sync
 
-### CDP Resize (`plugin/browser.ts`)
+### CDP Resize
 
-Dùng `chrome-remote-interface` CDP:
-1. Kết nối CDP: `await connect(browser)`
-2. Lấy windowId: `await CDP.Browser.getWindowForTarget()`
-3. Set bounds: `await CDP.Browser.setWindowBounds({ windowId, bounds })`
-4. Verify bằng `Runtime.evaluate` (getViewport script)
+Dùng Chrome DevTools Protocol để resize window browser:
+
+1. Kết nối CDP đến browser.
+2. Lấy `windowId` qua `Browser.getWindowForTarget()`.
+3. Set bounds qua `Browser.setWindowBounds()`.
+4. Verify kích thước qua `Runtime.evaluate` (in-browser script).
+
+Có 2 implementation:
+- **`plugin/browser.ts`**: connect trực tiếp CDP qua `chrome-remote-interface`, dùng cho standalone mode.
+- **`adapter/playwright/utils.ts`**: connect CDP qua `page.context().newCDPSession(page)`, dùng cho Playwright bridge mode.
 
 ### Delta Correction Algorithm
 
 ```ts
-let deltaWidth = 16;  // Window chrome compensation (Windows)
-let deltaHeight = 88;
-
-for (let i = 0; i < MAX_RESIZE_RETRIES; i++) {
-  await setWindowBounds({ width: desiredW + deltaWidth, height: desiredH + deltaHeight });
-  const viewport = await getViewport(cdp);
-  if (viewport.width === desiredW && viewport.height === desiredH) break;
-  deltaWidth += desiredW - viewport.width;
-  deltaHeight += desiredH - viewport.height;
+let delta = { width: 16, height: 88 };  // Window chrome: title bar + border
+for (let i = 0; i < 3; i++) {
+  await setWindowBounds({ width: desired + delta.width, height: desired + delta.height });
+  const actual = await getViewport();
+  if (match) break;
+  delta.width += desired.width - actual.width;   // Tự điều chỉnh cho lần sau
+  delta.height += desired.height - actual.height;
 }
 ```
 
-Delta correction tự động điều chỉnh nếu lần đầu chưa đúng -- ví dụ window chrome thực tế khác với mặc định.
+Lý do cần delta: window chrome (title bar, tab bar, bookmark bar, status bar) chiếm khoảng 16x88 pixels trên Windows. `Browser.setWindowBounds` set toàn bộ window, không phải viewport. Cần trừ phần chrome.
 
 ### Sync .ini (`plugin/config.ts`)
 
 `synchronize(id, pwd, bounds, action)`:
-1. Đọc file `<pwd>/s/<id>1.ini`
-2. Dùng `AsyncLock` để tránh race condition
-3. Phase 1: reset `availWidth = BAS_NOT_SET`, `availHeight = BAS_NOT_SET`
-4. Gọi action (resize)
-5. Phase 2: set `availWidth` và `availHeight` về giá trị thật
-6. Mỗi phase có 2s delay giữa write và check
 
-Tại sao cần BAS_NOT_SET? Khi engine thấy `BAS_NOT_SET`, nó bỏ qua cached values và lấy giá trị thật từ system sau action.
+1. Dùng `AsyncLock` để tránh race condition giữa các instance.
+2. **Phase 1 (reset)**: ghi `availWidth = BAS_NOT_SET`, `availHeight = BAS_NOT_SET` vào file `.ini`.
+3. Gọi `action()` -- thường là resize.
+4. **Phase 2**: ghi `availWidth` và `availHeight` thật.
+5. Mỗi phase có 2s delay.
+
+`BAS_NOT_SET` (-170141183460469231731687303715884105727) là `int128` min value. Engine binary dùng giá trị này để biết "chưa được set" -- bỏ qua cached values và đọc giá trị thật từ system.
+
+### Configure (`plugin/config.ts`)
+
+`configure(cleanup, browser, bounds, sync)`:
+1. Đăng ký cleanup handler qua `browser.process.once('exit')`.
+2. Set `browser.configure()` để resize viewport.
+3. Gọi `browser.configure()` ngay.
 
 ---
 

@@ -1,49 +1,41 @@
 # Design: Native Mutex
 
-## Vấn đề
+## Vấn đề cần giải quyết
 
-Cần đồng bộ truy cập tài nguyên ở cấp độ OS -- ngăn nhiều instance browser dùng chung profile cùng lúc. `async-lock` chỉ hoạt động trong process, không cross-process.
+Engine binary (FastExecuteScript.exe) yêu cầu một Windows named mutex để đồng bộ truy cập tài nguyên (profile, port, ...). JavaScript không thể tạo named mutex -- cần native C++ code.
 
-## Giải pháp: Native C++ addon
+Giải pháp: một C++ addon nhỏ (`mutex.node`) được compile riêng cho win32 32-bit và 64-bit.
 
-Tạo Windows named mutex qua native addon `mutex.node`.
+## Giải pháp chọn
 
-### Module loading
+### Kiến trúc
 
-```ts
-const nativePath = path.join(__dirname, `mutex/win32-${process.arch}/mutex.node`);
-const mutex = require(nativePath);
+```
+mutex/index.ts
+    │
+    ├── Load mutex.node từ thư mục plugin/mutex/{platform}-{arch}/
+    │       ├── win32-x64/mutex.node
+    │       └── win32-ia32/mutex.node
+    │
+    └── Export create() function
 ```
 
-Hỗ trợ 2 architecture: `win32-x64`, `win32-ia32`.
+### Tại sao dùng native addon?
 
-### API
+`async-lock` và `proper-lockfile` không thể tạo Windows named mutex -- chúng chỉ lock ở cấp độ JavaScript hoặc file hệ thống. Engine yêu cầu Windows kernel mutex, chỉ có thể tạo qua native API (`CreateMutexW`).
 
-```ts
-interface MutexModule {
-  create: (name: string) => void;
-}
-```
+### Tại sao có 2 file .node?
 
-`create(name)` tạo mutex với tên. Tên mutex theo pattern: `BASProcess${pid}`.
+Windows có 2 kiến trúc: 32-bit (ia32) và 64-bit (x64). C++ addon phải được compile riêng cho từng kiến trúc vì binary format khác nhau.
 
-### Error handling
+### Tại sao dùng `createRequire`?
 
-Nếu native addon không load được (sai arch, thiếu file .node), throw error với message chi tiết:
-```
-Cannot find module for platform: win32-${arch}
-You can install the missing dependency manually.
-```
+`mutex/index.ts` là ESM (type: module). Để require một .node file, cần tạo `require` function từ ESM context bằng `createRequire(import.meta.url)`.
 
-### Vị trí dùng
+### Xử lý lỗi
 
-Trong `FingerprintPlugin._launch()`:
-```ts
-mutex.create(`BASProcess${pid}`);
-```
-
-`pid` từ engine response (setupResponse.pid).
+Nếu không load được mutex.node:
+- Windows sai kiến trúc: throw `Error` với message kiến trúc không được hỗ trợ.
+- Platform không phải Windows: throw `Error` với message platform không được hỗ trợ.
 
 ---
-
-Xem thêm: [Spec](../specs/native-mutex.spec.md) | [Plan](../plans/native-mutex.plan.md)

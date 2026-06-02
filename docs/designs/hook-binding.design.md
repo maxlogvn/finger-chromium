@@ -2,41 +2,39 @@
 
 ## Vấn đề
 
-Cần intercept việc tạo page mới (`Browser.newContext()` → `BrowserContext.newPage()`) để tự động resize viewport. Cũng cần chặn `page.setViewportSize()` vì kích thước đã bị fingerprint lock.
+Cần intercept việc tạo page mới (`Browser.newContext()` -> `BrowserContext.newPage()`) để tự động resize viewport theo fingerprint. Cũng cần chặn `page.setViewportSize()` vì kích thước đã bị fingerprint lock.
 
-## Giải pháp: Proxy Pattern
+## Giải pháp: ES6 Proxy Pattern
 
-Dùng ES6 `Proxy` để intercept method calls.
+### onClose()
 
-### onClose (`adapter/playwright/utils.ts`)
+Đăng ký cleanup handler:
+- `Browser` -> event `'disconnected'`.
+- `BrowserContext` -> event `'close'`.
+- Phân biệt bằng type guard `isBrowser()` (kiểm tra `'version' in target && typeof target.version === 'function'`).
 
-```ts
-export function onClose(target: Browser | BrowserContext, listener: () => void): void {
-  if (isBrowser(target)) {
-    target.on('disconnected', listener);
-  } else {
-    target.on('close', listener);
-  }
-}
+### bindHooks()
+
+Proxy chain 3 lớp:
+
+```
+Browser.newContext()
+  -> resetOptions() force viewport: null
+  -> patchContext()
+    -> ctx.newPage() -> proxy: gọi hooks.onPageCreated(page)
+    -> patchPage()
+      -> page.setViewportSize() -> proxy: warning + no-op
 ```
 
-### bindHooks
+1. **Browser level**: Proxy `newContext()`, force `viewport: null` qua `resetOptions()`.
+2. **Context level**: Proxy `newPage()`, gọi `onPageCreated` hook sau khi tạo page.
+3. **Page level**: Proxy `setViewportSize()`, chặn hoàn toàn (in warning, không throw).
 
-Proxy Browser.newContext:
-```ts
-const original = target.newContext.bind(target);
-target.newContext = async (options) => {
-  const ctx = await original(resetOptions(options));  // Force viewport: null
-  patchContext(ctx);
-  return ctx;
-};
-```
+### Fallback khi target là BrowserContext
 
-patchContext proxy:
-- Proxy `ctx.newPage()`: gọi `hooks.onPageCreated(page)` sau khi tạo page
-- patchPage: proxy `page.setViewportSize()` → warning + no-op
+Nếu `target` truyền vào `bindHooks()` đã là `BrowserContext` (không qua `Browser.newContext`), gọi `patchContext()` trực tiếp. Trường hợp này xảy ra khi `PlaywrightFingerprintPlugin.configure()` nhận context từ `launchPersistentContext()`.
 
-### resetOptions
+### resetOptions()
 
 ```ts
 function resetOptions<T>(options: T): T & { viewport: null } {
@@ -48,10 +46,9 @@ Force `viewport: null` để Playwright không tự resize -- engine sẽ resize
 
 ### Tại sao dùng Proxy?
 
-Thay vì EventEmitter pattern, dùng `Proxy` vì:
-- Không cần monkey-patch prototype
-- Có thể intercept chính xác method gọi
-- Clean hơn so với override bằng assign
+- Không cần monkey-patch prototype.
+- Intercept chính xác method gọi.
+- Clean hơn so với override bằng assign.
 
 ---
 

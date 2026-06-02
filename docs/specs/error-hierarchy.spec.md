@@ -1,49 +1,129 @@
-# Spec: Hệ thống lỗi
+# Spec: Hệ thống lỗi (Error Hierarchy)
 
-## Class hierarchy
+## Mô tả
 
-```
-PluginError extends Error
-├── this.name = constructor.name
-├── Error.captureStackTrace(this, this.constructor)
-├── Symbol.toStringTag -> constructor.name
+Hệ thống lỗi gồm 1 base class (`PluginError`) và 4 subclass, tất cả định nghĩa trong `src/plugin/errors.ts`. Mỗi class kế thừa `PluginError`, tự động set `name` và stack trace.
 
-MissingKeyError extends PluginError  -- "Key bi thieu hoac khong hop le!"
-InvalidEngineError extends PluginError -- "Engine chua duoc tai hoac giai nen"
-EngineTimeoutError extends PluginError -- "Engine khoi dong qua thoi gian"
-RequestTimeoutError extends PluginError -- "Request qua thoi gian"
-```
+## API / Interfaces chính
 
-## Code pattern
+### `PluginError`
 
 ```ts
 class PluginError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = this.constructor.name;
-    Error.captureStackTrace(this, this.constructor as abstract new (...args: unknown[]) => unknown);
-  }
-
-  get [Symbol.toStringTag](): string {
-    return this.constructor.name;
-  }
+  constructor(message: string);
+  get [Symbol.toStringTag](): string;  // Trả về 'PluginError'
 }
 ```
 
-## Cách dùng
+- Dùng cho lỗi cơ bản không thuộc loại cụ thể.
+- `this.name` tự động là tên class.
+- Stack trace được capture qua `Error.captureStackTrace`.
+
+### `MissingKeyError extends PluginError`
+
+```
+constructor(message: string)
+  → super(dedent`${message}
+       Do các cập nhật mới nhất, bạn cần chỉ định key không chỉ khi nhận fingerprint,
+       mà cả khi áp dụng nó vào browser.`)
+```
+
+- Throw khi không có key bảo mật.
+- Message kèm hướng dẫn về việc cần set key cho cả fetch và apply.
+
+### `InvalidEngineError extends PluginError`
+
+```
+constructor(message: string)
+  → super(dedent`${message}
+       Nguyên nhân có thể do engine chưa được tải xuống hoặc giải nén đúng cách.
+       Hướng khắc phục:
+       1. Xóa hoàn toàn thư mục engine hiện tại
+       2. Chạy lại code để hệ thống tự tải engine mới
+       3. Nếu vẫn lỗi, hãy mở issue kèm mô tả chi tiết vấn đề`)
+```
+
+- Throw khi engine binary không chạy được.
+- Message kèm 3 bước khắc phục.
+
+### `EngineTimeoutError extends PluginError`
+
+```
+constructor(message: string)
+  → super(dedent`${message}
+       Bạn có thể điều chỉnh timeout bằng method "setEngineTimeout" -
+       phương thức này thiết lập giới hạn thời gian cho việc tải file engine.`)
+```
+
+- Throw khi download + extract + spawn engine vượt quá thời gian cho phép.
+- Có thể cấu hình qua `setEngineTimeout()`.
+
+### `RequestTimeoutError extends PluginError`
+
+```
+constructor(message: string)
+  → super(dedent`${message}
+       Bạn có thể điều chỉnh timeout bằng method "setRequestTimeout" -
+       phương thức này thiết lập giới hạn thời gian cho việc thực thi request của engine.`)
+```
+
+- Throw khi chờ phản hồi IPC từ engine vượt quá thời gian cho phép.
+- Có thể cấu hình qua `setRequestTimeout()`.
+
+## Luồng dữ liệu
+
+```
+Code gặp lỗi
+    │
+    ▼
+throw new XXXError('message')
+    │
+    ▼
+catch (err)
+    │
+    ├── if (err instanceof MissingKeyError) → yêu cầu set key
+    ├── if (err instanceof EngineTimeoutError) → tăng timeout
+    ├── if (err instanceof InvalidEngineError) → tải lại engine
+    ├── if (err instanceof RequestTimeoutError) → tăng request timeout
+    └── else → lỗi không xác định
+```
+
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/plugin/errors.ts` | Định nghĩa tất cả error classes |
+| `src/plugin/connector/engine.ts` | Dùng `EngineTimeoutError`, `InvalidEngineError`, `RequestTimeoutError` |
+| `src/plugin/connector/index.ts` | Dùng `PluginError`, `MissingKeyError` |
+
+## Xử lý lỗi
+
+Các lỗi được throw từ `connector/engine.ts` và `connector/index.ts`. Không để error raw bubble lên -- tất cả đều được bọc trong `PluginError` hierarchy.
+
+Ví dụ code catch:
 
 ```ts
-// Trong connector/index.ts
-if (error?.includes?.('key is missing')) {
-  throw new MissingKeyError('[MissingKeyError] Key bi thieu hoac khong hop le!');
-}
+import { PluginError, MissingKeyError, EngineTimeoutError } from 'fingerprint-chromium-engine';
 
-// Trong engine.ts timeout
-reject(new RequestTimeoutError(`[RequestTimeoutError] Request "${name}" qua thoi gian ${timeout}ms`));
+try {
+  await Chromium.launch();
+} catch (err) {
+  if (err instanceof MissingKeyError) {
+    console.error('Vui lòng set BABLOSOFT_KEY trong biến môi trường.');
+  } else if (err instanceof EngineTimeoutError) {
+    console.error('Quá trình tải engine quá lâu. Kiểm tra kết nối mạng.');
+  } else if (err instanceof PluginError) {
+    console.error(`Lỗi engine: ${err.message}`);
+  } else {
+    throw err; // Lỗi không phải từ engine
+  }
+}
 ```
 
-## Xử lý ngoại lệ
+## Ghi chú kỹ thuật
 
-Không để lỗi raw bubble lên. Trong connector, luôn có try/catch:
-- `api()` dùng `async-lock` + try/catch trong `runFunction`
-- Timeout race (`Promise.race`) ném `EngineTimeoutError`
+- `dedent` được dùng để loại bỏ khoảng trắng thừa từ template literal, giúp message lỗi gọn gàng khi log ra console.
+- `Error.captureStackTrace` chỉ có trên V8 (Node.js, Chrome). Trên runtime khác, nó là `undefined` -- code đã kiểm tra `if (Error.captureStackTrace)` trước khi gọi.
+- `Symbol.toStringTag` giúp `String(error)` trả về tên class thay vì `Error`.
+
+---

@@ -1,42 +1,49 @@
 # Design: API Connector
 
-## Vấn đề
+## Vấn đề cần giải quyết
 
-RemoteEngine cần được wrap với cơ chế đồng bộ (async-lock), chuẩn hoá lỗi (error normalization) và auto-start PCAP server.
+RemoteEngine cung cấp method `runFunction(name, params)` để gọi engine binary, nhưng người dùng (FingerprintPlugin) cần một interface cao hơn, có:
+1. **Singleton:** Chỉ một RemoteEngine instance cho toàn bộ ứng dụng.
+2. **Đồng bộ:** Không gọi engine cùng lúc (engine chỉ xử lý một request).
+3. **Error normalization:** Chuyển lỗi thô từ engine thành `PluginError` / `MissingKeyError`.
+4. **PCAP server integration:** Tự động khởi động PCAP server và truyền port cho engine.
 
-## Giải pháp
+## Giải pháp chọn
 
-### Singleton pattern
+### Kiến trúc
 
-Tạo một instance `RemoteEngine` duy nhất trong `connector/index.ts`, cấu hình từ biến môi trường:
-```ts
-const engine = new RemoteEngine({
-  cwd: process.env.FINGERPRINT_CWD,
-  engineTimeout: process.env.FINGERPRINT_TIMEOUT,
-  requestTimeout: process.env.FINGERPRINT_TIMEOUT,
-});
+```
+FingerprintPlugin
+    │
+    ▼
+api('setup', { fingerprint, proxy, profile })
+    │
+    ├── async-lock 'client' → đảm bảo chỉ 1 request
+    │
+    ├── engine.runFunction('setup', params)
+    │       │
+    │       ├── Thành công → return result.response
+    │       └── Lỗi "key is missing" → throw MissingKeyError
+    │           Lỗi khác → throw PluginError
+    │
+    └── clearTimeout(notifyTimer)
 ```
 
-### async-lock
+### Tại sao dùng async-lock?
 
-Dùng `async-lock` với key `'client'` để đảm bảo chỉ một request duy nhất được gửi tới engine tại một thời điểm. Lý do: engine binary là single-threaded, gửi request đồng thời có thể gây race condition.
+Engine chỉ xử lý một request tại một thời điểm. Nếu có 2 request cùng lúc:
+- Request 1: ghi file a.json
+- Request 2: ghi file b.json (cùng lúc)
+- Engine chỉ đọc được 1 file
 
-### Error normalization
+async-lock với key `'client'` xếp hàng các request, đảm bảo chỉ một request được gọi `runFunction` tại một thời điểm.
 
-Khi engine trả về response có error field:
-- Nếu error chứa `'key is missing'`: throw `MissingKeyError` (cho user biết cần key)
-- Nếu khác: throw `PluginError` (generic error)
+### Tại sao auto-start PCAP server?
 
-### Auto-start PCAP server
+PCAP server cần chạy trước khi engine spawn, vì engine cần biết port để kết nối. Connector tự động start server và set `--mock-pcap-port=<port>` vào args của engine.
 
-Khi module được load, PCAP server tự động start:
-```ts
-pcapServer.listen().then((port) => {
-  engine.setArgs([`--mock-pcap-port=${port}`]);
-});
-```
-PCAP server cần start trước engine để biết port truyền vào args.
+### Tại sao tự động notify khi thiếu key?
+
+Khi dùng bản free (không có BABLOSOFT_KEY), engine vẫn hoạt động nhưng bị giới hạn. Connector hiển thị thông báo upgrade và cảnh báo delay -- chỉ một lần duy nhất (dùng `once()`).
 
 ---
-
-Xem thêm: [Spec](../specs/api-connector.spec.md) | [Plan](../plans/api-connector.plan.md)

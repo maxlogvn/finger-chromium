@@ -2,60 +2,93 @@
 
 ## Tổng quan
 
-FingerprintPlugin là orchestrator trung tâm. Nó quản lý cấu hình (fingerprint, proxy, profile), gọi API setup tới engine binary, spawn worker.exe, và dọn dẹp sau khi browser đóng.
+`FingerprintPlugin` là lớp điều phối trung tâm của toàn bộ thư viện. Nó quản lý cấu hình (fingerprint, proxy, profile), gọi API tới engine binary để thiết lập môi trường, spawn worker.exe, resize viewport, và dọn dẹp tài nguyên sau khi browser đóng.
 
-## Vòng đời đầy đủ
+Bạn có thể dùng `FingerprintPlugin` trực tiếp (standalone) hoặc qua `PlaywrightFingerprintPlugin` (tích hợp Playwright).
+
+## Vòng đời
 
 ```
-        useFingerprint() → useProxy() → useProfile()
-                 ↓
-           _launch(options)
-                 ↓
-      ┌─ api('setup') ─ gửi config
-      ├─ cleaner.watch + mutex.create
-      ├─ spawn worker.exe
-      ├─ configure() → resize viewport
-      └─ return Browser / BrowserContext
-                 ↓
-           user dùng page
-                 ↓
-           cleanup: close + include + unlock
+User config: useFingerprint() → useProxy() → useProfile()
+                          ↓
+                     spawn(options)
+                          ↓
+        ┌── 1. setProxyFromArguments() ── fallback từ args
+        │  2. api('setup') ─── gửi config xuống engine
+        │  3. cleaner.watch() + mutex.create() ── bảo vệ tài nguyên
+        │  4. Chọn launcher ── default (spawn) hoặc custom (Playwright)
+        │  5. activeLauncher.launch() ── spawn worker.exe
+        └── 6. configure() ── resize viewport + sync .ini
+                          ↓
+                    Return Browser
+                          ↓
+                    User dùng page
+                          ↓
+                    Cleanup tự động
 ```
 
-## Cách dùng trực tiếp
+## API chính
+
+### Configuration
 
 ```ts
 const plugin = new FingerprintPlugin();
 
 plugin
-  .useFingerprint(fingerprintString, {
-    usePerfectCanvas: true,
-    safeWebGL: true,
-  })
-  .useProxy('http://proxy:8080', {
-    changeWebRTC: 'replace',
-  })
-  .useBrowserVersion('default');
-
-// Fetch fingerprint từ service
-const fp = await plugin.fetch({
-  tags: ['Desktop', 'Chrome'],
-  timeLimit: '30 days',
-});
-
-// Lấy danh sách version có sẵn
-const versions = await plugin.versions('default');
+  .useFingerprint(fpString, { usePerfectCanvas: true, safeWebGL: true })
+  .useProxy('http://user:pass@proxy:8080', { changeWebRTC: 'replace' })
+  .useProfile('./profiles/myprofile', { loadProxy: true })
+  .useBrowserVersion('120');
 ```
 
-## 2 đường dẫn launch
+### Service Key (module-level)
 
-Plugin hỗ trợ 2 chế độ:
+```ts
+plugin.setServiceKey('your-bablosoft-key');
+// Tất cả instance chia sẻ cùng key này
+```
 
-1. **Direct spawn** (`useDefaultLauncher=true`): spawn `worker.exe` trực tiếp, dùng khi không có Playwright
-2. **Playwright bridge** (`useDefaultLauncher=false`): dùng `pwLauncher.launchPersistentContext()`, trả về `BrowserContext`
+### Fetch Fingerprint từ Service
 
-Chế độ 2 được dùng bởi `PlaywrightFingerprintPlugin` (trong `engine.ts`).
+```ts
+const fingerprintData = await plugin.fetch({
+  tags: ['Desktop', 'Chrome', 'Windows'],
+  timeLimit: '30 days',
+  quantity: 1,
+});
+```
 
-## Key module-level
+### Lấy Danh Sách Version
 
-`setServiceKey()` lưu key ở module level -- tất cả instance đều dùng chung. Key có thể set 1 lần, dùng cho mọi lần launch sau.
+```ts
+const versions = await plugin.versions('default');       // string[]
+const versionsExt = await plugin.versions('extended');   // Version[]
+```
+
+### Spawn Browser
+
+```ts
+const browser = await plugin.spawn({
+  args: ['--disable-gpu', '--no-sandbox'],
+  devtools: false,
+});
+// Browser có process, configure, close
+```
+
+## 2 Đường Dẫn Launch
+
+| Chế độ | `useDefaultLauncher` | Launcher | Dùng khi nào |
+|---|---|---|---|
+| **Direct spawn** | `true` | Plugin's `launch()` | Standalone, không Playwright |
+| **Playwright bridge** | `false` | Custom (từ options) | `PlaywrightFingerprintPlugin` |
+
+Ở chế độ bridge, `configure()` được override để nhận `BrowserContext` thay vì `Browser`.
+
+## Lưu ý
+
+- `headless: false` luôn được force -- fingerprint check phát hiện headless.
+- `serviceKey` là global -- gọi `setServiceKey()` trên bất kỳ instance nào cũng ảnh hưởng tất cả.
+- Profile có fallback tự động nếu không gọi `useProfile()`: engine tự tìm `--user-data-dir` từ args.
+- Mutex name `BASProcess${pid}` dùng `randomUUID()` -- mỗi lần launch một mutex riêng, không conflict.
+
+---

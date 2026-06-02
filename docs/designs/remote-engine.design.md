@@ -1,42 +1,97 @@
 # Design: RemoteEngine
 
-## Vấn đề
+## Vấn đề cần giải quyết
 
-Cần giao tiếp với `FastExecuteScript.exe` (engine binary của bablosoft) để setup browser với fingerprint. Engine binary này là một C++ executable độc lập, không hỗ trợ stdin/stdout-based IPC, không thể dùng pipe để giao tiếp.
+Thư viện cần giao tiếp với một engine binary (`FastExecuteScript.exe`) từ bablosoft để setup fingerprint, proxy, và profile cho trình duyệt Chromium. Engine này là một file .exe chạy riêng biệt -- không phải thư viện Node.js.
 
-## Tại sao file-based IPC?
+Do đó, cần giải quyết:
 
-Các phương án giao tiếp với process con:
+1. **Tải engine:** Engine binary được phân phối qua bablosoft.com. Cần tải về đúng version, verify checksum, giải nén.
+2. **Cấu hình:** Engine cần các file cấu hình như `project.xml`, `settings.ini`, `worker_command_line.txt` để biết nó phải làm gì.
+3. **Giao tiếp (IPC):** Cần gửi lệnh (setup, versions...) và nhận kết quả từ engine.
+4. **Đồng bộ:** Nhiều request không được gọi cùng lúc -- engine chỉ xử lý một request tại một thời điểm.
+5. **Dọn dẹp:** Request cũ từ process đã chết cần được xoá để tránh tích tụ.
 
-| Phương án | Vấn đề |
-|---|---|
-| stdin/stdout pipe | Engine binary không hỗ trợ -- nó là standalone executable, không phải CLI tool |
-| Unix socket | Không portable -- cần cross-platform, mà engine chạy Windows |
-| TCP socket | Cần thêm port management, firewall issues |
-| File-based IPC | Engine đã hỗ trợ sẵn: đọc JSON từ thư mục `r/`, ghi response vào cùng file |
+## Các phương án IPC
 
-File-based IPC đơn giản, không cần port, không cần protocol negotiation. Engine binary polling thư mục `r/` để tìm request mới.
+### 1. Pipe/stdio
 
-## Tại sao SHA1 checksum?
+Giao tiếp qua stdin/stdout của child process.
 
-Engine zip tải từ bablosoft có thể bị corrupt nếu:
-- Download bị gián đoạn (mất mạng giữa chừng)
-- CDN serve file lỗi
-- Disk full khi ghi
+**Ưu điểm:** Nhanh, real-time.
 
-SHA1 checksum từ bablosoft metadata JSON cho phép phát hiện corrupt file trước khi extract. Nếu checksum không khớp, xoá toàn bộ thư mục engine và tải lại -- tránh debug khó khăn với engine lỗi.
+**Nhược điểm:** Engine FastExecuteScript.exe không hỗ trợ pipe -- nó chỉ ghi log ra stdout/stderr, không phải dữ liệu JSON có cấu trúc.
 
-## Tại sao cần PID-based cleanup?
+### 2. Socket/TCP
 
-Mỗi request là một file JSON trong `r/`. Nếu process crash trước khi xoá request file, file tồn tại vĩnh viễn. Bằng cách kiểm tra PID từ tên file (`<pid>_<uuid>.json`), ta biết process gốc còn sống không. Nếu PID đã chết, file là orphan → xoá.
+Mở một TCP socket để giao tiếp.
 
-## Cache metadata
+**Ưu điểm:** Có thể giao tiếp hai chiều.
 
-Metadata JSON từ bablosoft chứa checksum và URL. Cache vào file `<version>_<ARCH>.json` để:
-- Không cần gọi bablosoft API mỗi lần khởi động
-- Cho phép offline startup (sau lần đầu)
-- Giảm thời gian launch (tránh network latency)
+**Nhược điểm:** Engine không hỗ trợ TCP -- nó chỉ đọc file từ thư mục `r/`.
+
+### 3. File-based IPC (chọn)
+
+Engine hỗ trợ sẵn cơ chế: đọc file JSON từ thư mục `r/<pid>_<uuid>.json` và ghi phản hồi vào cùng file đó.
+
+**Ưu điểm:**
+- Engine hỗ trợ sẵn, không cần chỉnh sửa.
+- Dễ debug -- có thể đọc file request/response.
+- Không cần cơ chế đồng bộ phức tạp -- engine tự xử lý tuần tự.
+
+**Nhược điểm:**
+- Chậm hơn pipe (phải đọc/ghi file, watch file system).
+- Cần watch file để biết khi nào engine trả lời.
+- File rác có thể tích tụ nếu không dọn.
+
+## Giải pháp chọn
+
+### Kiến trúc tổng thể
+
+```
+Node.js (RemoteEngine)
+    │
+    ├── 1. Đọc project.xml → lấy EngineVersion
+    │       │
+    │       ▼
+    ├── 2. Fetch metadata từ bablosoft.com
+    │       │  (cache vào file json)
+    │       ▼
+    ├── 3. Download FastExecuteScript.x{ARCH}.zip
+    │       │  (kiểm tra SHA1 checksum)
+    │       ▼
+    ├── 4. Extract zip vào thư mục script/
+    │       │
+    │       ▼
+    ├── 5. Copy project.xml + tạo settings.ini + worker_command_line.txt
+    │       │
+    │       ▼
+    ├── 6. Spawn FastExecuteScript.exe
+    │       │
+    │       ▼
+    └── 7. runFunction(name, params)
+            │
+            ├── Dọn request cũ không còn process sở hữu
+            ├── Ghi JSON request → r/<pid>_<uuid>.json
+            └── Watch file → đọc response → parse JSON → trả về
+```
+
+### Tại sao cần cache metadata?
+
+Mỗi lần khởi động, engine phải fetch metadata từ bablosoft.com để biết URL download và checksum. Nếu không có cache:
+- Mỗi lần launch đều phải request HTTP.
+- Nếu mạng chậm hoặc bablosoft down, không launch được.
+- Cache theo `<version>_<ARCH>.json` giúp lần sau khởi động nhanh hơn (chỉ đọc file local).
+
+### Tại sao kiểm tra checksum?
+
+Tránh tải phải file hỏng hoặc đã bị chỉnh sửa. Nếu checksum không khớp, xoá engine cũ và tải lại. Checksum là SHA1 của zip file.
+
+### Tại sao dọn request cũ?
+
+Khi process engine crash, các file request trong thư mục `r/` vẫn còn. Nếu không dọn:
+- Số lượng file tăng dần theo thời gian.
+- Có thể gây nhầm lẫn nếu PID được reuse.
+- Cơ chế: kiểm tra mỗi file request, nếu process sở hữu (PID) không còn tồn tại, xoá file.
 
 ---
-
-Xem thêm: [Spec](../specs/remote-engine.spec.md) | [Plan](../plans/remote-engine.plan.md)

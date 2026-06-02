@@ -2,69 +2,73 @@
 
 ## Vấn đề
 
-User dùng Playwright `BrowserType` API quen thuộc (`launch()`, `launchPersistentContext()`). Cần bridge để override các method này, inject fingerprint vào quy trình launch mà không thay đổi API.
+`FingerprintPlugin` spawn worker.exe trực tiếp và trả về `Browser` (process handle). User dùng Playwright cần `BrowserContext` với đầy đủ API Playwright (page, evaluate, v.v.).
 
-## Giải pháp: PlaywrightFingerprintPlugin extends FingerprintPlugin
+Cần một bridge để:
+- Giữ nguyên API Playwright quen thuộc (`launchPersistentContext()`).
+- Inject fingerprint qua engine binary.
+- Trả về `BrowserContext` thay vì `Browser`.
 
-### Kế thừa + Override
+## Giải pháp
 
-```ts
-class PlaywrightFingerprintPlugin extends FingerprintPlugin {
-  protected pwLauncher: Launcher;
+Class `PlaywrightFingerprintPlugin` extends `FingerprintPlugin`, override 3 method chính:
 
-  constructor(launcher: Launcher = defaultLauncher) {
-    super(); // Không truyền launcher → parent dùng useDefaultLauncher=false
-  }
-}
+### 1. launch() -- Fallback
+
+`launch()` không được support đầy đủ. Nó validate options, in warning, rồi gọi `launchPersistentContext('', options)`.
+
+Lý do: engine binary luôn cần user data dir (persistent context). Launch thuần không có user data dir.
+
+### 2. launchPersistentContext() -- Core
+
+Đây là method chính. Luồng xử lý:
+
+```
+launchPersistentContext(userDataDir, options)
+  │
+  ├── #validateOptions(options) → throw nếu có proxy/channel/firefoxUserPrefs
+  │
+  ├── Tạo custom launcher:
+  │     launch(opts) = pwLauncher.launchPersistentContext(userDataDir, filteredArgs)
+  │   Trong đó: filteredArgs = opts.args.filter(arg → !arg.startsWith('--user-data-dir'))
+  │
+  └── Gọi this._launch(false, {
+        ...options,
+        userDataDir,
+        viewport: null,
+        launcher: { launch: customLauncher },
+        ignoreDefaultArgs: merge với IGNORED_ARGUMENTS,
+      })
+        │
+        └── FingerprintPlugin._launch() spawn worker.exe
+              qua custom launcher → return BrowserContext
 ```
 
-`defaultLauncher` lấy từ Playwright:
-```ts
-const browserType = defaultLoader.load<'chromium'>('chromium');
-const defaultLauncher = {
-  launch: browserType.launch.bind(browserType),
-  launchPersistentContext: browserType.launchPersistentContext.bind(browserType),
-};
-```
+**`useDefaultLauncher = false`**: báo cho `_launch()` dùng custom launcher thay vì spawn worker.exe trực tiếp.
 
-### launch() và launchPersistentContext()
+### 3. configure() -- Override
 
-2 method public:
-
-1. **launch(options)**: Gọi `this.launchPersistentContext('', options)` -- redirect về persistent context (vì engine luôn cần user data dir).
-
-2. **launchPersistentContext(userDataDir, options)**: 
-   - Validate options (throw nếu có `proxy`, `channel`, `firefoxUserPrefs`)
-   - Filter `--user-data-dir` khỏi args (engine tự quản lý profile)
-   - Gọi `this._launch(false, { ...options, launcher: customLauncher })`
-   - `customLauncher.launch` gọi `pwLauncher.launchPersistentContext(userDataDir, filteredArgs)`
-   - Kết quả là `BrowserContext` (Playwright API), không phải `Browser`
-
-### configure() override
+Override để xử lý `BrowserContext` thay vì `Browser`:
 
 ```ts
-async configure(cleanup, browser, bounds, sync) {
+configure(cleanup, browser, bounds, sync):
   // browser thực chất là BrowserContext
-  onClose(context, () => cleanup(context));
-  if (bounds) {
-    const resize = async (page) => {
-      // Kiểm tra viewport hiện tại, nếu khác bounds thì gọi sync
-      sync(() => setViewport(page, bounds));
-    };
-    bindHooks(context, { onPageCreated: resize });
-    // Resize page đầu tiên nếu có
-  }
-}
+  onClose(context, () => cleanup(context))
+  Nếu có bounds:
+    bindHooks(context, { onPageCreated: page => resize(page) })
+    Resize page đầu tiên nếu có
 ```
 
-### Ignored arguments
+### Ignored Arguments
 
-```ts
-IGNORED_ARGUMENTS = ['--disable-extensions'];
-UNSUPPORTED_OPTIONS = ['proxy', 'channel', 'firefoxUserPrefs'];
-```
+`--disable-extensions` bị loại bỏ vì fingerprint engine cần extensions để inject fingerprint.
 
-`--disable-extensions` bị loại bỏ vì fingerprint engine cần extensions hoạt động.
+### Unsupported Options
+
+`proxy`, `channel`, `firefoxUserPrefs` bị chặn vì:
+- **proxy**: Engine binary quản lý proxy riêng qua `useProxy()`.
+- **channel**: Engine chỉ dùng Chromium mặc định.
+- **firefoxUserPrefs**: Chỉ Firefox mới có.
 
 ---
 

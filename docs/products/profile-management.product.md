@@ -15,7 +15,8 @@ Chromium.useProfile('./profiles/user_01', {
 
 // Khi quit, profile tự động được lưu
 await Chromium.quit();
-// Tương đương: Chromium.quit('./profiles/user_01')
+// Hoặc lưu vào đường dẫn khác:
+await Chromium.quit('./profiles/user_01_backup');
 ```
 
 ## Cơ chế bảo vệ
@@ -30,7 +31,7 @@ AdapterDataManager.map(source)
 Copy → <BROWSER_RUNNING_DIR>/profile/1712345678_a1b2/
     │
     ▼
-Browser chạy trên thư mục tạm
+Browser chạy trên thư mục tạm (an toàn)
     │
     ▼
 Chromium.quit()
@@ -49,10 +50,12 @@ interface ProfileOptions {
 }
 ```
 
-Khi `loadProxy: true`, engine sẽ đọc proxy config từ profile cũ (đã lưu trong `.ini` files). Tương tự cho fingerprint.
+Khi `loadProxy: true`, engine sẽ đọc proxy config từ profile cũ. Engine binary xử lý việc này qua file .ini.
 
 ## Lưu ý
 
-- **Browser crash**: nếu browser crash trước khi quit, profile thay đổi sẽ bị mất (vì chưa copy về). CleanupDaemon sẽ dọn thư mục tạm sau.
+- **Browser crash**: nếu browser crash trước khi quit, thay đổi sẽ bị mất. Profile gốc vẫn an toàn. CleanupDaemon dọn temp dir sau.
 - **Cache profile**: mỗi lần `useProfile()` là một temp dir mới. Dùng lại profile path sẽ tạo temp dir khác.
 - **Không dùng useProfile**: nếu không gọi `useProfile()`, engine dùng profile mặc định trong `<BROWSER_RUNNING_DIR>/profile/`.
+
+---

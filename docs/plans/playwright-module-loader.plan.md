@@ -1,16 +1,37 @@
 # Plan: Playwright Module Loader
 
-- [x] Bước 1: Tạo Loader class (target, version, fallback packages)
-- [x] Bước 2: Implement static import() -- try require từng package, return [module, version]
-- [x] Bước 3: Dùng createRequire từ node:module (ESM compatibility)
-- [x] Bước 4: Implement load() -- gọi import(), validate version, trả về property
-- [x] Bước 5: Dùng compare-versions library cho version check
-- [x] Bước 6: Tạo playwright loader instance (target 'playwright', min 1.27.1, fallback 'playwright-core')
-- [x] Bước 7: Tích hợp vào engine.ts: defaultLoader.load('chromium')
+## Các bước thực hiện
 
-## Edge cases cần xử lý
+- [x] **Bước 1: Tạo `src/loader/index.ts`**
+  - Class `Loader` với constructor: target, version, fallback packages.
 
-- `import()` nhận packages rỗng → return undefined (không throw)
-- `load()` khi property không tồn tại trong module → fallback về module gốc
-- `compare-versions` so sánh version string, không support semver range
-- `createRequire` chỉ hoạt động trong ESM context -- nếu file là CJS, dùng require trực tiếp
+- [x] **Bước 2: Implement static `import()`**
+  - Try require từng package trong order.
+  - Return `[module, versionString]` hoặc throw Error.
+
+- [x] **Bước 3: Dùng `createRequire` từ `node:module`**
+  - ESM compatibility -- require CJS packages.
+
+- [x] **Bước 4: Implement instance `load()`**
+  - Gọi `Loader.import()` với [target, ...packages].
+  - Validate version với `compare-versions`.
+  - Return `module[property] || module`.
+
+- [x] **Bước 5: Tạo `src/adapter/playwright/loader.ts`**
+  - Instance cho playwright: target 'playwright', min 1.27.1, fallback 'playwright-core'.
+
+- [x] **Bước 6: Tích hợp vào `engine.ts`**
+  - `defaultLoader.load<'chromium'>('chromium')`.
+
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/loader/index.ts` | Generic Loader class (68 dòng) |
+| `src/adapter/playwright/loader.ts` | Playwright-specific instance (13 dòng) |
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors.
+
+---

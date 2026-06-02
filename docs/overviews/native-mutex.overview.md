@@ -1,10 +1,29 @@
 # Overview: Native Mutex
 
-File: `src/plugin/mutex/index.ts` (48 dòng).
+## Mục tiêu
 
-## Lưu ý kỹ thuật
+Tạo Windows named mutex qua C++ addon (mutex.node) để engine binary đồng bộ truy cập tài nguyên.
 
-- Native module dùng `createRequire` thay vì `require` trực tiếp vì file là ESM. `createRequire` từ `node:module` cho phép require CJS addon từ ESM context.
-- Chỉ hỗ trợ win32. Nếu chạy trên Linux/Mac, native addon không load được và throw error.
-- `mutex.create()` không trả về handle -- Windows named mutex là kernel object, tự động giải phóng khi process exit. Nếu cần explicit release, cần thêm `CloseHandle` trong C++ addon.
-- Hiện tại `mutex.create` chỉ tạo mutex chứ không có cơ chế kiểm tra mutex đã tồn tại hay chưa. Nếu mutex đã tồn tại, `CreateMutex` Windows API vẫn trả về handle (không block) -- chỉ block khi gọi `WaitForSingleObject`.
+## Kết quả
+
+- `src/plugin/mutex/index.ts`: 48 dòng, loader cho mutex.node.
+- Hỗ trợ win32-x64 và win32-ia32.
+- Export `create()` function.
+- Xử lý lỗi nếu platform/arch không hỗ trợ.
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors.
+- .node files tồn tại trong 2 thư mục architecture.
+
+## Sai lệch so với kế hoạch
+
+Không có sai lệch.
+
+## Ghi chú kỹ thuật
+
+- `createRequire(import.meta.url)` là cách chuẩn để load native addon từ ESM.
+- `PACKAGE_PATH` = `path.resolve(__dirname, '../../../')` -- từ `mutex/index.ts` lên package root.
+- Nếu mở rộng sang platform khác, cần compile mutex.cpp cho platform đó.
+
+---

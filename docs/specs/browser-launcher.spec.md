@@ -1,56 +1,74 @@
 # Spec: Browser Launcher
 
-## Module: src/plugin/launcher/index.ts (99 dòng)
+## Mô tả
 
-### Types
+Browser Launcher spawn Chromium process và phát hiện DevTools listening URL. Nó cung cấp `Browser` interface với `close()` và `configure()` methods.
+
+## API / Interfaces chính
+
+### `launch(options)`
 
 ```ts
-interface LaunchOptions {
-  debuggingPort?: number;          // Random nếu không set
-  userDataDir?: string;            // Engine tự quản lý
-  headless?: boolean;              // Force false
-  timeout?: number;
-  args?: string[];
-  executablePath?: string;         // worker.exe path
-}
+const launch = async (options?: LaunchOptions): Promise<Browser>
+```
 
+| Tham số | Kiểu | Mặc định | Mô tả |
+|---|---|---|---|
+| `args` | `string[]` | `[]` | Arguments cho Chromium |
+| `timeout` | `number` | `30000` | Timeout chờ DevTools URL (ms) |
+| `userDataDir` | `string` | `''` | Thư mục profile |
+| `debuggingPort` | `number` | `0` | Port debugging (0 = random) |
+| `executablePath` | `string` | `''` | Đường dẫn Chromium executable |
+
+### `Browser` interface
+
+```ts
 interface Browser {
-  process: ChildProcess;
-  port: number;
-  url: string;
-  configure(): Promise<void>;      // Override bởi config.ts
-  close(): Promise<void>;          // taskkill /pid /T /F
+  process: ChildProcess;     // Chromium child process
+  port: number;              // DevTools debugging port
+  url: string;               // DevTools WebSocket URL
+  configure(): Promise<void>; // Configure browser (hiện tại là no-op)
+  close(): Promise<void>;     // Kill browser process tree
 }
 ```
 
-### CDP URL regex
+## Luồng dữ liệu
 
-```ts
-const DEVSERVER_RE = /DevTools listening on (ws:\/\/[^\s]+)/gi;
+```
+launch({ args, timeout, userDataDir, debuggingPort, executablePath })
+    │
+    ├── Tạo resolvedArgs: nếu có userDataDir → thêm --user-data-dir
+    │
+    ├── spawn(executablePath, [...args, `--remote-debugging-port=${port}`])
+    │
+    ├── Parse stderr/stdout từng dòng bằng readline
+    │   ├── Tìm "DevTools listening on <url>"
+    │   ├── Timeout? → reject Error
+    │   └── Có match? → clear timeout, resolve URL
+    │
+    ├── Parse port từ URL (new URL(url).port)
+    │
+    └── Return { process, port, url, close, configure }
 ```
 
-Hỗ trợ multiple matches (multi-target). Lưu vào array, chỉ dùng cái đầu tiên.
+## File liên quan
 
-### Close implementation
+| File | Vai trò |
+|---|---|
+| `src/plugin/launcher/index.ts` | Browser launcher (99 dòng) |
 
-```ts
-async close() {
-  try {
-    await execAsync(`taskkill /pid ${this.process.pid} /T /F`);
-  } catch {
-    this.process.kill('SIGKILL');
-  }
-}
-```
+## Xử lý lỗi
 
-`taskkill /T`: kill process tree (worker.exe + chromium). Fallback: `process.kill`.
+| Lỗi | Nguyên nhân |
+|---|---|
+| `Timed out after ${timeout}ms while trying to launch the browser.` | Chromium không in DevTools URL trong thời gian timeout |
+| `exec taskkill` lỗi | Không kill được process (fallback về childProcess.kill()) |
 
-### readline pattern
+## Ghi chú kỹ thuật
 
-```ts
-const rl = readline.createInterface({ input: childProcess.stderr });
-rl.on('line', (line) => {
-  const match = DEVSERVER_RE.exec(line);
-  if (match) resolve(match[1]);
-});
-```
+- `readline.createInterface` được tạo trên cả `childProcess.stderr` và `childProcess.stdout`.
+- `timeout` mặc định 30 giây.
+- `close()` dùng `taskkill /pid <pid> /T /F` -- Windows-specific. Nếu lỗi, fallback về `childProcess.kill()`.
+- `configure()` hiện tại là no-op (`async () => {}`) -- dành cho custom configuration sau này.
+
+---

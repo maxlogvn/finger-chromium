@@ -1,10 +1,31 @@
 # Overview: Browser Launcher
 
-File: `src/plugin/launcher/index.ts` (99 dòng).
+## Mục tiêu
 
-## Lưu ý kỹ thuật
+Xây dựng module spawn Chromium process và phát hiện DevTools listening URL để CDP có thể giao tiếp.
 
-- `readline.createInterface` dùng để parse stderr line-by-line. Lý do không dùng `stream.on('data')`: stderr có thể gộp nhiều dòng trong một chunk, khó parse.
-- `configure()` của Browser trả về là no-op -- được override sau bởi `config.ts` (trong `_launch()`). Pattern này dùng để giữ interface đồng nhất.
-- `taskkill` là Windows API. Project chỉ hỗ trợ win32 nên không cần cross-platform fallback.
-- DEVSERVER_RE dùng `gi` flags: `g` cho global (nhiều match), `i` cho case-insensitive.
+## Kết quả
+
+- `src/plugin/launcher/index.ts`: 99 dòng.
+- `launch()` function spawn Chromium, parse DevTools URL.
+- `Browser` interface với `close()` method.
+- `close()` dùng `taskkill /T /F` để kill toàn bộ process tree.
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors.
+- Dùng `readline` (built-in), `spawn`, `exec` (built-in).
+
+## Sai lệch so với kế hoạch
+
+| Kế hoạch | Thực tế | Lý do |
+|---|---|---|
+| `configure()` có logic | `configure()` là no-op | Chưa implement, dự phòng cho tương lai |
+
+## Ghi chú kỹ thuật
+
+- `readline.createInterface` được tạo riêng cho stderr và stdout.
+- Regex pattern: `/DevTools listening on (.*)/` -- match toàn bộ URL.
+- `close()` dùng `taskkill /T /F` -- chỉ chạy trên Windows. Nếu port sang nền tảng khác, cần thay bằng `kill` Unix.
+
+---

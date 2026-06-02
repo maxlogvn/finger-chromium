@@ -1,40 +1,46 @@
 # Design: PCAP Server
 
-## Vấn đề
+## Vấn đề cần giải quyết
 
-Engine binary (`worker.exe`) yêu cầu kết nối TCP tới PCAP server để lấy packet ID và heartbeat. Cần một mock server tối thiểu đáp ứng 2 lệnh binary.
+Engine binary (`FastExecuteScript.exe`) cố gắng kết nối tới một PCAP interface để capture network traffic. Tuy nhiên, trong môi trường phát triển, chúng ta không có PCAP hardware thật. Engine có chế độ `--mock-connector` cho phép giả lập PCAP qua TCP socket.
 
-## Giải pháp
+Cần một TCP server nhỏ để:
+1. **Phản hồi request ID** khi engine hỏi `0x01` -- engine cần một ID để định danh.
+2. **Phản hồi heartbeat** khi engine gửi `0x07` -- engine kiểm tra kết nối còn sống không.
+3. **Chịu lỗi port** -- nếu port đã được dùng, thử lại sau 1 giây.
 
-Minimal TCP server dùng `net.createServer`, wrap với `once()` để đảm bảo singleton.
+## Giải pháp chọn
 
-### Binary protocol
+### Kiến trúc
 
-Server xử lý 2 lệnh:
+```
+Engine (FastExecuteScript.exe)
+    │
+    ├── TCP connect → pcapServer (127.0.0.1:<port>)
+    │
+    ├── Gửi 0x01 (request ID)
+    │   └── Server trả: header (7 bytes) + ID (4 bytes)
+    │       └── ID tăng dần mỗi lần request
+    │
+    └── Gửi 0x07 (heartbeat)
+        └── Server trả: header 5 bytes
+```
 
-**0x01** -- Request ID:
-- Client gửi: `[0x01]` (1 byte)
-- Server trả: `[0x01, 0x04, 0x00, 0x00, 0x00, 0x0a, id, id>>8, id>>16]` (9 bytes)
-- `id` là counter tăng dần mỗi lần request
+### Giao thức binary
 
-**0x07** -- Heartbeat:
-- Client gửi: `[0x07]` (1 byte)  
-- Server trả: `[0x07, 0x00, 0x00, 0x00, 0x00]` (5 bytes)
+Mỗi request từ engine là 1 byte đầu tiên xác định loại lệnh:
 
-### Port handling
+| Byte | Lệnh | Response |
+|---|---|---|
+| `0x01` | Request ID | `[0x01, 0x04, 0x00, 0x00, 0x00, 0x0a, id(3 bytes)]` |
+| `0x07` | Heartbeat | `[0x07, 0x00, 0x00, 0x00, 0x00]` |
 
-- Mặc định port 0 (OS tự assign)
-- Host 127.0.0.1
-- Nếu `EADDRINUSE`: retry sau 1s (`setTimeout(...).unref()`)
+### Tại sao dùng `once()` cho `listen()`?
 
-### Tại sao cần server này?
+PCAP server chỉ cần một instance cho toàn bộ ứng dụng. `once()` đảm bảo dù `listen()` được gọi bao nhiêu lần, chỉ một server được tạo.
 
-Engine binary `worker.exe` kết nối tới PCAP server để:
-1. Lấy request ID (0x01) -- dùng để định danh từng request trong internal logging
-2. Gửi heartbeat (0x07) -- báo hiệu worker còn sống
+### Tại sao retry khi EADDRINUSE?
 
-Server là mock vì project không dùng PCAP thật, chỉ cần đáp ứng tối thiểu để engine binary hoạt động.
+Port có thể bị chiếm bởi instance trước (nếu app crash không kịp giải phóng). Retry sau 1 giây giúp tự động phục hồi.
 
 ---
-
-Xem thêm: [Spec](../specs/pcap-server.spec.md) | [Plan](../plans/pcap-server.plan.md)

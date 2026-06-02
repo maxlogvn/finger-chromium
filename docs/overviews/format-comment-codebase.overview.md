@@ -51,3 +51,7 @@ Hoàn thành toàn bộ 25 file TypeScript trong `src/` theo đúng spec và pla
 
 - Task non-feature: không cần product doc.
 - Tất cả thay đổi chỉ giới hạn ở comment, không sửa logic code.
+
+---
+
+Xem thêm: [Design](../designs/format-comment-codebase.design.md) | [Spec](../specs/format-comment-codebase.spec.md) | [Plan](../plans/format-comment-codebase.plan.md)

@@ -2,31 +2,59 @@
 
 ## Tổng quan
 
-PCAP Server là một TCP server tối thiểu (52 dòng code) mô phỏng PCAP interface mà `worker.exe` yêu cầu. Nó chạy ngầm, bạn không cần tương tác.
+PCAP Server là một TCP server rất nhỏ (52 dòng) chạy ngầm để giao tiếp với engine binary. Nó mô phỏng PCAP interface -- một thiết bị phần cứng bắt gói tin mạng -- bằng cách phản hồi 2 loại lệnh binary.
 
-## Tại sao cần server này?
+Bạn không bao giờ cần dùng PCAP server trực tiếp. Nó tự động khởi động khi thư viện được import.
 
-Khi `worker.exe` (engine binary) khởi động, nó luôn cố gắng kết nối tới PCAP server để:
-1. **Lấy request ID** (mã `0x01`): dùng để định danh request trong log nội bộ
-2. **Gửi heartbeat** (mã `0x07`): báo hiệu worker còn sống
+## Cách hoạt động
 
-Nếu không có server, worker.exe sẽ crash vì không kết nối được TCP.
+```
+Engine (FastExecuteScript.exe) ←→ PCAP Server (TCP 127.0.0.1:<port>)
 
-## Server hoạt động thế nào
+1. Engine gửi byte 0x01 → Server trả về ID (tăng dần)
+2. Engine gửi byte 0x07 → Server trả về heartbeat OK
+```
 
-Server chạy trên `127.0.0.1:<port>` (OS tự assign port). Nó chỉ xử lý 2 lệnh binary:
+### Request ID
 
-| Lệnh | Worker gửi | Server trả về |
+Khi engine cần một ID để định danh phiên làm việc:
+
+```
+Engine: [01]
+Server: [01 04 00 00 00 0A ID(3 bytes)]
+```
+
+### Heartbeat
+
+Khi engine kiểm tra kết nối còn sống:
+
+```
+Engine: [07]
+Server: [07 00 00 00 00]
+```
+
+## API
+
+### `listen(port?, host?)`
+
+```ts
+const port = await pcapServer.listen();  // Random port
+// hoặc
+const port = await pcapServer.listen(12345);  // Port cụ thể
+```
+
+| Tham số | Mặc định | Mô tả |
 |---|---|---|
-| Request ID | `[0x01]` | `[0x01, 0x04, 0x00, 0x00, 0x00, 0x0a, id, id>>8, id>>16]` |
-| Heartbeat | `[0x07]` | `[0x07, 0x00, 0x00, 0x00, 0x00]` |
+| `port` | `0` (random) | Cổng TCP |
+| `host` | `'127.0.0.1'` | Địa chỉ lắng nghe |
 
-Request ID server tăng dần: 1, 2, 3... (tối đa ~16 triệu).
+Trả về: port number đang lắng nghe.
 
-## Singleton
+## Lưu ý
 
-Server chỉ được tạo một lần duy nhất (dùng `once()` package). Nếu module được import nhiều lần, lần thứ 2 trả về port cũ. Port này được truyền vào engine qua arg `--mock-pcap-port=<port>`.
+- **Tự động retry** nếu port bận (EADDRINUSE) -- thử lại sau 1 giây.
+- **Chỉ một server** được tạo -- dùng `once()` để đảm bảo.
+- **Không giữ process sống** -- `setTimeout().unref()` cho phép Node thoát nếu không còn tác vụ nào.
+- Chỉ chấp nhận kết nối từ localhost (127.0.0.1).
 
-## Retry port
-
-Nếu port đã được dùng (EADDRINUSE), server tự động retry sau 1 giây. Timer retry `.unref()` -- không chặn process exit.
+---

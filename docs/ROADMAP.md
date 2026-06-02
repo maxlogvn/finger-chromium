@@ -285,11 +285,12 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Tài liệu:** [Design](designs/debug-logging.design.md) | [Spec](specs/debug-logging.spec.md) | [Plan](plans/debug-logging.plan.md) | [Product](products/debug-logging.product.md) | [Overview](overviews/debug-logging.overview.md)
 - **Ghi chú:**
   - debug package, namespace theo module
-  - `fingerprint:adapter`, `fingerprint:plugin`, `fingerprint:connector`
+  - `browser-with-fingerprints:connector`
+  - `browser-with-fingerprints:connector:engine`
+  - `browser-with-fingerprints:connector:pcapServer`
+  - `browser-with-fingerprints:cleaner`
 
 ---
-
-
 
 ### Format và Comment lại toàn bộ codebase
 
@@ -312,8 +313,11 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
+- **Tài liệu:** toàn bộ file trong `docs/designs/`, `docs/specs/`, `docs/plans/`, `docs/products/`, `docs/overviews/`
 - **Ghi chú:**
-  - Cần viết tài liệu cho từng tính năng theo WORKFLOW.md
+  - Đã viết tài liệu cho 20 features + 1 non-feature theo WORKFLOW.md
+  - Mỗi feature có 5 files (design, spec, plan, product, overview)
+  - Non-feature có 4 files (không có product)
   - [x] Hạ tầng dự án
   - [x] Hệ thống kiểu
   - [x] Hệ thống lỗi

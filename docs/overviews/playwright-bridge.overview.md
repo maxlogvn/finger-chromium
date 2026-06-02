@@ -1,11 +1,70 @@
 # Overview: Playwright Bridge
 
-File: `src/adapter/playwright/engine.ts` (111 dòng).
+## Mục tiêu
 
-## Lưu ý kỹ thuật
+Tạo bridge giữa `FingerprintPlugin` và Playwright, cho phép launch persistent context với fingerprint/proxy/profile.
 
-- `defaultLoader.load<'chromium'>('chromium')` gọi `createRequire` để require `playwright` hoặc `playwright-core`. Kết quả là `BrowserType` interface của Playwright.
-- `_launch(false, ...)` -- tham số `false` rất quan trọng. Nếu truyền `true`, nó sẽ spawn `worker.exe` trực tiếp thay vì dùng Playwright launcher, dẫn đến mất hết Playwright functionality (không có `BrowserContext`, `page`, v.v.).
-- `configure()` override nhận `browser` là `BrowserContext` nhưng type signature ghi là `Browser`. Đây là technical debt -- cần refactor type.
-- `onClose()` dùng `'disconnected'` event cho Browser, `'close'` cho BrowserContext. Phân biệt bằng type guard `isBrowser()` (kiểm tra `'version' in target`).
-- `UNSUPPORTED_OPTIONS` throw error chứ không silent ignore -- tránh user tưởng option hoạt động nhưng thực tế không.
+## Kết quả
+
+- `src/adapter/playwright/engine.ts`: 111 dòng, class `PlaywrightFingerprintPlugin`.
+- Extends `FingerprintPlugin`, override `launch()`, `launchPersistentContext()`, `configure()`.
+- Private `#validateOptions()` chặn 3 unsupported options.
+- `IGNORED_ARGUMENTS = ['--disable-extensions']` loại bỏ khỏi args.
+- Custom launcher filter `--user-data-dir` trước khi gọi Playwright.
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors (4 pre-existing warnings `no-explicit-any` tại dòng 73, 77, 88, 89).
+
+## Sai lệch so với kế hoạch
+
+Không có sai lệch đáng kể.
+
+## Ghi chú kỹ thuật
+
+### `_launch(false, ...)` -- tham số `false` rất quan trọng
+
+```ts
+return this._launch(false, { ...options, userDataDir, viewport: null, launcher: { ... } });
+```
+
+Tham số `useDefaultLauncher = false` báo cho `FingerprintPlugin._launch()` dùng custom launcher thay vì spawn worker.exe trực tiếp. Nếu truyền `true`, nó sẽ spawn worker.exe và mất hết Playwright functionality.
+
+### `configure()` override -- technical debt về type
+
+```ts
+async configure(cleanup: (target: any) => void, browser: any, bounds, sync): Promise<void>
+```
+
+`browser` thực chất là `BrowserContext`, không phải `Browser`. Type signature ghi `any` vì parent (`FingerprintPlugin`) kỳ vọng `Browser`. Cần refactor type sau.
+
+### Filter `--user-data-dir` khỏi args
+
+Custom launcher lọc `--user-data-dir` khỏi args vì engine binary tự quản lý user data dir:
+
+```ts
+const filteredArgs = (opts.args ?? []).filter((arg: string) => !arg.startsWith('--user-data-dir'));
+```
+
+### `ignoreDefaultArgs` xử lý 2 trường hợp
+
+```ts
+ignoreDefaultArgs: Array.isArray(ignoreDefaultArgs)
+  ? ignoreDefaultArgs.concat(IGNORED_ARGUMENTS)
+  : ignoreDefaultArgs || IGNORED_ARGUMENTS,
+```
+
+- Nếu là array: merge với `IGNORED_ARGUMENTS`.
+- Nếu là boolean/undefined: set thành `IGNORED_ARGUMENTS`.
+
+### `onClose()` phân biệt Browser vs BrowserContext
+
+`onClose` (từ utils) dùng type guard `isBrowser()` để chọn event:
+- `Browser` -> `'disconnected'` event.
+- `BrowserContext` -> `'close'` event.
+
+### `bindHooks()` chặn setViewportSize
+
+Sau khi context được tạo, `bindHooks()` proxy `newPage` và chặn `setViewportSize` (chỉ in warning) để đảm bảo viewport luôn đúng với fingerprint.
+
+---

@@ -1,25 +1,40 @@
 # Plan: Quản lý Profile
 
-- [x] Bước 1: Tạo AdapterDataManager class với tempRootDir và instanceTempDir
-  - `tempRootDir`: `<BROWSER_RUNNING_DIR>/profile` (mặc định)
-  - `instanceTempDir`: `<tempRootDir>/<timestamp>_<random4hex>`
+## Các bước thực hiện
 
-- [x] Bước 2: Implement generateUniqueName() -- `${Date.now()}_${Math.random().toString(16).slice(2,6)}`
-  - Dùng Math.random() thay crypto -- performance > security
-  - 4 hex digits (65,536 giá trị) + timestamp (ms) → collision cực thấp
+- [x] **Bước 1: Tạo `src/adapter/playwright/data.ts`**
+  - Class `AdapterDataManager` với `tempRootDir` và `instanceTempDir`.
+  - Options interface `AdaDataManagerOptions`.
 
-- [x] Bước 3: Dùng fs.cpSync/rmSync/mkdirSync cho copy/delete operations
-  - `fs.cpSync(src, dest, { recursive: true, force: true })`: deep copy, ghi đè
-  - `fs.rmSync(path, { recursive: true, force: true })`: xoá thư mục
-  - `fs.mkdirSync(path, { recursive: true })`: tạo thư mục
+- [x] **Bước 2: Implement `generateUniqueName()`**
+  - `${Date.now()}_${Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0')}`.
+  - 4 hex digits (65536 giá trị) + timestamp -> collision cực thấp.
 
-- [x] Bước 4: Integrate vào BrowserEngine.useProfile() + quit()
-  - `useProfile()`: gọi `dataManager.map(source)` → copy vào temp, lưu temp path
-  - `quit()`: gọi `dataManager.map(temp, destination)` → copy về, `dataManager.unmap()` → xoá temp
+- [x] **Bước 3: Implement `map()` với 2 overloads**
+  - `map(source)` -> copy source vào instanceTempDir.
+  - `map(temp, destination)` -> copy temp vào destination.
+  - Dùng `fs.cpSync` với `recursive: true, force: true`.
 
-## Edge cases
+- [x] **Bước 4: Implement `unmap()` và `dispose()`**
+  - `unmap(path)` -> `fs.rmSync` xoá thư mục.
+  - `dispose()` -> gọi `unmap(instanceTempDir)`.
 
-- Temp dir đã tồn tại (collision) → `cpSync` với `force: true` sẽ ghi đè, không crash
-- Source profile không tồn tại → `cpSync` throw ENOENT, không bắt ở data.ts (để caller xử lý)
-- Quit() khi chưa useProfile → không có saveProfileDirPath, chỉ unmap BROWSER_RUNNING_DIR
-- Temp dir bị xoá tay trước khi quit → unmap() warn nhưng không throw
+- [x] **Bước 5: Tích hợp vào `BrowserEngine.useProfile()` và `quit()`**
+  - `useProfile()` gọi `dataManager.map(source)`.
+  - `quit()` gọi `dataManager.map(temp, destination)` + `dataManager.unmap()`.
+
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/adapter/playwright/data.ts` | AdapterDataManager class (98 dòng) |
+| `src/adapter/playwright/chromium.ts` | BrowserEngine tích hợp profile |
+| `src/types/profile.ts` | ProfileOptions interface |
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors.
+- Test: map/unmap lifecycle.
+- Test: temp dir được xoá sau dispose.
+
+---

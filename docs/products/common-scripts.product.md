@@ -4,20 +4,18 @@
 
 2 in-browser scripts được dùng qua `page.evaluate()` hoặc CDP `Runtime.evaluate` để hỗ trợ resize viewport.
 
-## waitForResize
+## `waitForResize`
 
 Dùng ResizeObserver + double requestAnimationFrame để đợi layout ổn định:
 
 ```ts
-// Sau khi resize
 await page.evaluate(scripts.waitForResize);
-// Lúc này: layout + paint đã hoàn tất
-// Viewport đã ổn định, sẵn sàng kiểm tra
+// Lúc này: layout + paint đã hoàn tất, viewport ổn định
 ```
 
-**Cơ chế**: ResizeObserver detect thay đổi kích thước → disconnect ngay (tránh leak) → double rAF (lần 1 layout, lần 2 paint).
+**Cơ chế**: ResizeObserver detect thay đổi kích thước -> disconnect ngay (tránh leak) -> double rAF (lần 1 layout, lần 2 paint).
 
-## getViewport
+## `getViewport`
 
 Lấy kích thước viewport thực tế:
 
@@ -31,15 +29,17 @@ const { width, height } = await page.evaluate(scripts.getViewport);
 ## Dùng qua CDP
 
 ```ts
-// Khi không có page handle -- dùng trong plugin/browser.ts
+// plugin/browser.ts -- khi không có page handle
 await cdp.Runtime.evaluate({
-  expression: `(${scripts.waitForResize.toString()})()`,
+  expression: `(${scripts.waitForResize})()`,
   awaitPromise: true,
 });
 ```
 
 ## Lưu ý
 
-- Scripts chạy trong browser context -- không thể dùng closure variables
-- `waitForResize` treo vô hạn nếu không có resize -- cần timeout ở caller
-- Chỉ gọi scripts sau khi page đã load (`DOMContentLoaded`)
+- Scripts chạy trong browser context -- không thể dùng closure variables.
+- `waitForResize` treo vô hạn nếu không có resize -- cần timeout ở caller.
+- Chỉ gọi scripts sau khi page đã load (`DOMContentLoaded`).
+
+---

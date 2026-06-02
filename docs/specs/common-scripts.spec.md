@@ -1,28 +1,28 @@
 # Spec: Common Scripts
 
-## Module: src/common/index.ts (25 dòng)
+## File: `src/common/index.ts` (25 dòng)
 
-### Exports
+### Export
 
 ```ts
 export const scripts: Record<string, (...args: unknown[]) => unknown>;
 ```
 
-### waitForResize
+### `waitForResize`
 
-```
-Type: () => Promise<void>
-Mechanism: ResizeObserver on document.body + double requestAnimationFrame
-Use case: page.evaluate(scripts.waitForResize) sau khi resize viewport
-```
+| Thuộc tính | Giá trị |
+|---|---|
+| Type | `() => Promise<void>` |
+| Mechanism | `ResizeObserver` trên `document.body` + double `requestAnimationFrame` |
+| Use case | `page.evaluate(scripts.waitForResize)` sau khi resize viewport |
 
-### getViewport
+### `getViewport`
 
-```
-Type: () => { width: number; height: number }
-Return: { width: window.innerWidth, height: window.innerHeight }
-Use case: Xác nhận kích thước sau resize
-```
+| Thuộc tính | Giá trị |
+|---|---|
+| Type | `() => { width: number; height: number }` |
+| Return | `{ width: window.innerWidth, height: window.innerHeight }` |
+| Use case | Xác nhận kích thước sau resize |
 
 ### Usage patterns
 
@@ -31,9 +31,18 @@ Use case: Xác nhận kích thước sau resize
 await page.evaluate(scripts.waitForResize);
 const vp = await page.evaluate(scripts.getViewport);
 
-// CDP Runtime context
+// CDP Runtime context (plugin/browser.ts)
 await cdp.Runtime.evaluate({
-  expression: `(${scripts.waitForResize.toString()})()`,
+  expression: `(${scripts.waitForResize})()`,
   awaitPromise: true,
 });
 ```
+
+---
+
+## Kiểm tra
+
+- Scripts chạy sau khi page đã load (`DOMContentLoaded`).
+- `waitForResize` không có timeout -- caller nên wrapper với timeout riêng.
+
+---

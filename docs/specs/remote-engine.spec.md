@@ -1,85 +1,147 @@
 # Spec: RemoteEngine
 
-## Class: RemoteEngine extends EventEmitter
+## Mô tả
 
-### Private fields
+RemoteEngine quản lý vòng đời của `FastExecuteScript.exe` -- engine binary từ bablosoft. Nó tự động tải, giải nén, cấu hình, spawn, và giao tiếp với engine qua file-based IPC.
 
-| Field | Type | Mô tả |
-|---|---|---|
-| `#meta` | `EngineMeta?` | Metadata từ project.xml + bablosoft API |
-| `#cwd` | `string` | Thư mục làm việc (default `CWD` = `data/`) |
-| `#args` | `string[]` | Args cho engine binary |
-| `#engineTimeout` | `number` | Timeout start (~300s default) |
-| `#requestTimeout` | `number` | Timeout request (~300s default) |
+## API / Interfaces chính
 
-### EngineMeta type
+### `RemoteEngine` class
 
 ```ts
-interface EngineMeta {
-  version: string;   // Từ project.xml <EngineVersion>
-  checksum: string;  // SHA1 từ metadata JSON
-  url: string;       // Download URL từ metadata JSON
+class RemoteEngine extends EventEmitter {
+  constructor(options?: EngineOptions);
+
+  // Cấu hình
+  setCwd(value?: string): void;        // Thư mục làm việc (mặc định: process.cwd()/data)
+  setArgs(value?: string[]): void;     // Tham số dòng lệnh
+  setEngineTimeout(value?: string | number): void;  // Timeout download+extract+spawn
+  setRequestTimeout(value?: string | number): void; // Timeout IPC request
+
+  // Core method
+  runFunction(name: string, params: unknown, options?: RunFunctionOptions): Promise<FunctionResult>;
+
+  // Sự kiện
+  // 'beforeDownload' → khi bắt đầu download
+  // 'beforeExtract'  → khi bắt đầu extract
 }
 ```
 
-### Hằng số
-
-| Tên | Giá trị | Mô tả |
-|---|---|---|
-| `CLOSE_TIMEOUT` | `60000` | Thời gian chờ engine đóng |
-| `DEFAULT_TIMEOUT` | `300000` | 5 phút |
-| `ARCH` | `'32'` hoặc `'64'` | Từ process.arch |
-| `CWD` | `'data/'` | Thư mục mặc định |
-| `PROJECT_PATH` | `'...'` | Từ resolvePackageRoot |
-
-### runFunction(name, params) -- Flow chi tiết
-
-```
-1. if (!meta) → #updateMeta()
-2. if (!process) → #startProcess(timeout)
-3. Tạo requests dir: r/
-4. Cleanup request cũ:
-   for each file in r/:
-     pid = parsePidFromFilename(file)
-     try kill(pid, 0) → nếu ESRCH → rm(file)
-5. Request file: r/<process.pid>_<uuid>.json
-   { name, params }
-6. Watcher = chokidar.watch(requestFilePath, { awaitWriteFinish: true })
-7. Promise.race([
-     onWatcherChange → readFile → parse JSON → resolve({ response, error }),
-     requestTimeout → reject(RequestTimeoutError),
-     onProcessClose → setTimeout(CLOSE_TIMEOUT) → reject/retry
-   ])
-8. Finally: watcher.close(), rm(requestFilePath)
-```
-
-### Chi tiết timeout logic
+### `EngineOptions`
 
 ```ts
-// engineTimeout: Promise.race giữa startProcess và setTimeout
-// requestTimeout: setTimeout reject trong Promise.race
-// closeTimeout: 60s grace period khi process đóng bất ngờ
+interface EngineOptions {
+  cwd?: string;                // Thư mục làm việc
+  args?: string[];             // Tham số engine
+  engineTimeout?: string | number;  // ms, mặc định: 300000
+  requestTimeout?: string | number; // ms, mặc định: 300000
+}
 ```
 
-## File structure của engine
+### `FunctionResult`
 
-```
-data/
-├── s/                  # Settings files (*.ini)
-├── t/                  # Temp files (PID-based lock files)
-├── r/                  # Request files (*.json)
-└── <version>/          # Engine version directory
-    ├── FastExecuteScript.exe
-    ├── project.xml
-    └── worker_command_line.txt  # Nội dung: --mock-connector
+```ts
+interface FunctionResult {
+  error?: string;
+  response?: unknown;
+  [key: string]: unknown;
+}
 ```
 
-## Engine initialization steps
+## Luồng dữ liệu
 
-| Bước | Method | Điều kiện | Action |
-|---|---|---|---|
-| Update meta | `#updateMeta()` | meta chưa load | Parse project.xml → fetch/cache metadata JSON |
-| Checksum | `#startProcessInternal()` | Zip tồn tại | SHA1 hash zip → compare với meta.checksum → xoá nếu mismatch |
-| Download | `#startProcessInternal()` | Engine dir missing | Download zip từ meta.url → verify SHA1 |
-| Extract | `#startProcessInternal()` | Script dir missing | extract-zip → copy project.xml → tạo config files |
-| Spawn | `#startProcessInternal()` | Engine ready | execFile('FastExecuteScript.exe', ['--silent', ...args]) |
+### 1. `runFunction(name, params)` -- gọi hàm trên engine
+
+```
+runFunction(name, params)
+    │
+    ├── Chưa có metadata? → #updateMeta()
+    │       ├── Đọc project.xml → lấy <EngineVersion>
+    │       ├── Fetch metadata từ bablosoft.com
+    │       └── Cache vào file <version>_<ARCH>.json
+    │
+    ├── #startProcess(engineTimeout)
+    │       ├── Kiểm tra checksum SHA1 của zip
+    │       │   └── Sai? → xoá engine cũ
+    │       ├── Download zip nếu chưa có
+    │       │   └── Emit 'beforeDownload'
+    │       ├── Extract zip nếu chưa có
+    │       │   └── Emit 'beforeExtract'
+    │       ├── Copy project.xml + settings.ini + worker_command_line.txt
+    │       └── Spawn FastExecuteScript.exe
+    │
+    ├── Tạo thư mục r/ (nếu chưa có)
+    │
+    ├── Dọn request cũ: kiểm tra PID, xoá file của process đã chết
+    │
+    ├── Ghi file: r/<pid>_<uuid>.json = JSON.stringify({ name, params })
+    │
+    ├── Watch file bằng chokidar, đợi engine ghi đè
+    │   ├── Timeout? → reject RequestTimeoutError
+    │   ├── Process close? → đợi CLOSE_TIMEOUT (60s) rồi resolve rỗng
+    │   └── File change? → đọc nội dung, unlink file, resolve
+    │
+    └── Parse JSON response → trả về FunctionResult
+```
+
+### 2. `#updateMeta()` -- lấy metadata engine
+
+```
+Đọc project.xml → parse <EngineVersion> → version
+    │
+    ├── Cache tồn tại? → đọc file JSON
+    └── Cache không tồn tại?
+        ├── Fetch từ: http://bablosoft.com/distr/.../<version>.meta.json
+        ├── Parse: { Checksum, Url }
+        ├── Lưu cache vào: <cwd>/<version>_<ARCH>.json
+        └── Set this.#meta
+```
+
+### 3. `#startProcessInternal()` -- spawn engine
+
+```
+Kiểm tra engineDir (có chứa zip không)
+    │
+    ├── Có zip? → SHA1 checksum → khớp? → giữ
+    │                           → không khớp? → xoá engineDir
+    │
+    └── Không có engineDir? → download zip
+        │
+        ▼
+    Kiểm tra scriptDir (đã extract chưa?)
+    │
+    ├── Chưa extract? → extract zip → copy config files
+    └── Đã extract? → bỏ qua
+        │
+        ▼
+    Spawn: execFile('FastExecuteScript.exe', ['--silent', ...args], { cwd: scriptDir })
+```
+
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/plugin/connector/engine.ts` | RemoteEngine class (373 dòng) |
+| `src/plugin/connector/utils.ts` | Hàm helper (notify) |
+| `src/plugin/connector/index.ts` | API Connector (singleton + wrapper) |
+| `project.xml` | File cấu hình engine BAS (chứa EngineVersion) |
+
+## Xử lý lỗi
+
+| Lỗi | Nơi throw | Nguyên nhân |
+|---|---|---|
+| `EngineTimeoutError` | `#startProcess(timeout)` khi Promise.race timeout | Download/extract/spawn quá lâu |
+| `InvalidEngineError` | `execFile` callback lỗi | Engine binary không chạy được |
+| `RequestTimeoutError` | `runFunction` khi setTimeout reject | Engine không phản hồi kịp |
+| Error('Không tìm thấy package root') | `resolvePackageRoot` | package.json không có name đúng |
+| Error('Không thể đọc phiên bản Engine') | `#updateMeta` | project.xml không có EngineVersion |
+
+## Ghi chú kỹ thuật
+
+- **Đường dẫn tuyệt đối:** `PROJECT_PATH` được resolve bằng cách đi ngược từ `__dirname` cho đến khi tìm thấy `package.json` có `name === 'fingerprint-chromium-engine'`. Điều này đảm bảo đúng ngay cả khi code được bundle vào dist/.
+- **Chokidar watch:** Dùng `awaitWriteFinish: true` để tránh đọc file khi engine chưa ghi xong.
+- **Timeout cấu hình:** Có thể set qua `FINGERPRINT_TIMEOUT` env (ms) hoặc qua method `setEngineTimeout`/`setRequestTimeout`.
+- **Kiểm tra PID còn sống:** Dùng `process.kill(pid, 0)` -- ném `ESRCH` nếu process không tồn tại.
+- **Random UUID trong tên file:** Tránh conflict khi nhiều request cùng PID.
+
+---

@@ -1,16 +1,53 @@
 # Plan: RemoteEngine
 
-- [x] Bước 1: Tạo EngineMeta interface, hằng số ARCH/CWD/DEFAULT_TIMEOUT
-- [x] Bước 2: Implement resolvePackageRoot() -- walk up tìm package.json
-- [x] Bước 3: Implement #updateMeta() -- parse project.xml + fetch/cache metadata
-- [x] Bước 4: Implement helper functions: exists(), checksum(), download()
-- [x] Bước 5: Implement #startProcessInternal() -- checksum, download, extract, config, spawn
-- [x] Bước 6: Implement #startProcess() -- với Promise.race timeout
-- [x] Bước 7: Implement runFunction() -- file-based IPC với chokidar
+## Các bước thực hiện
 
-## Chi tiết kỹ thuật
+- [x] **Bước 1: Tạo `src/plugin/connector/engine.ts`**
+  - Tạo class `RemoteEngine extends EventEmitter`.
+  - Implement `#updateMeta()`:
+    - Đọc `project.xml`, parse `<EngineVersion>`.
+    - Fetch metadata từ bablosoft.com (Checksum, Url).
+    - Cache vào file `<version>_<ARCH>.json`.
+  - Implement `#startProcessInternal()`:
+    - Kiểm tra checksum SHA1, xoá engine cũ nếu sai.
+    - Download zip (emit 'beforeDownload').
+    - Extract zip (emit 'beforeExtract').
+    - Copy project.xml, tạo settings.ini, worker_command_line.txt.
+    - Spawn `FastExecuteScript.exe` với `--silent` flag.
+  - Implement `#startProcess(timeout)` với Promise.race timeout.
+  - Implement `runFunction(name, params)`:
+    - Dọn request cũ (kill(pid, 0) → ESRCH).
+    - Ghi JSON request file.
+    - Watch by chokidar, đọc response, parse JSON.
+  - Export constants: `CLOSE_TIMEOUT`, `DEFAULT_TIMEOUT`, `PROJECT_PATH`.
 
-- `resolvePackageRoot()` walk up từ `__dirname` tìm `package.json` có `name === 'fingerprint-chromium-engine'`
-- `checksum()` dùng `createHash('sha1')` + `pipeline` (stream)
-- `download()` dùng axios `responseType: 'stream'`
-- PID cleanup: dùng `process.kill(pid, 0)` bắt lỗi `ESRCH`
+- [x] **Bước 2: Tạo `src/plugin/connector/index.ts`**
+  - Singleton `RemoteEngine` instance.
+  - Auto-start PCAP server, set args `--mock-pcap-port=<port>`.
+  - `api(name, params)` wrapper với async-lock và error normalization.
+  - Đăng ký sự kiện 'beforeDownload'/'beforeExtract'.
+
+- [x] **Bước 3: Tạo `src/plugin/connector/utils.ts`**
+  - Hàm `notify(key)` hiển thị thông báo upgrade khi thiếu key (chỉ 1 lần).
+
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/plugin/connector/engine.ts` | Core RemoteEngine |
+| `src/plugin/connector/index.ts` | API connector (singleton) |
+| `src/plugin/connector/utils.ts` | Notification helper |
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors.
+- Các error classes `EngineTimeoutError`, `InvalidEngineError`, `RequestTimeoutError` được import từ `../errors` và sử dụng.
+- `chokidar`, `axios`, `extract-zip` có trong dependencies.
+
+## Ghi chú
+
+- `resolvePackageRoot()` đi ngược từ `__dirname` để tìm package root -- cần đảm bảo `package.json` luôn có `name: 'fingerprint-chromium-engine'`.
+- `ARCH` được xác định từ `process.arch.includes('32')` -- dùng cho 32-bit và 64-bit.
+- `FINGERPRINT_TIMEOUT` env dùng chung cho cả engineTimeout và requestTimeout.
+
+---

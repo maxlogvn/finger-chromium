@@ -9,23 +9,23 @@ Daemon tự động dọn file rác trong thư mục làm việc của engine. C
 ### Khi browser chạy
 
 ```
-_launch() → cleaner.watch(pwd)      ← đăng ký folder
-         → cleaner.ignore(pwd, pid, id)  ← lock các file của process
+_launch() -> cleaner.watch(pwd)               <- đăng ký folder
+        -> cleaner.ignore(pwd, pid, id)       <- lock file của process
 ```
 
 ### Khi browser đóng
 
 ```
-quit/close → cleaner.include(pwd, pid, id)  ← unlock
+quit/close -> cleaner.include(pwd, pid, id)   <- unlock
 ```
 
 ### Cleanup cycle (mỗi 15s)
 
 ```
-1. Quét {t,s}/* trong folder
-2. Bỏ qua file modified < 15s (vừa tạo)
-3. Kiểm tra lock: file .ini lock → skip
-4. File không lock → rm -rf
+1. Quét {t,s}/* trong watched folders
+2. Bỏ qua file modified < 15s (vừa tạo/đang ghi)
+3. Kiểm tra lock
+4. File không locked -> rm -rf
 ```
 
 ## File lock mapping
@@ -39,7 +39,9 @@ quit/close → cleaner.include(pwd, pid, id)  ← unlock
 
 ## An toàn
 
-- **proper-lockfile**: lock file bằng `O_EXCL` -- portable, không phụ thuộc Windows
-- **ENOENT handling**: nếu file đã bị xoá trước đó, skip silently
-- **Timer unref**: không chặn process exit
-- **onCompromised**: lock bị compromised → chỉ log warning, không crash
+- **proper-lockfile**: lock file bằng `O_EXCL`, cross-platform.
+- **ENOENT handling**: nếu file đã bị xoá trước đó, skip silently.
+- **Timer unref**: không chặn process exit.
+- **onCompromised**: lock compromised -> chỉ log warning, không crash.
+
+---

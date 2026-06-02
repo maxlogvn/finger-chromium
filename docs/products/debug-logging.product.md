@@ -8,45 +8,39 @@ Structured logging với `debug` package. Mỗi module có namespace riêng, d�
 
 ```bash
 # Bật tất cả
-set DEBUG=fingerprint:* & node app.js
+set DEBUG=browser-with-fingerprints:* & node app.js
 
 # Chỉ connector
-set DEBUG=fingerprint:connector & node app.js
+set DEBUG=browser-with-fingerprints:connector & node app.js
 
 # Nhiều module
-set DEBUG=fingerprint:connector,fingerprint:plugin & node app.js
+set DEBUG=browser-with-fingerprints:connector,browser-with-fingerprints:cleaner & node app.js
 ```
 
 ## Namespaces
 
 | Namespace | Log gì | File chính |
 |---|---|---|
-| `fingerprint:connector` | Download, extract, IPC request/response | `connector/engine.ts`, `connector/index.ts` |
-| `fingerprint:plugin` | Lifecycle: launch, setup, cleanup | `plugin/index.ts` |
-| `fingerprint:adapter` | BrowserEngine methods, viewport resize | `adapter/playwright/*.ts` |
+| `browser-with-fingerprints:connector` | API Connector, PCAP server start | `connector/index.ts` |
+| `browser-with-fingerprints:connector:engine` | Engine download, extract, IPC request/response | `connector/engine.ts` |
+| `browser-with-fingerprints:connector:pcapServer` | PCAP server lifecycle | `connector/pcapServer/index.ts` |
+| `browser-with-fingerprints:cleaner` | File cleanup daemon | `plugin/cleaner.ts` |
 
 ## Ví dụ output
 
 ```
-fingerprint:connector Dang tai browser... +0ms
-fingerprint:connector Dang cai dat browser... +5342ms
-fingerprint:plugin _launch: setup response OK +10234ms
-fingerprint:adapter setViewport: resize 1920x1080 delta={16,88} +11000ms
-fingerprint:adapter [HookBinding] Khong the thay doi viewport: kich thuoc da bi khoa boi fingerprint +12000ms
-```
-
-## Tích hợp npm scripts
-
-```bash
-npm run dev    # Chạy với DEBUG=fingerprint:* (package.json)
-
-# Hoặc set env trước
-set DEBUG=fingerprint:* && npm run dev
+browser-with-fingerprints:connector:engine Dang tai browser... +0ms
+browser-with-fingerprints:connector:engine Engine giai nen thanh cong... +5342ms
+browser-with-fingerprints:connector:engine Dang goi method "setup"... +10234ms
+browser-with-fingerprints:connector PCAP server dang lang nghe tai port 54321 +11000ms
+browser-with-fingerprints:cleaner File lock tai duong dan ... khong duoc cap nhat. +12000ms
 ```
 
 ## Lưu ý
 
-- `debug` tự động thêm timestamp (elapsed time từ process start)
-- Mỗi namespace một màu khác nhau trong terminal
-- Zero overhead khi tắt (DEBUG không set) -- logger là no-op function
-- Trên Windows, dùng `set` thay `export`
+- `debug` tự động thêm timestamp (elapsed time từ process start).
+- Mỗi namespace một màu khác nhau trong terminal.
+- Zero overhead khi tắt (DEBUG không set) -- logger là no-op function.
+- Trên Windows, dùng `set` thay `export`.
+
+---

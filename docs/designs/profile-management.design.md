@@ -2,46 +2,57 @@
 
 ## Vấn đề
 
-Browser profile (cookie, localStorage, IndexedDB) cần được bảo vệ khỏi corrupt khi browser crash. Cần copy profile vào thư mục tạm khi dùng, restore khi quit.
+Browser profile (cookie, localStorage, IndexedDB, extension data) cần được bảo vệ khỏi corrupt khi browser crash. Nếu browser chạy trực tiếp trên thư mục profile gốc, crash sẽ làm hỏng dữ liệu.
 
 ## Giải pháp: AdapterDataManager
 
-### Temp dir mechanism
+Copy profile vào thư mục tạm trước khi dùng, restore về thư mục gốc khi quit. Nếu browser crash, chỉ mất dữ liệu thay đổi trong session đó, profile gốc vẫn an toàn.
+
+### Luồng xử lý
 
 ```
 useProfile('./profiles/user_01')
   → dataManager.map('./profiles/user_01')
-    → copy to <BROWSER_RUNNING_DIR>/profile/<timestamp>_<random4hex>/
+    → fs.cpSync copy vào temp
+    → <BROWSER_RUNNING_DIR>/profile/<timestamp>_<random4hex>/
     → return temp path
 
 quit()
   → dataManager.map(tempPath, './profiles/user_01')
-    → copy temp → original
+    → fs.cpSync copy ngược lại
   → dataManager.unmap(tempPath)
-    → rm -rf temp
+    → fs.rmSync xoá temp
 ```
 
-### generateUniqueName()
+### Temp dir naming
 
 ```ts
 private generateUniqueName(): string {
-  return `${Date.now()}_${Math.floor(Math.random() * 0x10000).toString(16)}`;
+  const hex = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
+  return `${Date.now()}_${hex}`;
 }
 ```
 
-Dùng `Math.random()` thay `crypto.randomBytes` -- không cần bảo mật cao, performance tốt hơn.
+Dùng `Math.random()` thay `crypto.randomBytes` -- không cần bảo mật cao, timestamp + 4 hex digits là đủ uniqueness.
 
-### File operations
+### File operations (Node.js 16+)
 
-- `fs.cpSync(src, dest, { recursive: true, force: true })` -- copy deep
-- `fs.rmSync(path, { recursive: true, force: true })` -- delete
-- `fs.mkdirSync(path, { recursive: true })` -- tạo dir
+- `fs.cpSync(src, dest, { recursive: true, force: true })` -- copy thư mục, ghi đè nếu tồn tại.
+- `fs.rmSync(path, { recursive: true, force: true })` -- xoá thư mục, không throw nếu không tồn tại.
+- `fs.mkdirSync(path, { recursive: true })` -- tạo thư mục cha nếu chưa có.
 
-Tất cả dùng sync API vì profile management chỉ xảy ra ở lifecycle boundaries (launch, quit), không ảnh hưởng runtime.
+Đồng bộ API (sync) -- profile operations chỉ xảy ra ở lifecycle boundaries (launch, quit), không ảnh hưởng runtime.
 
-### Cache
+### map() 2 overloads
 
-Khi `useProfile` được gọi cùng source path nhiều lần, mỗi lần là một temp dir mới. Temp dir cũ không tự động xoá -- dựa vào `CleanupDaemon` (cleaner.ts) để dọn.
+```ts
+map(sourceDir: string): string;       // source → instance temp dir
+map(tempDir: string, dest: string): string;  // temp → destination
+```
+
+### Instance isolation
+
+Mỗi instance `AdapterDataManager` có một `instanceTempDir` riêng. Khi `dispose()`, chỉ xoá temp dir của instance đó.
 
 ---
 

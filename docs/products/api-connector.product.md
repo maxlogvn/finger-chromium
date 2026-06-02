@@ -2,45 +2,90 @@
 
 ## Tổng quan
 
-API Connector là lớp giao tiếp đồng bộ với RemoteEngine. Nó đảm bảo chỉ một request tới engine tại một thời điểm (tránh race condition), chuẩn hoá lỗi từ engine thành `PluginError` dễ hiểu.
+API Connector là lớp trung gian giữa FingerprintPlugin và RemoteEngine. Nó đảm bảo:
+- Chỉ một request được gửi đến engine tại một thời điểm.
+- Lỗi từ engine được chuyển thành `PluginError` / `MissingKeyError` dễ xử lý.
+- PCAP server tự động khởi động khi connector được load.
 
-## Cách hoạt động
+Bạn không cần dùng API Connector trực tiếp -- nó chạy ngầm khi bạn gọi `Chromium.launch()`.
 
-### Singleton engine
+## Cách dùng (nội bộ)
 
-Chỉ có một RemoteEngine duy nhất cho toàn bộ ứng dụng, khởi tạo từ biến môi trường:
+Trong code của thư viện, các plugin gọi API Connector như sau:
 
 ```ts
-FINGERPRINT_CWD      → thư mục làm việc của engine
-FINGERPRINT_TIMEOUT  → timeout cho cả engine và request (mặc định 300s)
+import { api } from '../connector';
+
+// Gọi setup engine với fingerprint, proxy, profile
+const result = await api('setup', {
+  fingerprint: { value: fingerprintData, options: { usePerfectCanvas: true } },
+  key: 'your-private-key',
+  pid: 12345,
+  profile: { value: './profiles/user', options: { loadProxy: true } },
+  proxy: { value: 'socks5://127.0.0.1:9050', options: { changeWebRTC: 'replace' } },
+  version: 'default',
+});
 ```
 
-### async-lock
+## API
 
-Khi bạn gọi `api('setup', {...})`, request được đồng bộ bằng `async-lock` với key `'client'`:
+### `api(name, params)`
+
+Gọi một hàm trên engine binary.
+
+| Tham số | Kiểu | Mô tả |
+|---|---|---|
+| `name` | `string` | Tên hàm: `'setup'`, `'versions'`, `'get_bounds'`, `'get_defaults'` |
+| `params` | `object` | Tham số truyền cho engine |
+
+**Kết quả trả về:**
+- `response` object từ engine (nếu có).
+- Toàn bộ result nếu không có `response`.
+
+**Lỗi:**
+- `MissingKeyError` nếu engine báo thiếu key.
+- `PluginError` cho các lỗi khác.
+- `EngineTimeoutError` / `RequestTimeoutError` từ RemoteEngine.
+
+## Lifecycle
 
 ```
-Request A ─→ lock('client') ─→ engine.runFunction() ─→ unlock
-Request B ─→ (đợi lock) ─→ lock('client') ─→ engine.runFunction() ─→ unlock
+Import connector
+    │
+    ├── Tạo singleton RemoteEngine
+    ├── Start PCAP server (listen)
+    └── Export engine + api function
+                │
+                ▼
+FingerprintPlugin gọi api('setup', ...)
+    │
+    ├── Lock 'client' (chờ nếu có request khác)
+    ├── engine.runFunction('setup', ...)
+    ├── Parse result
+    └── Unlock
 ```
 
-Điều này ngăn 2 request gửi đồng thời -- engine binary là single-threaded, không xử lý song song.
+## Xử lý lỗi
 
-### Xử lý lỗi
-
-| Lỗi từ engine | Bạn nhận được |
+| Lỗi | Ý nghĩa |
 |---|---|
-| `'key is missing'` | `MissingKeyError` |
-| Lỗi khác | `PluginError` |
+| `MissingKeyError` | Chưa set `BABLOSOFT_KEY`. Engine từ chối phục vụ. |
+| `PluginError` | Lỗi không xác định từ engine. Kiểm tra message. |
+| `EngineTimeoutError` | Engine không start được. |
+| `RequestTimeoutError` | Engine không phản hồi. |
 
-## PCAP Server
+## Môi trường
 
-Khi module được load, PCAP server tự động start trên port random. Engine binary kết nối tới server này để lấy request ID và heartbeat. Bạn không cần làm gì -- nó chạy ngầm.
+| Biến | Mô tả |
+|---|---|
+| `FINGERPRINT_CWD` | Thư mục làm việc của engine |
+| `FINGERPRINT_TIMEOUT` | Timeout (ms) cho cả engine và request |
 
-## Notifications
+## Lưu ý
 
-Nếu bạn chưa có key bảo mật (BABLOSOFT_KEY không set), connector sẽ:
-1. In thông báo upgrade ngay lập tức
-2. Set timer 20s nhắc nhở nếu chưa có key
+- **PCAP server tự động start** ở port có sẵn, không cần cấu hình thủ công.
+- **Khi thiếu key**, connector hiển thị thông báo upgrade và delay 20s trước khi cảnh báo timeout.
+- **Request PerfectCanvas** có thể không giới hạn thời gian (timeout = 0) nếu option `perfectCanvasRequest` được bật.
+- **Chỉ một request tại một thời điểm** -- async-lock xếp hàng các request còn lại.
 
-Dùng `once()` package để chỉ in một lần -- không spam console.
+---

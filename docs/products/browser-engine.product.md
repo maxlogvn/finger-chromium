@@ -2,7 +2,7 @@
 
 ## Tổng quan
 
-`Chromium` là singleton public API -- điểm vào duy nhất bạn cần. Dùng fluent pattern để cấu hình và lifecycle.
+`Chromium` là singleton public API -- điểm vào duy nhất bạn cần để điều khiển fingerprint browser. Dùng fluent pattern, bạn gọi `.useXxx()` để cấu hình, `.launch()` để khởi động, `.newContext()` để lấy Playwright BrowserContext, và `.quit()` để dọn dẹp.
 
 ## Ví dụ đầy đủ
 
@@ -11,7 +11,6 @@ import { Chromium } from 'fingerprint-chromium-engine';
 
 // --- Cấu hình ---
 Chromium
-  .usePrivateKey(process.env.BABLOSOFT_KEY)
   .useFingerprint(fingerprintJson, {
     usePerfectCanvas: true,
     safeWebGL: true,
@@ -37,13 +36,12 @@ await Chromium.launch({
 const context = await Chromium.newContext();
 const page = await context.newPage();
 await page.goto('https://example.com');
-console.log(await page.title());
 
 // --- Dọn dẹp ---
 await Chromium.quit();
 ```
 
-## Lifecycle rules
+## Lifecycle Rules
 
 | Gọi method | Khi chưa launch | Sau launch | Sau quit |
 |---|---|---|---|
@@ -54,22 +52,21 @@ await Chromium.quit();
 | `useProxy()` | OK | OK | OK |
 | `useProfile()` | OK | OK | OK |
 
-## Profile safety
+## Profile Safety
 
 Khi bạn gọi `useProfile('./profiles/user')`, dữ liệu được:
 
-1. **Copy** vào thư mục tạm `<BROWSER_RUNNING_DIR>/profile/<timestamp>_<random>/`
+1. **Copy** vào thư mục tạm `<BROWSER_RUNNING_DIR>/profile/<timestamp>_<random4hex>/`
 2. **Browser chạy trên bản copy** -- không corrupt dữ liệu gốc
 3. **Khi quit**: copy ngược lại thư mục gốc, xoá thư mục tạm
 
 Nếu browser crash, profile gốc vẫn an toàn. Thư mục tạm được CleanupDaemon dọn sau.
 
-## Custom launcher
+## Custom Launcher
 
-Bạn có thể thay thế Playwright launcher mặc định bằng `repackChromium()`:
+Bạn có thể thay thế Playwright launcher mặc định:
 
 ```ts
-import { Chromium } from 'fingerprint-chromium-engine';
 import { chromium } from 'playwright-extra';
 
 Chromium.repackChromium({
@@ -78,12 +75,14 @@ Chromium.repackChromium({
 });
 ```
 
-**Lưu ý**: gọi `repackChromium()` sẽ reset toàn bộ config -- cần set lại fingerprint/proxy/profile.
+**Lưu ý:** `repackChromium()` không reset config -- fingerprint/proxy/profile đã cấu hình vẫn được áp dụng khi gọi `launch()`.
 
 ## Môi trường
 
-| Biến | Mục đích |
-|---|---|
-| `BABLOSOFT_KEY` | Key bảo mật |
-| `BROWSER_RUNNING_DIR` | Thư mục tạm cho browser (mặc định `temp`) |
-| `ENGINE_WORKING_DIR` | Thư mục làm việc engine (mặc định `data`) |
+| Biến | Mục đích | Mặc định |
+|---|---|---|
+| `BABLOSOFT_KEY` | Key bảo mật cho API engine | `''` |
+| `BROWSER_RUNNING_DIR` | Thư mục tạm cho browser đang chạy | `.tmp/browser/running` |
+| `ENGINE_WORKING_DIR` | Thư mục làm việc của engine | `.tmp/browser/engine` |
+
+---

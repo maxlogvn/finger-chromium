@@ -3,56 +3,54 @@
 ## Vấn đề
 
 Cần in-browser scripts để:
-1. Đợi resize hoàn tất (ResizeObserver + rAF)
-2. Lấy kích thước viewport hiện tại (innerWidth/Height)
+1. Đợi resize hoàn tất (ResizeObserver + double rAF).
+2. Lấy kích thước viewport hiện tại (innerWidth/Height).
 
-Các script này được chạy trong browser context qua `page.evaluate()` hoặc CDP `Runtime.evaluate`.
+Các script này chạy trong browser context qua `page.evaluate()` hoặc CDP `Runtime.evaluate`.
 
 ## Giải pháp: Object `scripts`
 
-### waitForResize
+### `waitForResize`
 
 ```ts
-function waitForResize() {
-  return new Promise<void>((resolve) => {
-    const ro = new ResizeObserver(() => {
-      ro.disconnect();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => resolve());
-      });
-    });
-    ro.observe(document.body);
+() => {
+  return new Promise((done) => {
+    new ResizeObserver((_, observer) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => done(observer.disconnect())));
+    }).observe(document.body);
   });
-}
+};
 ```
 
-- ResizeObserver disconnect ngay sau lần observe đầu tiên
-- Double requestAnimationFrame đảm bảo layout đã ổn định (1 rAF cho layout, 1 rAF cho paint)
+- `ResizeObserver` disconnect ngay sau lần observe đầu tiên -- tránh memory leak.
+- Double `requestAnimationFrame`: lần 1 cho layout, lần 2 cho paint -- đảm bảo kích thước ổn định.
 
-### getViewport
+### `getViewport`
 
 ```ts
-function getViewport() {
-  return {
-    width: window.innerWidth,
-    height: window.innerHeight,
-  };
-}
+() => ({ width: window.innerWidth, height: window.innerHeight });
 ```
 
-## Serialization
+Dùng `innerWidth` thay `clientWidth` -- fingerprint service dùng `innerWidth` (bao gồm scrollbar).
 
-Scripts được lưu trong object `Record<string, (...args) => unknown>`. Khi cần dùng, gọi `.toString()` để lấy function body và truyền vào `page.evaluate()` hoặc CDP `Runtime.evaluate`.
+### Serialization
+
+Scripts được lưu trong object `Record<string, (...args) => unknown>`. Khi cần dùng, truyền trực tiếp vào `page.evaluate()` hoặc gọi `.toString()` cho CDP:
 
 ```ts
-// adapter/utils.ts
+// Playwright page context
 await page.evaluate(scripts.waitForResize);
 
-// plugin/browser.ts (CDP)
+// CDP Runtime context
 await cdp.Runtime.evaluate({
-  expression: `(${scripts.getViewport.toString()})()`,
+  expression: `(${scripts.waitForResize})()`,
+  awaitPromise: true,
 });
 ```
+
+### Tại sao không dùng closure variables?
+
+Scripts chạy trong isolated browser context -- closure variables không được capture. Mọi thứ phải nằm trong function body. Đây là hạn chế của `page.evaluate()`: chỉ chấp nhận function + serializable args.
 
 ---
 

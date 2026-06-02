@@ -1,10 +1,33 @@
 # Overview: API Connector
 
-File: `src/plugin/connector/index.ts` (90 dòng).
+## Mục tiêu
 
-## Lưu ý kỹ thuật
+Xây dựng lớp wrapper đồng bộ cho RemoteEngine: singleton, async-lock, error normalization, auto-start PCAP server.
 
-- `result.response ?? result`: engine binary trả response ở 2 format khác nhau. Tuỳ API call, response có thể nằm trong `response` field hoặc là root object. Cần cả 2 để tương thích.
-- `requestTimeout: 0` cho perfectCanvasRequest: giá trị `0` được xử lý đặc biệt trong `runFunction` - khi `requestTimeout = 0`, hàm `setTimeout` không được gọi (vì setTimeout 0ms vẫn sẽ chạy, nhưng timer không reject). Thực tế, nếu `requestTimeout` falsy (0, undefined, null), `runFunction` bỏ qua hoàn toàn timer timeout.
-- `once()` package dùng cho notification và PCAP server listen -- đây là zero-dependency package, chỉ đảm bảo function chạy đúng một lần.
-- Biến môi trường `FINGERPRINT_TIMEOUT` dùng chung cho cả engine timeout và request timeout. Nếu cần khác nhau, phải set riêng.
+## Kết quả
+
+- `src/plugin/connector/index.ts`: 90 dòng.
+- Singleton `engine` instance được export.
+- `api(name, params)` function với async-lock.
+- PCAP server tự động start khi import.
+- Notification cho bản free (thiếu key).
+
+## Kiểm tra
+
+- `npm run lint` -- 0 errors.
+- Các import: `RemoteEngine`, `pcapServer`, `AsyncLock`, `MissingKeyError`, `PluginError`.
+- `async-lock` có trong dependencies.
+
+## Sai lệch so với kế hoạch
+
+| Kế hoạch | Thực tế | Lý do |
+|---|---|---|
+| Dùng `engineTimeout` và `requestTimeout` riêng | Cả 2 đều lấy từ `FINGERPRINT_TIMEOUT` | Đơn giản hoá cấu hình, người dùng chỉ cần set 1 biến |
+| PCAP server start riêng | Auto-start khi import connector | Không thể quên start, giảm lỗi người dùng |
+
+## Ghi chú kỹ thuật
+
+- `FINGERPRINT_TIMEOUT` dùng chung cho cả engine và request timeout. Nếu cần tách riêng, có thể set qua `setEngineTimeout()` và `setRequestTimeout()` trên engine instance.
+- Khi PerfectCanvas request được bật, `requestTimeout` set về 0 (vô hạn). Lý do: quá trình render canvas động có thể mất nhiều phút.
+
+---

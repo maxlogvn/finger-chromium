@@ -2,17 +2,25 @@
 
 ## Tổng quan
 
-PlaywrightFingerprintPlugin kết nối FingerprintPlugin với Playwright API. Nó cho phép bạn dùng `launchPersistentContext()` quen thuộc thay vì spawn worker.exe trực tiếp.
+`PlaywrightFingerprintPlugin` là cầu nối giữa `FingerprintPlugin` và Playwright. Nó cho phép bạn dùng `launchPersistentContext()` quen thuộc của Playwright, trong khi fingerprint, proxy, và profile được engine binary quản lý.
 
 ## Cách dùng
 
 ```ts
+import { PlaywrightFingerprintPlugin } from 'fingerprint-chromium-engine/adapter/playwright/engine';
+
 const plugin = new PlaywrightFingerprintPlugin();
 
-// Dùng API giống Playwright
+// Cấu hình giống FingerprintPlugin
+plugin
+  .useFingerprint(fpString, { usePerfectCanvas: true })
+  .useProxy('http://user:pass@proxy:8080', { changeWebRTC: 'replace' })
+  .useProfile('./profiles/myprofile');
+
+// Launch persistent context -- API giống Playwright
 const context = await plugin.launchPersistentContext('', {
   key: process.env.BABLOSOFT_KEY,
-  args: ['--disable-web-security'],
+  args: ['--disable-web-security', '--no-sandbox'],
 });
 
 const page = await context.newPage();
@@ -31,24 +39,33 @@ await page.goto('https://example.com');
 
 ## Options không hỗ trợ
 
-Các option sau sẽ throw error nếu bạn truyền vào:
-
-- **`proxy`**: Dùng `useProxy()` thay thế
-- **`channel`**: Chỉ hỗ trợ Chromium mặc định
-- **`firefoxUserPrefs`**: Chỉ hỗ trợ Chromium
+| Option | Lý do | Thay bằng |
+|---|---|---|
+| `proxy` | Engine binary quản lý proxy riêng | `useProxy()` |
+| `channel` | Chỉ hỗ trợ Chromium mặc định | -- |
+| `firefoxUserPrefs` | Chỉ Firefox mới có | -- |
 
 ## Viewport tự động
 
-Mỗi page mới được tạo qua `context.newPage()` sẽ tự động resize theo fingerprint. `page.setViewportSize()` bị chặn (chỉ in warning), vì viewport đã bị fingerprint lock.
+Mỗi page mới tạo qua `context.newPage()` sẽ tự động resize theo fingerprint.
+`page.setViewportSize()` bị chặn (chỉ in warning) -- viewport đã bị fingerprint lock.
 
-## Luồng xử lý chi tiết
+## Luồng xử lý
 
 ```
 1. launchPersistentContext('', options)
-2. Validate options (proxy/channel/firefoxUserPrefs → throw)
+2. #validateOptions(options) -- throw nếu có proxy/channel/firefoxUserPrefs
 3. Filter --user-data-dir khỏi args
-4. Gọi _launch(false, ...) với custom launcher
-5. Custom launcher gọi pwLauncher.launchPersistentContext()
-6. Configure: bindHooks + onClose + resize page đầu tiên
+4. Tạo custom launcher: gọi pwLauncher.launchPersistentContext()
+5. _launch(false, ...) -- spawn worker.exe qua custom launcher
+6. configure() -- bindHooks + onClose + resize page đầu tiên
 7. Return BrowserContext
 ```
+
+## Lưu ý
+
+- `launch()` không hỗ trợ đầy đủ -- nó in warning và fallback sang `launchPersistentContext`.
+- `--disable-extensions` tự động bị loại khỏi args vì engine cần extensions.
+- Tất cả instance chia sẻ cùng `serviceKey` (module-level).
+
+---

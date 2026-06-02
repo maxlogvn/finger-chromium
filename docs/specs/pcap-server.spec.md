@@ -1,40 +1,65 @@
 # Spec: PCAP Server
 
-## Module: src/plugin/connector/pcapServer/index.ts
+## Mô tả
 
-### Export
+PCAP server là TCP server nhỏ (52 dòng) mô phỏng PCAP interface cho engine FastExecuteScript.exe. Nó xử lý request ID và heartbeat qua giao thức binary.
 
-```ts
-export const listen: (port?: number, host?: string) => Promise<number>;
-```
+## API / Interfaces chính
 
-Wrapped với `once()` -- chỉ một server duy nhất, gọi lần 2 trả về port cũ.
-
-### Protocol
-
-| Lệnh | Mã | Request | Response |
-|---|---|---|---|
-| Request ID | `0x01` | `[0x01]` | `[0x01, 0x04, 0x00, 0x00, 0x00, 0x0a, id, id>>8, id>>16]` |
-| Heartbeat | `0x07` | `[0x07]` | `[0x07, 0x00, 0x00, 0x00, 0x00]` |
-
-### Implementation
+### `listen(port, host)`
 
 ```ts
-const server = net.createServer((socket) => {
-  socket.on('data', (buffer) => {
-    const cmd = buffer[0];
-    if (cmd === 0x01) {
-      const response = new Uint8Array([0x01, 0x04, 0x00, 0x00, 0x00, 0x0a, id, id>>8, id>>16]);
-      id++;
-      socket.write(response);
-    } else if (cmd === 0x07) {
-      socket.write(new Uint8Array([0x07, 0x00, 0x00, 0x00, 0x00]));
-    }
-  });
-});
+export const listen = once((port = 0, host = '127.0.0.1'): Promise<number>)
 ```
 
-### Error handling
+- `port`: Cổng TCP (0 = random).
+- `host`: Địa chỉ lắng nghe (mặc định localhost).
+- Returns: `Promise<number>` -- port đang lắng nghe.
+- Dùng `once()` để chỉ gọi một lần.
 
-- `EADDRINUSE` -> retry sau 1s
-- `.unref()` trên timer retry để không block process exit
+## Luồng dữ liệu
+
+### Request ID (0x01)
+
+```
+Engine → Server: [0x01]
+Server → Engine: [0x01, 0x04, 0x00, 0x00, 0x00, 0x0a, id_lo, id_mid, id_hi]
+  │
+  ├── 0x01: loại response
+  ├── 0x04: độ dài payload (4 bytes)
+  ├── 0x00, 0x00, 0x00, 0x0a: magic number
+  └── id (3 bytes, little-endian): ID tăng dần mỗi lần
+```
+
+### Heartbeat (0x07)
+
+```
+Engine → Server: [0x07]
+Server → Engine: [0x07, 0x00, 0x00, 0x00, 0x00]
+  │
+  ├── 0x07: loại response
+  └── 0x00, 0x00, 0x00, 0x00: payload rỗng
+```
+
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/plugin/connector/pcapServer/index.ts` | TCP server (52 dòng) |
+| `src/plugin/connector/index.ts` | Gọi pcapServer.listen() khi import |
+
+## Xử lý lỗi
+
+| Lỗi | Xử lý |
+|---|---|
+| `EADDRINUSE` | Retry sau 1 giây (setTimeout.unref()) |
+| Socket error (client disconnect) | Log bằng `debug` |
+
+## Ghi chú kỹ thuật
+
+- `net.createServer` tạo TCP server thuần Node.js, không cần thư viện bên ngoài.
+- `once()` từ package `once` đảm bảo chỉ một server được khởi tạo.
+- `setTimeout(...).unref()` -- không giữ process sống nếu không còn tác vụ nào khác.
+- ID counter bắt đầu từ 0, tăng dần mỗi lần engine request.
+
+---

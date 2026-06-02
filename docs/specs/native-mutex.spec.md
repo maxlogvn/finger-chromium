@@ -1,42 +1,65 @@
 # Spec: Native Mutex
 
-## Module: src/plugin/mutex/index.ts (48 dòng)
+## Mô tả
 
-### Implementation
+Native Mutex load C++ addon (`mutex.node`) để tạo Windows named mutex cho engine binary. Hỗ trợ win32 32-bit và 64-bit.
+
+## API / Interfaces chính
+
+### `create(name)`
 
 ```ts
-import { createRequire } from 'node:module';
-
-const require = createRequire(__filename);
-
-const nativePath = path.join(__dirname, 'mutex', `win32-${process.arch}`, 'mutex.node');
-const mutex = require(nativePath) as MutexModule;
-
-export default mutex;
 export const create = mutex.create;
+// type: (name: string) => void
 ```
 
-### Architecture detection
+Tạo Windows named mutex với tên `name`.
 
-| process.arch | Path |
-|---|---|
-| `x64` | `mutex/win32-x64/mutex.node` |
-| `ia32` | `mutex/win32-ia32/mutex.node` |
-
-### Mutex naming
-
-```
-BASProcess${pid}
-```
-
-Ví dụ: `BASProcess12345`
-
-### Interface
+### `mutex` (default export)
 
 ```ts
-interface MutexModule {
-  create: (name: string) => void;
-}
+const mutex: MutexModule = loadNativeAddon();
+// MutexModule: { create: (name: string) => void, [key: string]: unknown }
 ```
 
-Không có `close()` -- mutex tự động release khi process kết thúc (Windows kernel-managed).
+## Luồng dữ liệu
+
+```
+Import mutex từ 'fingerprint-chromium-engine'
+    │
+    ├── createRequire(import.meta.url) → require
+    │
+    ├── require(`plugin/mutex/win32-x64/mutex.node`) → native addon
+    │   └── Lỗi? → kiểm tra platform/arch → Error
+    │
+    └── Export create() function
+                │
+                ▼
+FingerprintPlugin gọi create('BASProcess')
+    │
+    └── Windows kernel tạo named mutex
+```
+
+## File liên quan
+
+| File | Vai trò |
+|---|---|
+| `src/plugin/mutex/index.ts` | Loader cho mutex.node (48 dòng) |
+| `src/plugin/mutex/win32-x64/mutex.node` | C++ addon 64-bit (binary) |
+| `src/plugin/mutex/win32-ia32/mutex.node` | C++ addon 32-bit (binary) |
+
+## Xử lý lỗi
+
+| Lỗi | Điều kiện |
+|---|---|
+| `Unsupported OS architecture for named mutex.` | Windows nhưng arch không phải x64/ia32 |
+| `Unsupported OS platform for named mutex.` | Platform không phải Windows |
+
+## Ghi chú kỹ thuật
+
+- `createRequire(import.meta.url)` với `import.meta.url` là đường dẫn file hiện tại (ESM).
+- `PACKAGE_PATH` resolve từ `__dirname` lên 3 cấp: `mutex/` -> `plugin/` -> `src/` -> package root.
+- `.node` file không thể bundle -- được copy vào dist/ khi build.
+- `package.json` `files` field cần bao gồm thư mục `plugin/mutex/`.
+
+---
