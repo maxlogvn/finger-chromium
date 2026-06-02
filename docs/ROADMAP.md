@@ -336,7 +336,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Tách Known Issues ra file riêng
 
-- **Trạng thái:** [/] Đang làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
 - **Tài liệu:** [Design](designs/known-issues-separate.design.md) | [Spec](specs/known-issues-separate.spec.md) | [Plan](plans/known-issues-separate.plan.md)
