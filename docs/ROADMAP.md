@@ -24,6 +24,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
+- **Tài liệu:** [Design](designs/project-infrastructure.design.md) | [Spec](specs/project-infrastructure.spec.md) | [Plan](plans/project-infrastructure.plan.md) | [Product](products/project-infrastructure.product.md) | [Overview](overviews/project-infrastructure.overview.md)
 - **Ghi chú:**
   - TypeScript strict mode, target ES2022
   - tsup bundle (ESM + CJS)
@@ -305,9 +306,27 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Tài liệu tính năng (design, spec, plan, product, overview)
 
-- **Trạng thái:** [ ] Backlog
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
 - **Ghi chú:**
-  - Tất cả thư mục `docs/designs/`, `docs/specs/`, `docs/plans/`, `docs/products/`, `docs/overviews/` đang trống
   - Cần viết tài liệu cho từng tính năng theo WORKFLOW.md
+  - [x] Hạ tầng dự án
+  - [x] Hệ thống kiểu
+  - [x] Hệ thống lỗi
+  - [x] RemoteEngine
+  - [x] API Connector
+  - [x] PCAP Server
+  - [x] Browser Launcher
+  - [x] Native Mutex
+  - [x] FingerprintPlugin
+  - [x] Playwright Bridge
+  - [x] BrowserEngine
+  - [x] Cấu hình Fingerprint
+  - [x] Cấu hình Proxy
+  - [x] Quản lý Profile
+  - [x] Quản lý Viewport
+  - [x] File Cleanup Daemon
+  - [x] Hook Binding
+  - [x] Common Scripts
+  - [x] Debug Logging
