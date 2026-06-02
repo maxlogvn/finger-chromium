@@ -55,10 +55,12 @@ src/
 
 ## Ghi chú quan trọng (code issues cần sửa)
 
-| # | Vấn đề | File | Mô tả |
-|---|---|---|---|
-| 1 | `notify()` dead code | `src/plugin/connector/utils.ts`, `src/plugin/connector/index.ts` | `notify()` được định nghĩa và export nhưng không file nào import. `notifyTimer` được khai báo (dòng 74) và `clearTimeout(notifyTimer)` trong `finally` (dòng 85), nhưng không bao giờ được gán giá trị. |
-| 2 | Error classes không export trong public API | `src/index.ts` | `PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError` trong `src/plugin/errors.ts` không được re-export. Người dùng không thể `import { PluginError } from 'fingerprint-chromium-engine'`. |
-| 3 | `quit()` xoá toàn bộ BROWSER_RUNNING_DIR | `src/adapter/playwright/chromium.ts:207` | `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc (`.tmp/browser/running/`), không chỉ temp dir của instance. Ảnh hưởng đến instance khác đang chạy. |
-| 4 | `PWChromium.ts` JSDoc gọi `usePrivateKey()` không tồn tại | `src/types/PWChromium.ts:17,25` | JSDoc example đề cập method `usePrivateKey()` không có trong interface. Method thật là `setServiceKey(key)` trong `FingerprintPlugin`. |
-| 5 | `npm run clean` dùng `rm -rf` không tương thích Windows | `package.json` | Pre-existing bug. Tạm thời dùng PowerShell `Remove-Item -Recurse -Force dist`. |
+1. **`notify()` dead code** (`src/plugin/connector/utils.ts`, `src/plugin/connector/index.ts`): `notify()` được định nghĩa và export nhưng không file nào import. `notifyTimer` được khai báo và `clearTimeout(notifyTimer)` trong `finally`, nhưng không bao giờ được gán giá trị.
+
+2. **Error classes không export trong public API** (`src/index.ts`): `PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError` trong `src/plugin/errors.ts` không được re-export. Người dùng không thể `import { PluginError } from 'fingerprint-chromium-engine'`.
+
+3. **`quit()` xoá toàn bộ BROWSER_RUNNING_DIR** (`src/adapter/playwright/chromium.ts:207`): `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc (`.tmp/browser/running/`), không chỉ temp dir của instance -- ảnh hưởng đến instance khác đang chạy.
+
+4. **`PWChromium.ts` JSDoc gọi `usePrivateKey()` không tồn tại** (`src/types/PWChromium.ts:17,25`): JSDoc example đề cập method `usePrivateKey()` không có trong interface. Method thật là `setServiceKey(key)` trong `FingerprintPlugin`.
+
+5. **`npm run clean` dùng `rm -rf` không tương thích Windows** (`package.json`): Pre-existing bug. Tạm thời dùng PowerShell `Remove-Item -Recurse -Force dist`.
