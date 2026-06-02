@@ -308,33 +308,14 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
-### Tài liệu tính năng (design, spec, plan, product, overview)
+### Ghi chú quan trọng (code issues cần sửa)
 
-- **Trạng thái:** [X] Hoàn thành
+- **Trạng thái:** [ ] Backlog
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** toàn bộ file trong `docs/designs/`, `docs/specs/`, `docs/plans/`, `docs/products/`, `docs/overviews/`
 - **Ghi chú:**
-  - Đã viết tài liệu cho 20 features + 1 non-feature theo WORKFLOW.md
-  - Mỗi feature có 5 files (design, spec, plan, product, overview)
-  - Non-feature có 4 files (không có product)
-  - [x] Hạ tầng dự án
-  - [x] Hệ thống kiểu
-  - [x] Hệ thống lỗi
-  - [x] RemoteEngine
-  - [x] API Connector
-  - [x] PCAP Server
-  - [x] Browser Launcher
-  - [x] Native Mutex
-  - [x] FingerprintPlugin
-  - [x] Playwright Bridge
-  - [x] BrowserEngine
-  - [x] Cấu hình Fingerprint
-  - [x] Cấu hình Proxy
-  - [x] Quản lý Profile
-  - [x] Quản lý Viewport
-  - [x] File Cleanup Daemon
-  - [x] Hook Binding
-  - [x] Common Scripts
-  - [x] Playwright Module Loader
-  - [x] Debug Logging
+  - **1. `notify()` dead code** (`src/plugin/connector/utils.ts` + `src/plugin/connector/index.ts`): `notify()` được định nghĩa và export nhưng không file nào import nó. `notifyTimer` được khai báo (dòng 74) và `clearTimeout(notifyTimer)` được gọi trong `finally` (dòng 85), nhưng không bao giờ được gán giá trị.
+  - **2. Error classes không export trong public API** (`src/index.ts`): `PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError` được định nghĩa trong `src/plugin/errors.ts` nhưng không được re-export qua `src/index.ts`. Người dùng không thể `import { PluginError } from 'fingerprint-chromium-engine'`.
+  - **3. `quit()` xoá toàn bộ BROWSER_RUNNING_DIR** (`src/adapter/playwright/chromium.ts:207`): `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc (`.tmp/browser/running/`), không chỉ temp dir của instance. Có thể ảnh hưởng đến instance khác đang chạy.
+  - **4. `PWChromium.ts` JSDoc gọi `usePrivateKey()` không tồn tại** (`src/types/PWChromium.ts:17,25`): JSDoc example và comment đề cập method `usePrivateKey()` nhưng method này không có trong interface hay implementation. Method thật là `setServiceKey(key)` trong `FingerprintPlugin`.
+  - **5. `npm run clean` dùng `rm -rf` không tương thích Windows** (`package.json`): Pre-existing bug, chưa được fix. Tạm thời dùng PowerShell `Remove-Item -Recurse -Force dist`.
