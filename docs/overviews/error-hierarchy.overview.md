@@ -1,32 +1,82 @@
 # Overview: Hệ thống lỗi (Error Hierarchy)
 
-## Mục tiêu
+## Tóm tắt
 
-Xây dựng hệ thống lỗi có phân cấp, dễ catch và xử lý riêng cho từng loại lỗi, kèm message hướng dẫn khắc phục chi tiết.
+Đã tạo 5 error class trong `src/plugin/errors.ts`: `PluginError` (base) + 4 subclass (`MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError`). Base class có `Error.captureStackTrace` và `Symbol.toStringTag`. Mỗi class có constructor nhận message string, dùng `dedent` cho multi-line message.
 
-## Kết quả
+## Kiến trúc
 
-- 1 base class `PluginError` + 4 subclass trong `src/plugin/errors.ts` (78 dòng).
-- `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError`.
-- Tất cả đều dùng `dedent` để format message.
-- Được import và sử dụng trong `connector/engine.ts` và `connector/index.ts`.
+```
+PluginError (base)
+  |-- Error.captureStackTrace(this, this.constructor)  -- V8 stack trace
+  |-- Symbol.toStringTag -> class name                 -- instanceof check
+  |-- this.name = this.constructor.name                -- subclass auto
+  |
+  |-- MissingKeyError      -- thiếu BABLOSOFT_KEY
+  |-- InvalidEngineError   -- engine chưa tải/không tìm thấy
+  |-- EngineTimeoutError   -- timeout engine start
+  |-- RequestTimeoutError  -- timeout request IPC
+```
 
-## Kiểm tra
+## Tham chiếu code
 
-- `npm run lint` -- 0 errors, không có unused variables/classes.
-- Các error classes được dùng trong 2 file connector.
-- `dedent` có trong dependencies (version `1.7.2`).
-
-## Sai lệch so với kế hoạch
-
-| Kế hoạch | Thực tế | Lý do |
+| Component | File | Dòng |
 |---|---|---|
-| Không có | `Symbol.toStringTag` được thêm vào | Giúp `String(error)` hiển thị tên class thay vì `'Error'` |
+| `DEFAULT_ERROR_MESSAGES` | `src/plugin/errors.ts` | 6-8 |
+| `PluginError` class | `src/plugin/errors.ts` | 10-36 |
+| `MissingKeyError` class | `src/plugin/errors.ts` | 38-50 |
+| `InvalidEngineError` class | `src/plugin/errors.ts` | 52-64 |
+| `EngineTimeoutError` class | `src/plugin/errors.ts` | 66-78 |
+| `RequestTimeoutError` class | `src/plugin/errors.ts` | 80-94 |
 
-## Ghi chú kỹ thuật
+## Message mẫu
 
-- `dedent` loại bỏ khoảng trắng thừa trong template literal. Nếu không có, message lỗi sẽ bị indent sâu khi log ra console.
-- `Error.captureStackTrace` được kiểm tra `if (typeof === 'function')` trước khi gọi, an toàn trên mọi runtime.
-- Tên class được tự động gán vào `this.name` để `instanceof` hoạt động chính xác.
+**MissingKeyError:**
+```
+Private key not specified. Please provide your private key from the
+bablosoft.com website in the account section.
+```
 
----
+**InvalidEngineError:**
+```
+Engine does not exist. Must specify or upload the engine.
+```
+
+**EngineTimeoutError:**
+```
+Engine runtime error. Recovery is not possible.
+```
+
+**RequestTimeoutError:**
+```
+Request timeout.
+```
+
+## Quyết định thiết kế
+
+- **`Error.captureStackTrace(this, this.constructor)`**: Target `this` (instance), skip constructor function khỏi stack trace. Chỉ V8 (Node.js, Chrome) -- không fallback cho các engine JS khác.
+- **`Symbol.toStringTag`**: `Object.prototype.toString.call(new PluginError())` -> `[object PluginError]` thay `[object Error]`. Cần thiết cho logging library dùng `Object.prototype.toString` để xác định type.
+- **`this.name = this.constructor.name`**: Subclass tự động kế thừa -- không cần override. `instanceof` check hoạt động đúng.
+- **`dedent`**: Format multi-line message -- bỏ leading whitespace. Giúp message dễ đọc trong source code.
+- **`DEFAULT_ERROR_MESSAGES`**: Constants riêng -- dễ thay đổi message (đa ngữ, custom).
+- **Không dùng `Error` thô**: `PluginError` hierarchy cho phép catch chính xác (`catch (e: PluginError)`).
+
+## Sai lệch đã biết
+
+- `PluginError` chưa được re-export public từ `src/index.ts` (KNOWN_ISSUES.md #2).
+- `MissingKeyError` message không cố định 3 dòng -- nó gồm dynamic message + 2 dòng hướng dẫn cố định (dùng `dedent`).
+
+## Lưu ý
+
+- Tất cả errors dùng `dedent` để format message multi-line.
+- `Error.captureStackTrace` chỉ V8 (Node.js, Chrome).
+- `as const` cho `DEFAULT_ERROR_MESSAGES` -- TypeScript infer literal type, không mutate.
+- Message giải thích rõ nguyên nhân + hướng khắc phục.
+
+## Tài liệu liên quan
+
+- `docs/designs/error-hierarchy.design.md`
+- `docs/specs/error-hierarchy.spec.md`
+- `docs/plans/error-hierarchy.plan.md`
+- `docs/products/error-hierarchy.product.md`
+- `src/plugin/errors.ts`

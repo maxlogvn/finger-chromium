@@ -1,46 +1,30 @@
 # Overview: Cấu hình build và tài liệu cài đặt (Build Config & Install Docs)
 
-## Mục tiêu
+## Tóm tắt
 
-Cập nhật cấu hình build trong `package.json` và sửa tài liệu hướng dẫn cài đặt để hỗ trợ cài package trực tiếp từ GitHub, đồng thời fix tiếng Việt thiếu dấu trong các tài liệu.
+Đã cập nhật cấu hình build trong `package.json` và sửa tài liệu hướng dẫn cài đặt để hỗ trợ cài package từ GitHub, fix Windows compatibility, fix tiếng Việt thiếu dấu.
 
-## Kết quả
+## Kết quả thực hiện
 
-### package.json
-
-| Script | Trước | Sau | Lý do |
+| Bước | Kế hoạch | Thực tế | Sai lệch |
 |---|---|---|---|
-| `clean` | `rm -rf dist` | `tsup --clean` | `rm -rf` không chạy trên Windows |
-| `build` | `npm run clean && tsup` | `tsup` | tsup đã có `clean: true` trong config |
-| `prepare` | _(không có)_ | `npm run build` | Tự động build khi cài từ GitHub |
+| Bước 1: Sửa package.json | `clean`, `build`, thêm `prepare` | Đúng kế hoạch | Không có |
+| Bước 2: Cập nhật tài liệu | README, product, design, spec, overview | Đúng kế hoạch | Không có |
+| Bước 3: Fix debug-logging spec | Fix tiếng Việt thiếu dấu | Đúng kế hoạch | Không có |
+| Bước 4: Kiểm tra | lint + build | 0 errors, build success | Không có |
 
-### Tài liệu đã cập nhật
+## Sai lệch đáng chú ý
 
-| File | Thay đổi |
-|---|---|
-| `README.md` | Thêm ghi chú về `prepare` script, fallback build thủ công |
-| `finger-chromium/products/project-infrastructure.product.md` | Sửa lệnh cài đặt từ npm registry sang GitHub URL |
-| `finger-chromium/designs/project-infrastructure.design.md` | Sửa lệnh cài đặt, fix ghi chú `rm -rf` |
-| `finger-chromium/specs/project-infrastructure.spec.md` | Cập nhật bảng scripts, fix ghi chú clean |
-| `finger-chromium/specs/debug-logging.spec.md` | Fix tiếng Việt thiếu dấu ("Dang" -> "Đang", "tai" -> "tải") |
-| `finger-chromium/overviews/project-infrastructure.overview.md` | Cập nhật sai lệch `rm -rf` thành `tsup --clean` |
-| `finger-chromium/Welcome.md` | Cập nhật ghi chú `npm run clean` |
-| `finger-chromium/ROADMAP.md` | Thêm mục "Cấu hình build và tài liệu cài đặt" |
+Không có.
 
-## Kiểm tra
+## Tài liệu liên quan
 
-- `npm run lint` -- 0 errors, 16 warnings (pre-existing, không do thay đổi này)
-- `npm run build` -- tsup build thành công (ESM + CJS + DTS)
+- `docs/designs/build-config-install-docs.design.md`
+- `docs/specs/build-config-install-docs.spec.md`
+- `docs/plans/build-config-install-docs.plan.md`
 
-## Sai lệch so với kế hoạch
+## Ghi chú
 
-Không có sai lệch. Task được thực hiện đúng như thiết kế đã duyệt.
-
-## Ghi chú kỹ thuật
-
-- **`prepare` script** là lifecycle hook của npm, tự động chạy sau `npm install` khi cài từ Git. Nếu người dùng dùng `--ignore-scripts`, cần build thủ công bằng `npm run build`.
-- **`tsup --clean`** sử dụng cơ chế clean có sẵn của tsup (xoá thư mục output trước khi build), tương thích cross-platform.
-- **Lệnh cài đặt chính thức:** `npm install github:maxlogvn/finger-chromium` (không phải `npm install fingerprint-chromium-engine` vì chưa publish lên npm registry).
-
----
-
+- `prepare` script là lifecycle hook của npm, chạy sau `npm install` từ Git.
+- `tsup --clean` cross-platform, thay thế `rm -rf dist`.
+- Lệnh cài đặt chính thức: `npm install github:maxlogvn/finger-chromium`.

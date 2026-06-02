@@ -1,79 +1,41 @@
 # Design: Hệ thống kiểu (Type System)
 
-## Vấn đề cần giải quyết
+## Bối cảnh
 
-Thư viện này cần giao tiếp với nhiều thành phần khác nhau: engine binary từ bablosoft, Playwright, proxy server, và fingerprint data. Mỗi thành phần có cấu trúc dữ liệu riêng:
+Thư viện cần cung cấp TypeScript types cho người dùng: interface chính `PWChromium` (fluent API), và các option type `FingerprintOptions`, `ProxyOptions`, `ProfileOptions`, `FetchOptions`. Các type này được dùng bởi cả code nội bộ và người dùng cuối.
 
-- **Fingerprint:** một object JSON phức tạp chứa thông phần cứng, màn hình, canvas, WebGL, audio... và các tùy chọn để bật/tắt từng kỹ thuật giả lập.
-- **Proxy:** URL kết nối proxy, kèm theo vô số tùy chọn về DNS, WebRTC, timezone, geolocation, IP detection...
-- **Profile:** đường dẫn thư mục profile, tùy chọn load lại proxy/fingerprint từ lần chạy trước.
-- **Fetch:** bộ lọc để tìm fingerprint phù hợp từ service của bablosoft.
-- **Public API:** interface cho người dùng -- cần rõ ràng, có JSDoc đầy đủ, kiểu chặt chẽ.
+## Câu hỏi làm rõ
 
-Nếu không có hệ thống kiểu rõ ràng, sẽ dễ xảy ra:
-- Nhầm lẫn giữa các option (ví dụ: `changeWebRTC` nhận `'enable' | 'disable' | 'replace'` chứ không phải boolean).
-- Thiếu type check khi gọi API (ví dụ: quên truyền `data` string cho `useFingerprint`).
-- Không biết một field có mặc định là gì.
-- IDE không gợi ý được property names.
+- Nên để type trong file riêng hay gộp chung? → File riêng, tránh circular dependency, dễ maintain.
+- `PWChromium` có nên là class hay interface? → Interface, vì implementation là `BrowserEngine` singleton.
+- Có cần export tất cả type không? → Chỉ export public types. Internal types giữ internal.
 
-## Giải pháp chọn
+## Các phương án
 
-Tách riêng 5 file type trong `src/types/`, mỗi file phụ trách một nhóm dữ liệu:
+### Phương án 1: Gộp tất cả type vào một file
 
-### 1. `PWChromium.ts` -- Interface Public API
+- Ưu điểm: Dễ tìm, chỉ một file.
+- Nhược điểm: File lớn, khó maintain, circular dependency tiềm ẩn.
 
-Đây là interface mà người dùng chính thức tương tác. Nó định nghĩa tất cả method có sẵn trên singleton `Chromium`: `useFingerprint`, `useProxy`, `useProfile`, `launch`, `newContext`, `newFingerprint`, `quit`, `repackChromium`. (Private key được set qua constructor hoặc biến môi trường `BABLOSOFT_KEY`, không phải method riêng.)
+### Phương án 2: Tách thành 5 file riêng (chọn)
 
-**Tại sao dùng interface thay vì class?** Interface cho phép nhiều implementation khác nhau (VD: một bản mock cho test, một bản production). Nó cũng dễ dùng hơn khi publish dưới dạng `.d.ts`.
+- Ưu điểm: Mỗi file một trách nhiệm, dễ maintain, dễ import.
+- Nhược điểm: Nhiều file, cần quản lý import.
 
-**Tại sao `object` type cho engine property?** `engine` là instance gốc của plugin. Dùng `object` thay vì type cụ thể để tránh circular dependency giữa các module và cho phép internal implementation thay đổi mà không ảnh hưởng đến public API.
+## Giải pháp được chọn
 
-### 2. `fingerprint.ts` -- FingerprintOptions
+- **Phương án AI đề xuất:** Phương án 2 (5 files riêng).
+- **Phương án được chọn:** Phương án 2.
+- **Lý do:** Giúp codebase sạch, dễ mở rộng, tránh circular dependency.
+- **Cấu trúc:**
+  - `PWChromium.ts` — Interface chính, fluent API methods.
+  - `fingerprint.ts` — `FingerprintOptions`.
+  - `proxy.ts` — `ProxyOptions` (WebRTC, DNS, IP detection,...).
+  - `profile.ts` — `ProfileOptions` (loadProxy, loadFingerprint).
+  - `fetch.ts` — `FetchOptions` (tags, timeLimit, browser version,...).
 
-Chứa tất cả tùy chọn cho việc inject fingerprint.
+### Chi tiết kỹ thuật
 
-Các quyết định thiết kế:
-- **`usePerfectCanvas` mặc định `true`:** PerfectCanvas là cách chính xác nhất để giả lập Canvas fingerprint. Nó thay thế toàn bộ dữ liệu canvas bằng dữ liệu từ fingerprint thật. Nếu fingerprint không có dữ liệu PerfectCanvas, option này sẽ không có tác dụng.
-- **`safeCanvas` mặc định `true`:** Thêm nhiễu vào Canvas 2D. Đây là lớp bảo vệ thứ hai sau PerfectCanvas. Khi cả hai đều bật, PerfectCanvas được ưu tiên.
-- **`safeWebGL` mặc định `true`:** Che giấu thông tin GPU (tên hãng, renderer). WebGL fingerprinting là kỹ thuật phổ biến để theo dõi.
-- **`safeElementSize` mặc định `false`:** Can thiệp vào ClientRects có thể làm hỏng layout của một số website. Để `false` là an toàn nhất.
-- **`emulateSensorAPI` và `emulateDeviceScaleFactor` mặc định `true`:** Giả lập càng nhiều API càng làm fingerprint trở nên tự nhiên hơn.
+**`IPString = string & {}`:** Dùng kỹ thuật branded type để tạo type riêng cho IP string. `string & {}` là intersection với empty object type, tạo ra subtype của `string` có thể phân biệt với `string` thường ở compile time. Điều này giúp type-safe hơn khi truyền tham số — function nhận `IPString` sẽ báo lỗi nếu truyền `string` thường, tránh nhầm lẫn giữa IP và các giá trị chuỗi khác.
 
-### 3. `proxy.ts` -- ProxyOptions
-
-Chứa tất cả tùy chọn cho proxy.
-
-Các quyết định thiết kế:
-- **`changeWebRTC` dùng string union (`'enable' | 'disable' | 'replace'`) thay vì boolean:** Vì WebRTC có 3 trạng thái, không thể dùng boolean.
-- **`dnsMode` cũng dùng string union (`'system-proxy' | 'custom-proxy' | 'custom-direct'`):** 3 chế độ DNS khác nhau, mỗi chế độ có hành vi riêng.
-- **IP detection options dùng object notation cho v4/v6:** IP Extraction Method, Param, URL và Detect External IP có thể nhận giá trị chung cho cả IPv4 và IPv6, hoặc riêng cho từng loại (dùng object `{ v4: ..., v6: ... }`). Đây là lựa chọn linh hoạt nhất.
-- **`publicIPv4` và `publicIPv6` kiểu `PublicIPReplacement`:** Cho phép 3 giá trị: `'disable'` (không hiển thị), `'auto'` (tự động lấy từ proxy), hoặc một IP string cụ thể.
-- **`ipInfoMethod` chỉ hỗ trợ `'database'` và `'ip-api.com'`:** Engine binary hỗ trợ thêm một số method không dùng, nhưng 2 cái này là đủ cho hầu hết trường hợp.
-
-### 4. `profile.ts` -- ProfileOptions
-
-Đơn giản nhất -- chỉ có 2 boolean option: `loadProxy` và `loadFingerprint`. Cả hai đều mặc định `true` vì mục đích của profile là giữ lại trạng thái.
-
-### 5. `fetch.ts` -- FetchOptions, Tag, Time
-
-Bộ lọc để gọi API fingerprint service.
-
-- **`Tag` và `Time` là type union:** Giới hạn giá trị hợp lệ ngay tại type level, tránh typo.
-- **`FetchOptions` chứa các bộ lọc:** tags, timeLimit, kích thước màn hình, phiên bản browser, PerfectCanvas request, custom server.
-- **`minBrowserVersion` và `maxBrowserVersion` nhận `'current'` hoặc number:** Dùng `'current'` để tự động khớp với phiên bản Chrome hiện tại -- tiện lợi khi viết script.
-
-## Cấu trúc phụ thuộc
-
-```
-PWChromium.ts (interface chính)
-  ├── tham chiếu PluginLaunchOptions từ adapter
-  │
-  ├── useFingerprint(data, options) ---> FingerprintOptions (fingerprint.ts)
-  ├── useProxy(data, options)        ---> ProxyOptions (proxy.ts)
-  ├── useProfile(dir, options)       ---> ProfileOptions (profile.ts)
-  └── newFingerprint(options)        ---> FetchOptions (fetch.ts)
-```
-
-Không có type nào phụ thuộc lẫn nhau -- mỗi file độc lập, dễ maintain.
-
----
+**`PWChromium` là interface, không phải class:** Implementation là `BrowserEngine` singleton (`src/adapter/playwright/chromium.ts`). Dùng interface giúp tách contract ra khỏi implementation, cho phép thay đổi implementation mà không ảnh hưởng đến người dùng. Người dùng chỉ tương tác qua singleton `Chromium`, không cần `new`.

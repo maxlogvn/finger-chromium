@@ -1,43 +1,99 @@
-# Plan: Hệ thống lỗi (Error Hierarchy)
+# Plan: Hệ thống Lỗi (Error Hierarchy)
 
 ## Các bước thực hiện
 
-- [x] **Bước 1: Tạo `src/plugin/errors.ts`**
-  - Định nghĩa `PluginError extends Error`:
-    - Constructor nhận `message: string`, gọi `super(message)`.
-    - Set `this.name = this.constructor.name`.
-    - Gọi `Error.captureStackTrace` nếu có.
-    - Thêm `Symbol.toStringTag` getter.
-  - Định nghĩa `MissingKeyError extends PluginError`:
-    - Message kèm hướng dẫn về set key cho cả fetch và apply.
-  - Định nghĩa `InvalidEngineError extends PluginError`:
-    - Message kèm 3 bước khắc phục (xoá engine, tải lại, báo issue).
-  - Định nghĩa `EngineTimeoutError extends PluginError`:
-    - Message kèm hướng dẫn setEngineTimeout.
-  - Định nghĩa `RequestTimeoutError extends PluginError`:
-    - Message kèm hướng dẫn setRequestTimeout.
-  - Dùng `dedent` package để format message template.
+- [x] **Bước 1: Định nghĩa PluginError base class** (file: `src/plugin/errors.ts`, dòng 10-36)
 
-- [x] **Bước 2: Import và sử dụng trong connector**
-  - `connector/engine.ts`: throw `EngineTimeoutError`, `InvalidEngineError`, `RequestTimeoutError`.
-  - `connector/index.ts`: throw `PluginError`, `MissingKeyError`.
+    **Signature:**
+    ```ts
+    export class PluginError extends Error {
+      [Symbol.toStringTag]: string;
+      constructor(message?: string);
+    }
+    ```
 
-## File liên quan
+    **Logic chi tiết:**
+    ```ts
+    constructor(message?: string) {
+      super(message || 'PluginError');
+      this.name = this.constructor.name;
+      this[Symbol.toStringTag] = this.constructor.name;
+      Error.captureStackTrace(this, this.constructor);  // V8 stack trace — bỏ constructor khỏi trace
+    }
+    ```
 
-| File | Vai trò |
-|---|---|
-| `src/plugin/errors.ts` | Định nghĩa 5 error classes |
-| `src/plugin/connector/engine.ts` | Runtime errors |
-| `src/plugin/connector/index.ts` | Config errors |
+    **Tại sao các chi tiết:**
+    - `Error.captureStackTrace(this, this.constructor)` — target `this` (instance), limit stack trace bỏ qua constructor function, bỏ qua `PluginError` ở top.
+    - `Symbol.toStringTag` — `Object.prototype.toString.call(new PluginError())` → `[object PluginError]` thay `[object Error]`.
+    - `this.name = this.constructor.name` — subclass kế thừa không cần override.
+
+- [x] **Bước 2: Định nghĩa các Error subclass** (file: `src/plugin/errors.ts`, dòng 38-94)
+
+    **Signatures:**
+    ```ts
+    export class MissingKeyError extends PluginError {
+      constructor(message?: string);
+    }
+
+    export class InvalidEngineError extends PluginError {
+      constructor(message?: string);
+    }
+
+    export class EngineTimeoutError extends PluginError {
+      constructor(message?: string);
+    }
+
+    export class RequestTimeoutError extends PluginError {
+      constructor(message?: string);
+    }
+    ```
+
+    **Chi tiết constructor mỗi class:**
+    ```ts
+    constructor(message: string = DEFAULT_MESSAGES.SomeError) {
+      super(message);  // PluginError tự set name, toStringTag
+    }
+    ```
+
+    **Message constants (dòng 6-8):**
+    ```ts
+    export const DEFAULT_ERROR_MESSAGES = {
+      MissingKeyError: 'Private key not specified. Please provide your private key from the bablosoft.com website in the account section.',
+      InvalidEngineError: 'Engine does not exist. Must specify or upload the engine.',
+      EngineTimeoutError: 'Engine runtime error. Recovery is not possible.',
+      RequestTimeoutError: 'Request timeout.',
+    } as const;
+    ```
+
+    **Tại sao:** `as const` literal type — TypeScript infer string literal, không mutate. Messages mặc định giải thích rõ (đường dẫn lấy key, hướng dẫn upload engine).
+
+- [x] **Bước 3: Update index.ts export** (file: `src/index.ts`)
+
+    **Signature:**
+    ```ts
+    export {
+      PluginError,
+      MissingKeyError,
+      InvalidEngineError,
+      EngineTimeoutError,
+      RequestTimeoutError,
+    } from './plugin/errors';
+    ```
+
+**Edge cases (dùng sai error class):**
+- Throw `PluginError` với message tuỳ chỉnh → vẫn PluginError instance.
+- Catch `PluginError` bắt tất cả error subclass.
+- Catch `MissingKeyError` chỉ bắt MissingKeyError.
 
 ## Kiểm tra
 
-- `npm run lint` -- 0 errors.
-- Các error classes được import và dùng trong codebase, không có unused export.
+```bash
+npm run lint      # ESLint check
+```
 
 ## Ghi chú
 
-- `dedent` là dependency -- cần đảm bảo có trong `package.json` dependencies.
-- Tất cả error message đều viết bằng tiếng Việt để phù hợp với người dùng chính.
-
----
+- 5 class: 1 base + 4 sub.
+- `Error.captureStackTrace` chỉ V8 (Node.js, Chrome) — không fallback.
+- `DEFAULT_ERROR_MESSAGES` cho message đa ngữ trong tương lai.
+- `instanceof` check hoạt động đúng cho subclass.

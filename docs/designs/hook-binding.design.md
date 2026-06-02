@@ -1,55 +1,45 @@
 # Design: Hook Binding
 
-## Vấn đề
+## Bối cảnh
 
-Cần intercept việc tạo page mới (`Browser.newContext()` -> `BrowserContext.newPage()`) để tự động resize viewport theo fingerprint. Cũng cần chặn `page.setViewportSize()` vì kích thước đã bị fingerprint lock.
+Khi fingerprint được inject vào browser, viewport bị lock ở kích thước nhất định. Nếu người dùng hoặc Playwright tự động gọi `setViewportSize` (ví dụ khi tạo page mới với defaultViewport), viewport sẽ thay đổi -- gây sai lệch fingerprint.
 
-## Giải pháp: ES6 Proxy Pattern
+Cần intercept (proxy) các method Playwright để đảm bảo:
+1. `newContext()` và `newPage()` luôn tạo page với viewport null (kích thước thật).
+2. `setViewportSize()` không thể thay đổi viewport sau khi đã set.
+3. Page mới được tạo tự động resize đúng kích thước fingerprint.
 
-### onClose()
+Ngoài ra, cần cleanup handler để dọn dẹp khi browser/context đóng.
 
-Đăng ký cleanup handler:
-- `Browser` -> event `'disconnected'`.
-- `BrowserContext` -> event `'close'`.
-- Phân biệt bằng type guard `isBrowser()` (kiểm tra `'version' in target && typeof target.version === 'function'`).
+## Câu hỏi làm rõ
 
-### bindHooks()
+- Ai gọi bindHooks? → PlaywrightFingerprintPlugin.configure().
+- Có cần proxy Browser.newContext không? → Có, nếu target là Browser (không phải BrowserContext).
+- Làm sao biết target là Browser hay BrowserContext? → Dùng `isBrowser()` check `version` property.
 
-Proxy chain 3 lớp:
+## Các phương án
 
-```
-Browser.newContext()
-  -> resetOptions() force viewport: null
-  -> patchContext()
-    -> ctx.newPage() -> proxy: gọi hooks.onPageCreated(page)
-    -> patchPage()
-      -> page.setViewportSize() -> proxy: warning + no-op
-```
+### Phương án 1: Dùng Playwright event listeners
+Dùng `context.on('page', handler)` thay vì proxy.
 
-1. **Browser level**: Proxy `newContext()`, force `viewport: null` qua `resetOptions()`.
-2. **Context level**: Proxy `newPage()`, gọi `onPageCreated` hook sau khi tạo page.
-3. **Page level**: Proxy `setViewportSize()`, chặn hoàn toàn (in warning, không throw).
+- Ưu điểm: Đơn giản, không can thiệp vào prototype.
+- Nhược điểm: Không intercept được `setViewportSize`. Không chặn được `newContext` options.
 
-### Fallback khi target là BrowserContext
+### Phương án 2: Proxy method (chọn)
+Dùng JavaScript `Proxy` để wrap `newContext`, `newPage`, `setViewportSize`.
 
-Nếu `target` truyền vào `bindHooks()` đã là `BrowserContext` (không qua `Browser.newContext`), gọi `patchContext()` trực tiếp. Trường hợp này xảy ra khi `PlaywrightFingerprintPlugin.configure()` nhận context từ `launchPersistentContext()`.
+- Ưu điểm: Kiểm soát hoàn toàn -- chặn setViewportSize, reset viewport null, hook onPageCreated.
+- Nhược điểm: Can thiệp sâu vào đối tượng Playwright. Rủi ro nếu Playwright thay đổi internal API.
 
-### resetOptions()
+### Phương án 3: CDP-based intercept
+Không proxy, dùng CDP để chặn resize.
 
-```ts
-function resetOptions<T>(options: T): T & { viewport: null } {
-  return { ...options, viewport: null };
-}
-```
+- Ưu điểm: Tách biệt khỏi Playwright API.
+- Nhược điểm: CDP không có event cho setViewportSize. Không biết khi nào page mới được tạo.
 
-Force `viewport: null` để Playwright không tự resize -- engine sẽ resize qua CDP sau.
+## Giải pháp được chọn
 
-### Tại sao dùng Proxy?
-
-- Không cần monkey-patch prototype.
-- Intercept chính xác method gọi.
-- Clean hơn so với override bằng assign.
-
----
-
-Xem thêm: [Spec](../specs/hook-binding.spec.md) | [Plan](../plans/hook-binding.plan.md)
+- Phương án AI đề xuất: Phương án 2 (Proxy method).
+- Phương án được chọn: Phương án 2.
+- Lý do: Kiểm soát toàn diện viewport lifecycle. `Proxy` pattern không ảnh hưởng đến đối tượng gốc.
+- Ràng buộc: Reset viewport = `null` khi tạo context/page mới. onPageCreated hook được gọi sau khi page thật sự được tạo.

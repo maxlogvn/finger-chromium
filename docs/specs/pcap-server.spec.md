@@ -1,65 +1,115 @@
 # Spec: PCAP Server
 
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
+
 ## Mô tả
 
-PCAP server là TCP server nhỏ (52 dòng) mô phỏng PCAP interface cho engine FastExecuteScript.exe. Nó xử lý request ID và heartbeat qua giao thức binary.
+PCAP Server là một TCP server tối giản mô phỏng PCAP interface. Engine binary (`FastExecuteScript.exe`) cần server này để gửi và nhận ID request — đây là một phần của cơ chế đồng bộ giữa Node.js process và engine process.
 
-## API / Interfaces chính
+Tên "PCAP" giữ từ code gốc của BAS (Browser Automation Studio). Nó không liên quan đến PCAP network capture thật.
 
-### `listen(port, host)`
+Source: `src/plugin/connector/pcapServer/index.ts` (71 dòng).
+
+## Yêu cầu
+
+- `listen(port, host)` — khởi động TCP server, trả về port đang lắng nghe.
+- `close()` — dừng server, giải phóng port. An toàn gọi nhiều lần.
+- Chỉ hiểu 2 lệnh binary:
+  - `0x01` (Request ID): engine yêu cầu ID mới — server phản hồi với ID dạng số.
+  - `0x07` (Heartbeat): engine kiểm tra server còn sống — server phản hồi xác nhận.
+- `once()` đảm bảo `listen()` chỉ gọi được một lần — các lần sau ignore.
+- Retry port khi `EADDRINUSE` (sau 1 giây).
+- Debug logging qua namespace `browser-with-fingerprints:connector:pcapServer`.
+
+## Thiết kế
+
+### Kiến trúc
+
+```
+net.createServer()
+  │
+  ├─ socket.on('data', buffer)
+  │    ├─ byte === 0x01 → gửi response ID + id++
+  │    └─ byte === 0x07 → gửi heartbeat response
+  │
+  ├─ socket.on('error') → debug log
+  │
+  └─ server.on('error', EADDRINUSE) → setTimeout retry
+```
+
+### Binary protocol
+
+**Request ID (0x01):**
+- Engine gửi: `[0x01]` (1 byte)
+- Server phản hồi: `[0x01, 0x04, 0x00, 0x00, 0x00, 0x0a, id_LSB, id_byte1, id_byte2]` (9 bytes)
+- Trong đó `id` là số 24-bit tăng dần.
+- 6 byte đầu là fixed header: `0x01` (command), `0x04` (packet type), `0x00 0x00 0x00 0x0a` (payload length = 10 bytes).
+- 3 byte cuối: `id & 0xff`, `(id >> 8) & 0xff`, `(id >> 16) & 0xff`.
+
+**Heartbeat (0x07):**
+- Engine gửi: `[0x07]` (1 byte)
+- Server phản hồi: `[0x07, 0x00, 0x00, 0x00, 0x00]` (5 bytes) — xác nhận đơn giản.
+
+Tham chiếu design doc: `docs/designs/pcap-server.design.md`.
+
+## API / Data flow
 
 ```ts
-export const listen = once((port = 0, host = '127.0.0.1'): Promise<number>)
+import * as pcapServer from '../connector/pcapServer';
+
+// Auto-start khi module connector/index.ts được import
+// Nhưng có thể gọi thủ công:
+const port = await pcapServer.listen(0, '127.0.0.1');
+// port là random (do truyền 0)
+
+// Port được dùng cho engine args
+engine.setArgs([`--mock-pcap-port=${port}`]);
+
+// Dừng server
+await pcapServer.close();
 ```
 
-- `port`: Cổng TCP (0 = random).
-- `host`: Địa chỉ lắng nghe (mặc định localhost).
-- Returns: `Promise<number>` -- port đang lắng nghe.
-- Dùng `once()` để chỉ gọi một lần.
+### Input
 
-## Luồng dữ liệu
+- `listen(port = 0, host = '127.0.0.1')` → `Promise<number>`.
 
-### Request ID (0x01)
+### Output
+
+- Port number đang lắng nghe.
+
+### Luồng
 
 ```
-Engine → Server: [0x01]
-Server → Engine: [0x01, 0x04, 0x00, 0x00, 0x00, 0x0a, id_lo, id_mid, id_hi]
+Connector import
   │
-  ├── 0x01: loại response
-  ├── 0x04: độ dài payload (4 bytes)
-  ├── 0x00, 0x00, 0x00, 0x0a: magic number
-  └── id (3 bytes, little-endian): ID tăng dần mỗi lần
+  └─ pcapServer.listen(0, '127.0.0.1')
+       │
+       ├─ [EADDRINUSE] setTimeout 1s → retry
+       │
+       └─ [OK] Resolve port → set engine args --mock-pcap-port=<port>
+            │
+            └─ Engine kết nối → gửi 0x01 / 0x07 → server phản hồi
 ```
 
-### Heartbeat (0x07)
+## Components
 
-```
-Engine → Server: [0x07]
-Server → Engine: [0x07, 0x00, 0x00, 0x00, 0x00]
-  │
-  ├── 0x07: loại response
-  └── 0x00, 0x00, 0x00, 0x00: payload rỗng
-```
-
-## File liên quan
-
-| File | Vai trò |
-|---|---|
-| `src/plugin/connector/pcapServer/index.ts` | TCP server (52 dòng) |
-| `src/plugin/connector/index.ts` | Gọi pcapServer.listen() khi import |
+| File | Vai trò | Dòng |
+|---|---|---|
+| `src/plugin/connector/pcapServer/index.ts` | TCP server | 71 |
 
 ## Xử lý lỗi
 
-| Lỗi | Xử lý |
+| Tình huống | Hành vi |
 |---|---|
-| `EADDRINUSE` | Retry sau 1 giây (setTimeout.unref()) |
-| Socket error (client disconnect) | Log bằng `debug` |
+| Port đã dùng (EADDRINUSE) | Retry sau 1 giây — gọi `server.listen()` lại, không throw |
+| Socket error | `debug` log — server vẫn chạy, không crash |
+| `listen()` gọi lần thứ hai | `once()` ignore — không tạo server mới |
+| `close()` khi chưa có server | Resolve ngay — không throw |
 
-## Ghi chú kỹ thuật
+## Kiểm tra
 
-- `net.createServer` tạo TCP server thuần Node.js, không cần thư viện bên ngoài.
-- `once()` từ package `once` đảm bảo chỉ một server được khởi tạo.
-- `setTimeout(...).unref()` -- không giữ process sống nếu không còn tác vụ nào khác.
-- ID counter bắt đầu từ 0, tăng dần mỗi lần engine request.
-
----
+- Happy path: listen thành công, engine kết nối, gửi 0x01/0x07, nhận response.
+- Edge case: port đã dùng → tự động retry, cuối cùng listen thành công.
+- Edge case: `listen()` gọi 2 lần → lần 2 ignore.
+- Close: `close()` → server dừng, port giải phóng.
+- Close khi chưa listen: resolve ngay, không lỗi.

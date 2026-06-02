@@ -1,123 +1,137 @@
 # Spec: BrowserEngine
 
-## File: `src/adapter/playwright/chromium.ts` (228 dòng)
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
 
-## Module-level
+## Mô tả
 
-```ts
-export const PRIVATE_KEY = process.env.BABLOSOFT_KEY ?? '';
-export const BROWSER_RUNNING_DIR = path.join(process.cwd(), process.env.BROWSER_RUNNING_DIR ?? '.tmp/browser/running');
-export const ENGINE_WORKING_DIR = path.join(process.cwd(), process.env.ENGINE_WORKING_DIR ?? '.tmp/browser/engine');
-export const DEFAULT_CONTEXT_OPTIONS: PluginLaunchOptions = { headless: false, hasTouch: true };
+`BrowserEngine` là lớp triển khai public API `Chromium` — singleton duy nhất mà người dùng thư viện tương tác. Nó cung cấp Fluent API để cấu hình fingerprint, proxy, profile, sau đó launch engine, tạo `BrowserContext` Playwright, và dọn dẹp khi kết thúc.
+
+`BrowserEngine` không tự inject fingerprint. Nó là lớp điều phối: nhận cấu hình từ user, chuyển xuống `PlaywrightFingerprintPlugin`, gọi `launchPersistentContext()` để bridge vào plugin core, và quản lý vòng đời của `BrowserContext`.
+
+Source: `src/adapter/playwright/chromium.ts` (231 dòng).
+
+## Yêu cầu
+
+- Export singleton `Chromium` — chỉ một instance trong toàn bộ vòng đời ứng dụng.
+- Hỗ trợ Fluent API: mọi method config trả về `this` để chain.
+- `launch()` chỉ được gọi một lần — guard bằng `isLaunched` flag.
+- `newContext()` phải gọi sau `launch()`, trước `quit()`.
+- `newContext()` chỉ tạo một context — muốn tạo mới phải `quit()` trước.
+- `quit()` phải idempotent — gọi trước `launch()` hoặc nhiều lần đều an toàn.
+- `quit(saveDataPath?)` cho phép lưu profile vào đường dẫn khác.
+
+## Thiết kế
+
+### Kiến trúc tổng quan
+
+```
+Chromium (singleton)
+  └── BrowserEngine
+       ├── engine: PlaywrightFingerprintPlugin
+       ├── dataManager: AdapterDataManager
+       ├── context: BrowserContext
+       └── config fields
 ```
 
----
+`BrowserEngine` giữ cấu hình trong private fields, không expose ra ngoài. Mỗi field lưu tuple `[value, options?]` để khi `launch()` gọi, chuyển nguyên cụm xuống plugin.
 
-## Class `BrowserEngine`
+Tham chiếu design doc: `docs/designs/browser-engine.design.md`.
 
-### Properties
+### Luồng launch
 
-| Property | Kiểu | Mô tả |
-|---|---|---|
-| `engine` | `PlaywrightFingerprintPlugin` | Plugin instance |
-| `options` | `PluginLaunchOptions` | Merged launch options |
-| `privateKey` | `string` | Từ env BABLOSOFT_KEY, mặc định `''` |
-| `engineWorkingDirPath` | `string` | Từ env ENGINE_WORKING_DIR |
-| `dataManager` | `AdapterDataManager` | Quản lý profile temp |
-| `saveProfileDirPath` | `string \| undefined` | Path profile gốc user nhập |
-| `profileData` | `[string, ProfileOptions?]` | `[tempPath, options]` |
-| `context` | `BrowserContext \| undefined` | Runtime context |
-| `fingerprints` | `[string, FingerprintOptions?] \| undefined` | Fingerprint data + options lưu tạm |
-| `proxyData` | `[string, ProxyOptions?] \| undefined` | Proxy URL + options lưu tạm |
-| `isLaunched` | `boolean` | Trạng thái launch |
+1. `useFingerprint()`, `useProxy()`, `useProfile()` chỉ lưu vào field — không gọi engine.
+2. `useProfile()` gọi `dataManager.map(dirPath)` tạo bản copy profile vào temp dir. Lý do: browser chạy trên bản copy, nếu crash không corrupt profile gốc.
+3. `launch()` hợp nhất options từ 3 nguồn: mặc định < config trước < tham số launch.
+4. `launch()` đẩy key, working folder, profile xuống engine. Gọi `useProxy`/`useFingerprint` nếu đã đăng ký.
+5. `newContext()` hợp nhất options lần cuối, gọi `engine.launchPersistentContext(profilePath, options)`.
+6. `quit()` đóng context → lưu profile (nếu có save path) → cleanup engine → unmap temp dir.
 
-### Constructor
+### Guard một lần
 
-```ts
-constructor()
-```
+`launch()` set `this.isLaunched = true`. Lần gọi thứ hai throw error. `newContext()` kiểm tra `isLaunched` và `context` tồn tại. `quit()` kiểm tra `isLaunched` và return sớm nếu chưa launch — không throw.
 
-Tạo `PlaywrightFingerprintPlugin`, `AdapterDataManager`. Đọc env variables. Mặc định `profileData = [path.join(BROWSER_RUNNING_DIR, 'profile')]`.
+Lý do guard một lần ở `BrowserEngine` thay vì `FingerprintPlugin`: user chỉ nên có một pipeline fingerprint duy nhất. Plugin core không cần guard vì nó có thể được dùng linh hoạt hơn bởi internal code.
 
-### Public API (PWChromium)
+## API / Data flow
 
-| Method | Tham số | Trả về | Mô tả |
-|---|---|---|---|
-| `repackChromium(launcher)` | `Launcher` | `this` | Tạo plugin mới với custom launcher |
-| `useFingerprint(data, options?)` | `string`, `FingerprintOptions?` | `this` | Lưu fingerprint config |
-| `useProxy(data, options?)` | `string`, `ProxyOptions?` | `this` | Lưu proxy config |
-| `useProfile(dirPath, options?)` | `string`, `ProfileOptions?` | `this` | Map profile → temp, lưu config |
-| `launch(options?)` | `Partial<PluginLaunchOptions>` | `this` | Khởi động engine (1 lần) |
-| `newContext(options?)` | `Partial<PluginLaunchOptions>` | `Promise<BrowserContext>` | Tạo context |
-| `newFingerprint(options?)` | `FetchOptions` | `Promise<string>` | Fetch fingerprint từ service |
-| `quit(saveDataPath?)` | `string?` | `Promise<void>` | Dọn dẹp, lưu profile |
-
-### Launch Flow
-
-| Bước | Code | Mô tả |
-|---|---|---|
-| 1 | `if (this.isLaunched) throw` | Chỉ 1 lần |
-| 2 | `this.options = { ...this.options, ...options }` | Merge options |
-| 3 | `this.engine.setServiceKey(this.privateKey)` | Set key |
-| 4 | `this.engine.setWorkingFolder(this.engineWorkingDirPath)` | Set thư mục làm việc |
-| 5 | `this.engine.useProfile(...this.profileData)` | Đăng ký profile |
-| 6 | `if (this.proxyData) this.engine.useProxy(...)` | Đăng ký proxy nếu có |
-| 7 | `if (this.fingerprints) this.engine.useFingerprint(...)` | Đăng ký fingerprint nếu có |
-| 8 | `this.isLaunched = true` | Đánh dấu đã launch |
-
-### NewContext Flow
-
-| Bước | Code | Mô tả |
-|---|---|---|
-| 1 | `if (!this.isLaunched) throw` | Phải launch trước |
-| 2 | `if (this.context) throw` | Chỉ 1 context |
-| 3 | `this.options = { ...this.options, ...options }` | Merge options |
-| 4 | `this.context = await engine.launchPersistentContext(this.profileData[0], this.options)` | Tạo context |
-| 5 | `return this.context` | Trả về BrowserContext |
-
-### Quit Flow
-
-| Bước | Code | Mô tả |
-|---|---|---|
-| 1 | `if (!this.isLaunched) return` | No-op nếu chưa launch |
-| 2 | `if (this.context)` | Nếu có context |
-| 2a | `await this.context.close()` | Đóng context |
-| 2b | `targetSavePath = saveDataPath ?? this.saveProfileDirPath` | Xác định đích |
-| 2c | `if (targetSavePath) dataManager.map(this.profileData[0], targetSavePath)` | Copy temp → đích |
-| 3 | `this.dataManager.unmap(BROWSER_RUNNING_DIR)` | Xoá temp profile |
-| 4 | `this.isLaunched = false` | Reset trạng thái |
-
-### Types Export
+### Input
 
 ```ts
-export type { ProfileOptions, FingerprintOptions, ProxyOptions, FetchOptions };
+import { Chromium } from 'fingerprint-chromium-engine';
 
-/** Options cho launchPersistentContext -- trích xuất từ kiểu Playwright. */
-export type PluginLaunchOptions = Parameters<BrowserType['launchPersistentContext']>[1];
-
-/** Launcher có thể tuỳ chỉnh -- cho phép dùng Playwright patch hoặc mặc định. */
-export type Launcher = Pick<BrowserType, 'launch' | 'launchPersistentContext'>;
+// Config methods — lưu vào field, trả về this
+Chromium.repackChromium(customLauncher);        // thay launcher mặc định
+Chromium.useFingerprint(jsonData, options);     // lưu fingerprint
+Chromium.useProxy(url, options);                 // lưu proxy
+Chromium.useProfile(dirPath, options);           // map profile + lưu
+Chromium.launch(options);                        // khởi động engine
+Chromium.newContext(options);                    // tạo BrowserContext
+Chromium.quit(saveDataPath);                     // dọn dẹp
 ```
 
----
+### Output
+
+- `launch()` → `this` (để chain `newContext()`).
+- `newContext()` → `Promise<BrowserContext>` — context Playwright có fingerprint.
+- `quit()` → `Promise<void>`.
+- `newFingerprint(options)` → `Promise<string | undefined>` — JSON string từ service.
+
+### Luồng dữ liệu
+
+```
+User code
+  │
+  ├─ useFingerprint() ─── lưu [data, options]
+  ├─ useProxy() ───────── lưu [url, options]
+  ├─ useProfile() ─────── map profile → temp dir → lưu [tempPath, options]
+  │
+  └─ launch() ─────────── hợp nhất options
+       │                   setServiceKey()
+       │                   setWorkingFolder()
+       │                   engine.useProfile(tempPath, options)
+       │                   engine.useProxy() (nếu có)
+       │                   engine.useFingerprint() (nếu có)
+       │
+       └─ newContext() ─── engine.launchPersistentContext(tempPath, options)
+            │
+            └─ BrowserContext (có fingerprint)
+```
+
+## Components
+
+| File | Vai trò | Dòng |
+|---|---|---|
+| `src/adapter/playwright/chromium.ts` | `BrowserEngine` class + `Chromium` singleton | 231 |
+| `src/adapter/playwright/data.ts` | `AdapterDataManager` — map/unmap profile, copy temp dir | — |
+| `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin` — bridge từ đây xuống plugin core | 111 |
+| `src/types/PWChromium.ts` | Interface `PWChromium` — public API contract | — |
+
+## Constants
+
+| Constant | Giá trị | Vì sao cần |
+|---|---|---|
+| `PRIVATE_KEY` | `process.env.BABLOSOFT_KEY ?? ''` | Engine cần key để gọi service. Lấy từ env, không có setter public vì flow chuẩn là dùng env. |
+| `BROWSER_RUNNING_DIR` | `cwd + env BROWSER_RUNNING_DIR` hoặc `.tmp/browser/running` | Tách dữ liệu runtime khỏi profile gốc — tránh corrupt. |
+| `ENGINE_WORKING_DIR` | `cwd + env ENGINE_WORKING_DIR` hoặc `.tmp/browser/engine` | Gom engine binary và metadata vào một chỗ có thể dọn được. |
+| `DEFAULT_CONTEXT_OPTIONS` | `{ headless: false, hasTouch: true }` | `headless: false` vì fingerprint check phát hiện headless. `hasTouch: true` giả lập thiết bị cảm ứng — nhiều fingerprint profile mặc định có touch. |
 
 ## Xử lý lỗi
 
 | Tình huống | Hành vi |
 |---|---|
-| Gọi `launch()` 2 lần | Throw `Error('[BrowserEngine] Phuong thuc launch() chi duoc goi mot lan.')` |
-| Gọi `newContext()` trước `launch()` | Throw `Error('[BrowserEngine] Phai goi launch() truoc khi tao context.')` |
-| Gọi `newContext()` khi đã có context | Throw `Error('[BrowserEngine] Context da duoc tao. Vui long goi quit() truoc khi tao moi.')` |
-| Gọi `quit()` khi chưa launch | No-op (kiểm tra `isLaunched`) |
-
----
+| `launch()` gọi lần thứ hai | Throw `Error('[BrowserEngine] Phuong thuc launch() chi duoc goi mot lan.')` |
+| `newContext()` trước `launch()` | Throw `Error('[BrowserEngine] Phai goi launch() truoc khi tao context.')` |
+| `newContext()` khi context đã tồn tại | Throw `Error('[BrowserEngine] Context da duoc tao. Vui long goi quit() truoc khi tao moi.')` |
+| `quit()` khi chưa launch | Return sớm, không throw — idempotent |
+| `newContext()` fail do engine | Engine throw `PluginError` / `MissingKeyError` / `EngineTimeoutError` |
+| `quit()` fail khi close context | Lỗi bị `catch(() => {})` — không crash toàn bộ cleanup |
 
 ## Kiểm tra
 
-- `launch()` 2 lần -> throw Error.
-- `quit()` nhiều lần -> không throw, lần 2 là no-op.
-- Fluent chain: mỗi method trả về `this`.
-- `repackChromium()` không reset config.
-- Env fallback: `BABLOSOFT_KEY` không set -> `privateKey` là `''`.
-
----
+- Happy path: `useFingerprint()` → `useProxy()` → `useProfile()` → `launch()` → `newContext()` → dùng page → `quit()`.
+- Error: `launch()` hai lần → throw.
+- Error: `newContext()` trước `launch()` → throw.
+- Error: `newContext()` hai lần liên tiếp → throw (cần `quit()` ở giữa).
+- Idempotent: `quit()` khi chưa launch → không throw.
+- Profile: `quit(saveDataPath)` lưu vào đường dẫn khác.
+- Constants: giá trị mặc định của `headless`, `hasTouch` đúng spec.

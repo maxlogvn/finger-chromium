@@ -1,61 +1,49 @@
 # Product: Quản lý Profile
 
-## Tổng quan
+## Mô tả
 
-Profile chứa cookie, localStorage, IndexedDB, extension data. Để tránh corrupt khi browser crash, profile được copy vào thư mục tạm trước khi dùng, và chỉ ghi lại vào thư mục gốc khi bạn gọi `quit()`.
+Tính năng profile cho phép lưu và tái sử dụng dữ liệu trình duyệt (cookie, localStorage, session) giữa các lần chạy. Profile được copy vào thư mục tạm trước khi browser khởi động — tránh corrupt dữ liệu gốc — và được sao lưu lại sau khi kết thúc session.
 
-## Cách dùng
+## Cách sử dụng
 
 ```ts
-// Lưu profile sau khi dùng
-Chromium.useProfile('./profiles/user_01', {
-  loadProxy: true,        // Tự động nạp lại proxy config từ profile
-  loadFingerprint: true,  // Tự động nạp lại fingerprint config
-});
+import { Chromium } from 'fingerprint-chromium-engine';
 
-// Khi quit, profile tự động được lưu
+const context = await Chromium
+  .useProfile('./profiles/user_01', {
+    loadProxy: true,        // tự động load proxy từ profile cũ
+    loadFingerprint: true,  // tự động load fingerprint từ profile cũ
+  })
+  .launch()
+  .newContext();
+
+// ... dùng browser ...
+
+// Tự động lưu profile khi quit
 await Chromium.quit();
-// Hoặc lưu vào đường dẫn khác:
-await Chromium.quit('./profiles/user_01_backup');
+
+// Hoặc lưu vào đường dẫn khác
+await Chromium.quit('./backup/profile_backup');
 ```
 
-## Cơ chế bảo vệ
+## Hành vi chi tiết
 
-```
-useProfile('./profiles/user_01')
-    │
-    ▼
-AdapterDataManager.map(source)
-    │
-    ▼
-Copy → <BROWSER_RUNNING_DIR>/profile/1712345678_a1b2/
-    │
-    ▼
-Browser chạy trên thư mục tạm (an toàn)
-    │
-    ▼
-Chromium.quit()
-    │
-    ▼
-Copy temp → ./profiles/user_01
-Xoá temp dir
-```
+1. **Khi `launch()`:** Profile gốc được copy vào temp dir với tên duy nhất (timestamp + random hex). Browser chạy trên bản copy này.
+2. **Trong khi chạy:** Mọi thay đổi (cookie, localStorage) chỉ ảnh hưởng đến bản copy — profile gốc không bị ảnh hưởng.
+3. **Khi `quit()`:** Context được close. Profile từ temp dir copy ngược về thư mục gốc (hoặc thư mục chỉ định trong `saveDataPath`). Temp dir bị xoá.
+4. **Load lại:** `loadProxy: true` và `loadFingerprint: true` (mặc định) — engine đọc proxy và fingerprint đã dùng lần trước từ profile và tự động áp dụng.
 
-## ProfileOptions
+`AdapterDataManager` trong `src/adapter/playwright/data.ts` quản lý quá trình map/unmap profile. Nó dùng temp dir để tránh corrupt — nếu browser crash trong lúc chạy, profile gốc vẫn còn nguyên.
 
-```ts
-interface ProfileOptions {
-  loadProxy?: boolean;        // default: true
-  loadFingerprint?: boolean;  // default: true
-}
-```
+## Giới hạn và điều kiện
 
-Khi `loadProxy: true`, engine sẽ đọc proxy config từ profile cũ. Engine binary xử lý việc này qua file .ini.
+- Mỗi instance chỉ dùng một profile.
+- Profile chỉ được lưu khi gọi `quit()`. Nếu process bị kill, dữ liệu trong temp dir sẽ mất.
+- Yêu cầu quyền đọc/ghi trên thư mục profile.
+- Chỉ hỗ trợ Windows.
 
-## Lưu ý
+## Tài liệu kỹ thuật liên quan
 
-- **Browser crash**: nếu browser crash trước khi quit, thay đổi sẽ bị mất. Profile gốc vẫn an toàn. CleanupDaemon dọn temp dir sau.
-- **Cache profile**: mỗi lần `useProfile()` là một temp dir mới. Dùng lại profile path sẽ tạo temp dir khác.
-- **Không dùng useProfile**: nếu không gọi `useProfile()`, engine dùng profile mặc định trong `<BROWSER_RUNNING_DIR>/profile/`.
-
----
+- Spec: `docs/specs/profile-management.spec.md`
+- Design: `docs/designs/profile-management.design.md`
+- Source: `src/adapter/playwright/data.ts`

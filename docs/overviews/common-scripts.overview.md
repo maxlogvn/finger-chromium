@@ -1,37 +1,83 @@
-# Overview: Common Scripts
+# Overview: Common Scripts (In-browser)
 
-## Mục tiêu
+## Tóm tắt
 
-Tạo 2 in-browser scripts (`waitForResize`, `getViewport`) hỗ trợ resize viewport.
+Đã tạo 2 in-browser scripts (`waitForResize`, `getViewport`) trong `src/common/index.ts`, export qua object `scripts`. Dùng qua `page.evaluate()` hoặc CDP `Runtime.evaluate`.
 
-## Kết quả
+## Kiến trúc
 
-- `src/common/index.ts`: 25 dòng, object `scripts` với 2 functions.
+```
+src/common/index.ts
+  |-- scripts = { waitForResize, getViewport } as const
+  |
+  |-- waitForResize: string
+  |     IIFE async -> ResizeObserver + requestAnimationFrame fallback
+  |
+  |-- getViewport: string
+  |     IIFE -> { width: window.innerWidth, height: window.innerHeight }
+```
 
-## Kiểm tra
+## Tham chiếu code
 
-- `npm run lint` -- 0 errors.
+| Component | File | Dòng |
+|---|---|---|
+| `scripts` object | `src/common/index.ts` | 16-18 |
+| `waitForResize` source | `src/common/index.ts` | 20-33 |
+| `getViewport` source | `src/common/index.ts` | 35-44 |
 
-## Sai lệch so với kế hoạch
+## Script source
 
-Không có sai lệch.
+**waitForResize:**
+```js
+(async () => {
+  const waitForResize = () => new Promise((resolve) => {
+    let raf = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      resolve(undefined);
+    });
+    observer.observe(document.documentElement);
+    raf = requestAnimationFrame(() => {
+      observer.disconnect();
+      resolve(undefined);
+    });
+  });
+  await waitForResize();
+})()
+```
 
-## Ghi chú kỹ thuật
+**getViewport:**
+```js
+(() => {
+  return { width: window.innerWidth, height: window.innerHeight };
+})()
+```
 
-### Scripts serialized qua toString()
+## Quyết định thiết kế
 
-Scripts được lưu trong object dạng function, gọi `.toString()` để serialize khi dùng với CDP. Closure variables không được capture -- mọi thứ phải nằm trong function body. Đây là hạn chế của `page.evaluate()`.
+- **`as const` object**: TypeScript infer literal type -- không cho mutate scripts object.
+- **ResizeObserver + RAF fallback**: ResizeObserver bắt resize chính xác. RAF fallback tránh treo vô hạn nếu resize không xảy ra.
+- **`window.innerWidth/innerHeight`**: Trả về viewport CSS pixels -- khác `window.outerWidth` (cả chrome). Chính xác cho responsive layout detection.
+- **Double RAF**: `waitForResize` dùng một RAF làm fallback. Kỹ thuật double RAF (dùng ở nơi khác) đảm bảo layout + paint đã hoàn tất.
 
-### `waitForResize` không có timeout
+## Edge cases
 
-Promise treo vô hạn nếu ResizeObserver không fire (ví dụ resize không thay đổi kích thước body). Caller nên wrapper với timeout riêng.
+- `document` undefined (worker context) -> ResizeObserver not supported -> throw.
+- `document.documentElement` null (no `<html>`) -> observer chờ -> RAF fallback -> resolve.
+- `ResizeObserver` không hỗ trợ (old browser) -> RAF fallback -> resolve.
+- `cancelAnimationFrame(raf)` tránh memory leak nếu resize xảy ra trước RAF.
 
-### Double rAF
+## Lưu ý
 
-Lần 1 đảm bảo layout đã tính toán, lần 2 đảm bảo paint đã render. Nếu chỉ dùng 1 rAF, đôi khi giá trị innerWidth/Height chưa cập nhật.
+- Scripts là string -- inject qua `page.evaluate()` hoặc `Runtime.evaluate()`.
+- `waitForResize` async -- caller cần `await`.
+- `getViewport` synchronous -- gọi sync.
+- Double rAF: lần 1 cho layout, lần 2 cho paint. Đảm bảo innerWidth/Height đã cập nhật.
 
-### `getViewport` dùng `innerWidth`
+## Tài liệu liên quan
 
-`window.innerWidth` bao gồm scrollbar, `document.documentElement.clientWidth` không. Fingerprint service dùng `innerWidth` nên cần đồng bộ.
-
----
+- `docs/designs/common-scripts.design.md`
+- `docs/specs/common-scripts.spec.md`
+- `docs/plans/common-scripts.plan.md`
+- `docs/products/common-scripts.product.md`
+- `src/common/index.ts`

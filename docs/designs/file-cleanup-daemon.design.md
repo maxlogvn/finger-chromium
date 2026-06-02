@@ -1,38 +1,40 @@
 # Design: File Cleanup Daemon
 
-## Vấn đề
+## Bối cảnh
 
-Thư mục làm việc của engine (`data/t/`, `data/s/`) tích tụ file rác sau nhiều lần chạy (temp files, orphaned request/response files). Cần dọn dẹp tự động mà không xoá file đang được process sở hữu.
+Engine tạo ra nhiều file tạm trong quá trình chạy (`.ini` config, `t/` process files). Nếu không dọn dẹp, thư mục sẽ chứa đầy file rác từ các session cũ. Tuy nhiên, nếu xoá file khi process còn đang chạy, engine và worker.exe sẽ crash.
 
-## Giải pháp: SettingsCleaner singleton
+Cần cơ chế tự động dọn dẹp file tạm nhưng an toàn: chỉ xoá file đã hết hạn (không còn process sở hữu) và đảm bảo không xoá file đang dùng.
 
-### 3 thao tác chính
+## Câu hỏi làm rõ
 
-1. **watch(folder)**: Đăng ký thư mục cần dọn, khởi động timer 15s nếu chưa có.
-2. **ignore(folder, pid, id)**: Lock 3 file `t/${pid}`, `s/${id}.ini`, `s/${id}1.ini` -- không cho cleaner xoá.
-3. **include(folder, pid, id)**: Unlock -- cho phép cleaner xoá khi process kết thúc.
+- Làm sao biết file đang được dùng? → Dùng `proper-lockfile`. Khi process bắt đầu, lock file (`ignore()`). Khi process kết thúc, unlock (`include()`).
+- Bao lâu quét một lần? → 15 giây (`CLEANUP_INTERVAL`).
+- File nào bị lock? → `t/{pid}`, `s/{id}.ini`, `s/{id}1.ini`.
 
-### Cleanup cycle (mỗi 15s)
+## Các phương án
 
-```
-#cleanup():
-  1. Glob {t,s}/* trong mỗi watched folder
-  2. Filter: bỏ qua file modified < 15s (có thể đang được ghi)
-  3. Với file .txt trong thư mục s/: kiểm tra lock trên file .ini cùng prefix
-  4. Với file khác: kiểm tra lock trực tiếp
-  5. Nếu không locked -> rm(path, { recursive: true, force: true })
-```
+### Phương án 1: Xoá toàn bộ khi process kết thúc (cleanup trong quit)
+Khi gọi `cleanup()`, xoá tất cả file trong thư mục engine.
 
-### Lock mechanism
+- Ưu điểm: Đơn giản, dễ implement.
+- Nhược điểm: Nếu process crash trước khi gọi `cleanup()`, file rác tồn đọng.
 
-Dùng `proper-lockfile` -- tạo file `.lock` bên cạnh file gốc, dùng `fs.open` với flag `O_EXCL`. Cross-platform.
+### Phương án 2: Daemon chạy nền, quét định kỳ (chọn)
+Dùng `setInterval` với timer 15s, quét file, kiểm tra lock, xoá file không còn lock.
 
-`onCompromised` callback log warning, không throw -- lock compromised không crash cleanup.
+- Ưu điểm: Dọn dẹp ngay cả khi process crash trước cleanup. An toàn nhờ lock.
+- Nhược điểm: Tốn CPU (quét mỗi 15s), nhưng không đáng kể.
 
-### Timer
+### Phương án 3: Dùng file system watcher
+Dùng `chokidar` để watch thay đổi, trigger cleanup khi cần.
 
-`setInterval(15000)` với `.unref()` -- không giữ process alive. Process có thể exit ngay cả khi timer còn chạy.
+- Ưu điểm: Chủ động hơn, không tốn CPU định kỳ.
+- Nhược điểm: Phức tạp, dễ miss event nếu watcher bị overload.
 
----
+## Giải pháp được chọn
 
-Xem thêm: [Spec](../specs/file-cleanup-daemon.spec.md) | [Plan](../plans/file-cleanup-daemon.plan.md)
+- Phương án AI đề xuất: Phương án 2 (daemon timer + lock check).
+- Phương án được chọn: Phương án 2.
+- Lý do: Đơn giản, an toàn, dễ maintain. Timer 15s đủ nhanh để dọn dẹp kịp thời.
+- Ràng buộc: Yêu cầu `proper-lockfile` lock file ở hệ thống. Timer dùng `.unref()` để không block process exit.

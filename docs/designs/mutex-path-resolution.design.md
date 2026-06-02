@@ -1,6 +1,6 @@
 # Design: Mutex Path Resolution
 
-## Vấn đề cần giải quyết
+## Bối cảnh
 
 File `src/plugin/mutex/index.ts` dùng hardcoded relative path `../../../` để tìm package root:
 
@@ -14,7 +14,7 @@ const PACKAGE_PATH = path.resolve(__dirname, '../../../');
 
 **Khi cài qua npm:** `node_modules/fingerprint-chromium-engine/dist/index.js` cũng gặp lỗi tương tự.
 
-## Các phương án đã cân nhắc
+## Các phương án
 
 ### 1. Điều chỉnh số lượng `../` (loại)
 
@@ -57,6 +57,12 @@ Dùng thuật toán đi lên từ thư mục hiện tại, ở mỗi cấp đọ
 - Mutex được load rất sớm (top-level import), thêm một tầng gián tiếp.
 
 **Kết luận:** Tốt cho tương lai, nhưng hiện tại ưu tiên phương án 2 (inline) -- đơn giản, an toàn, ít thay đổi.
+
+## Câu hỏi làm rõ
+
+- Tại sao không dùng `__dirname`? → `__dirname` không có sẵn trong ESM; dùng `import.meta.url` + `fileURLToPath` để thay thế.
+- Tại sao chọn walk-up inline thay vì shared utility? → Mutex được load rất sớm (top-level IIFE), thêm tầng gián tiếp từ `src/common/` không an toàn.
+- Có trường hợp nào walk-up đi quá xa không? → Có, nếu chạy từ temp directory không có package.json. Hàm throw error với message rõ ràng khi chạm đến root filesystem.
 
 ## Thiết kế
 

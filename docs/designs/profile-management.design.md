@@ -1,59 +1,40 @@
 # Design: Quản lý Profile
 
-## Vấn đề
+## Bối cảnh
 
-Browser profile (cookie, localStorage, IndexedDB, extension data) cần được bảo vệ khỏi corrupt khi browser crash. Nếu browser chạy trực tiếp trên thư mục profile gốc, crash sẽ làm hỏng dữ liệu.
+Khi dùng browser automation, profile chứa cookie, localStorage, session -- dữ liệu cần được giữa nguyên giữa các lần chạy. Tuy nhiên, nếu profile bị browser ghi đè trực tiếp trong quá trình chạy, dữ liệu có thể bị corrupt nếu process bị kill đột ngột.
 
-## Giải pháp: AdapterDataManager
+Cần cơ chế copy profile vào thư mục tạm trước khi dùng, và sao lưu lại sau khi kết thúc. Ngoài ra, khi khởi động lại profile cũ, cần tự động load lại proxy và fingerprint đã dùng lần trước.
 
-Copy profile vào thư mục tạm trước khi dùng, restore về thư mục gốc khi quit. Nếu browser crash, chỉ mất dữ liệu thay đổi trong session đó, profile gốc vẫn an toàn.
+## Câu hỏi làm rõ
 
-### Luồng xử lý
+- Có cần support nhiều profile cùng lúc không? → Mỗi instance BrowserEngine chỉ một profile. Mỗi profile có temp dir riêng.
+- Làm sao để load lại proxy/fingerprint từ profile cũ? → Engine tự lưu config vào profile trong lần chạy trước. Plugin gửi `loadProxy`/`loadFingerprint` flag lên engine.
+- Profile có được nén không? → Không. Dùng `fs.cpSync` copy nguyên thư mục.
 
-```
-useProfile('./profiles/user_01')
-  → dataManager.map('./profiles/user_01')
-    → fs.cpSync copy vào temp
-    → <BROWSER_RUNNING_DIR>/profile/<timestamp>_<random4hex>/
-    → return temp path
+## Các phương án
 
-quit()
-  → dataManager.map(tempPath, './profiles/user_01')
-    → fs.cpSync copy ngược lại
-  → dataManager.unmap(tempPath)
-    → fs.rmSync xoá temp
-```
+### Phương án 1: Dùng trực tiếp thư mục profile gốc
+Không copy, browser đọc ghi trực tiếp vào profile.
 
-### Temp dir naming
+- Ưu điểm: Nhanh, không tốn dung lượng.
+- Nhược điểm: Dễ corrupt profile nếu process crash.
 
-```ts
-private generateUniqueName(): string {
-  const hex = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
-  return `${Date.now()}_${hex}`;
-}
-```
+### Phương án 2: Copy vào thư mục tạm (chọn)
+Copy profile vào temp dir, browser chạy trên bản copy. Khi quit, copy ngược lại.
 
-Dùng `Math.random()` thay `crypto.randomBytes` -- không cần bảo mật cao, timestamp + 4 hex digits là đủ uniqueness.
+- Ưu điểm: An toàn, không corrupt profile gốc.
+- Nhược điểm: Tốn thời gian copy (nhưng profile thường nhỏ, chỉ vài MB).
 
-### File operations (Node.js 16+)
+### Phương án 3: Symbolic link / hard link
+Dùng symlink hoặc hardlink để tránh copy.
 
-- `fs.cpSync(src, dest, { recursive: true, force: true })` -- copy thư mục, ghi đè nếu tồn tại.
-- `fs.rmSync(path, { recursive: true, force: true })` -- xoá thư mục, không throw nếu không tồn tại.
-- `fs.mkdirSync(path, { recursive: true })` -- tạo thư mục cha nếu chưa có.
+- Ưu điểm: Nhanh, không tốn dung lượng.
+- Nhược điểm: Windows không phải lúc nào cũng support symlink. Vẫn có nguy cơ corrupt.
 
-Đồng bộ API (sync) -- profile operations chỉ xảy ra ở lifecycle boundaries (launch, quit), không ảnh hưởng runtime.
+## Giải pháp được chọn
 
-### map() 2 overloads
-
-```ts
-map(sourceDir: string): string;       // source → instance temp dir
-map(tempDir: string, dest: string): string;  // temp → destination
-```
-
-### Instance isolation
-
-Mỗi instance `AdapterDataManager` có một `instanceTempDir` riêng. Khi `dispose()`, chỉ xoá temp dir của instance đó.
-
----
-
-Xem thêm: [Spec](../specs/profile-management.spec.md) | [Plan](../plans/profile-management.plan.md)
+- Phương án AI đề xuất: Phương án 2 (copy vào temp dir).
+- Phương án được chọn: Phương án 2.
+- Lý do: An toàn nhất, tránh corrupt dữ liệu. Profile thường nhỏ nên chi phí copy không đáng kể.
+- Ràng buộc: `map()` có thể throw nếu source profile không tồn tại hoặc không có quyền đọc. `unmap()` throw nếu không xoá được temp dir.

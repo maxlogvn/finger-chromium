@@ -1,5 +1,7 @@
 # Spec: Mutex Path Resolution
 
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
+
 ## Mô tả
 
 Fix lỗi path resolution của native mutex module (`mutex.node`) sau khi tsup bundle. Hiện tại hardcoded `../../../` bị sai vị trí thư mục, dẫn đến lỗi `Unsupported OS architecture for named mutex`.

@@ -1,189 +1,145 @@
 # Spec: Hệ thống kiểu (Type System)
 
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
+
 ## Mô tả
 
-Hệ thống kiểu của thư viện gồm 5 file TypeScript đặt trong `src/types/`. Mỗi file định nghĩa một nhóm interface/type riêng biệt, không phụ thuộc chéo. Tất cả được re-export qua `src/index.ts`.
+Hệ thống 5 file TypeScript types (tổng cộng 5 interface + type helpers) cung cấp contract kiểu cho toàn bộ thư viện. `PWChromium` là interface chính định nghĩa public API, các option types (`FingerprintOptions`, `ProxyOptions`, `ProfileOptions`, `FetchOptions`) là tham số cho từng method.
 
-## File liên quan
+Source: `src/types/*.ts`.
 
-| File | Nội dung chính |
-|---|---|
-| `src/types/PWChromium.ts` | Interface `PWChromium` -- public API |
-| `src/types/fingerprint.ts` | Interface `FingerprintOptions` |
-| `src/types/proxy.ts` | Interface `ProxyOptions`, type `IPExtractionMethod`, `PublicIPReplacement`, `PrivateIPReplacement` |
-| `src/types/profile.ts` | Interface `ProfileOptions` |
-| `src/types/fetch.ts` | Interface `FetchOptions`, type `Tag`, `Time` |
+## Yêu cầu
 
-## API / Interfaces chính
+- `PWChromium` là interface (không phải class) — không thể `new PWChromium()`. Implementation là `BrowserEngine` singleton.
+- Các option types có JSDoc đầy đủ, ghi rõ `@default`.
+- Tất cả public types được re-export từ `src/index.ts`.
+- `FetchOptions` dùng cho method `newFingerprint()`.
+- File proxy có type helpers: `IPExtractionMethod`, `IPString`, `PublicIPReplacement`, `PrivateIPReplacement`.
+- `IPString = string & {}` — branded type để TypeScript nhận dạng IP string.
 
-### `PWChromium` interface
+## Thiết kế
+
+### File structure
+
+```
+src/types/
+  ├── PWChromium.ts    — Interface chính (fluent API)
+  ├── fingerprint.ts   — FingerprintOptions (9 fields)
+  ├── proxy.ts         — ProxyOptions (18 fields + type helpers)
+  ├── profile.ts       — ProfileOptions (2 fields)
+  └── fetch.ts         — FetchOptions (12 fields + Tag, Time)
+```
+
+### Tại sao PWChromium là interface?
+
+Interface cho phép người dùng implement custom version mà không cần kế thừa class. Nếu là class, mọi custom implementation phải extends `BrowserEngine` — dính implementation details.
+
+### Tại sao IPString = string & {}?
+
+Branded type — TypeScript coi `IPString` là kiểu riêng biệt với `string`. Ngăn truyền `string` thông thường vào field yêu cầu IP string. Tuy nhiên, ở runtime nó vẫn là `string` — không có overhead.
+
+Tham chiếu design doc: `docs/designs/type-system.design.md`.
+
+## API / Data flow
+
+### PWChromium — Interface chính
 
 ```ts
-interface PWChromium {
-  // Truy cập engine gốc (cho tác vụ nâng cao)
+export interface PWChromium {
   readonly engine: object;
-
-  // Thay thế launcher mặc định
   repackChromium(launcher: object): this;
-
-  // Cấu hình
-  useFingerprint(data: string, options?: FingerprintOptions): this;
-  useProxy(data: string, options?: ProxyOptions): this;
-  useProfile(dirPath: string, options?: ProfileOptions): this;
-
-  // Lấy fingerprint mới
+  useFingerprint(data: string, options?: object): this;
+  useProxy(data: string, options?: object): this;
+  useProfile(dirPath: string, options?: object): this;
   newFingerprint(options: FetchOptions): Promise<string | undefined>;
-
-  // Lifecycle
-  launch(options?: Partial<PluginLaunchOptions>): this;
+  launch(options?: object): this;
   newContext(options?: Partial<PluginLaunchOptions>): Promise<BrowserContext>;
   quit(saveDataPath?: string): Promise<void>;
 }
 ```
 
-**Lưu ý:** `PluginLaunchOptions` là `Parameters<BrowserType['launchPersistentContext']>[1]` -- trích xuất từ kiểu Playwright, chứa các option như `headless`, `viewport`, `locale`, `timezoneId`...
+### FingerprintOptions — 9 fields
 
-### `FingerprintOptions`
+| Field | Type | Default |
+|---|---|---|
+| `emulateDeviceScaleFactor` | `boolean` | `true` |
+| `emulateSensorAPI` | `boolean` | `true` |
+| `usePerfectCanvas` | `boolean` | `true` |
+| `useFontPack` | `boolean` | `true` |
+| `safeElementSize` | `boolean` | `false` |
+| `safeBattery` | `boolean` | `true` |
+| `safeCanvas` | `boolean` | `true` |
+| `safeAudio` | `boolean` | `true` |
+| `safeWebGL` | `boolean` | `true` |
 
-```ts
-interface FingerprintOptions {
-  emulateDeviceScaleFactor?: boolean;   // @default true
-  emulateSensorAPI?: boolean;            // @default true
-  usePerfectCanvas?: boolean;            // @default true
-  useFontPack?: boolean;                 // @default true
-  safeElementSize?: boolean;             // @default false
-  safeBattery?: boolean;                 // @default true
-  safeCanvas?: boolean;                  // @default true
-  safeAudio?: boolean;                   // @default true
-  safeWebGL?: boolean;                   // @default true
-}
-```
+### ProxyOptions — 18 fields + type helpers
 
-### `ProxyOptions`
+Xem chi tiết tại [proxy-config.spec.md](proxy-config.spec.md). Các field đáng chú ý:
 
-```ts
-interface ProxyOptions {
-  changeBrowserLanguage?: boolean;                    // @default true
-  changeGeolocation?: boolean;                        // @default false
-  changeTimezone?: boolean;                           // @default true
-  changeWebRTC?: 'enable' | 'disable' | 'replace';   // @default 'replace'
-  publicIPv4?: PublicIPReplacement;                   // @default 'auto'
-  publicIPv6?: PublicIPReplacement;                   // @default 'auto'
-  privateIPv4?: PrivateIPReplacement;                 // @default 'local'
-  privateIPv6?: PrivateIPReplacement;                 // @default 'local'
-  ipExtractionMethod?: IPExtractionMethod | { v4: IPExtractionMethod; v6: IPExtractionMethod }; // @default 'raw'
-  ipExtractionParam?: string | { v4: string; v6: string };        // @default ''
-  ipExtractionURL?: string | { v4: string; v6: string };          // @default ''
-  detectExternalIP?: boolean | { v4: boolean; v6: boolean };      // @default true
-  ipInfoMethod?: 'database' | 'ip-api.com';                       // @default 'database'
-  ipInfoKey?: string;                                               // @default ''
-  enableTunneling?: boolean;                                        // @default true
-  enableQUIC?: boolean;                                             // @default false
-  dnsMode?: 'system-proxy' | 'custom-proxy' | 'custom-direct';    // @default 'system-proxy'
-  dnsIP?: string;                                                   // @default '1.1.1.1'
-}
-```
+- `ipExtractionMethod`: `IPExtractionMethod | { v4: IPExtractionMethod; v6: IPExtractionMethod }` — object notation cho cấu hình riêng IPv4/IPv6.
+- `privateIPv4`: `PrivateIPReplacement | 'private class a' | 'private class b' | 'private class c'` — union type cho IP nội bộ.
+- `privateIPv6`: `PrivateIPReplacement | 'unique local address'`.
+- `dnsMode`: `'system-proxy' | 'custom-proxy' | 'custom-direct'`.
 
-### Helper types cho ProxyOptions
+### ProfileOptions — 2 fields
 
-```ts
-type IPExtractionMethod = 'raw' | 'xpath' | 'regexp' | 'jsonpath';
-type PrivateIPReplacement = IPString | 'disable' | 'local';
-type PublicIPReplacement = IPString | 'disable' | 'auto';
-type IPString = string & {};  // Branded type: bất kỳ string nào
-```
+| Field | Type | Default |
+|---|---|---|
+| `loadProxy` | `boolean` | `true` |
+| `loadFingerprint` | `boolean` | `true` |
 
-### `ProfileOptions`
+### FetchOptions — 12 fields + Tag + Time
 
-```ts
-interface ProfileOptions {
-  loadProxy?: boolean;        // @default true
-  loadFingerprint?: boolean;  // @default true
-}
-```
+| Field | Type | Default |
+|---|---|---|
+| `tags` | `Tag[]` | — |
+| `timeLimit` | `Time` | — |
+| `minWidth` / `maxWidth` | `number` | — |
+| `minHeight` / `maxHeight` | `number` | — |
+| `minBrowserVersion` / `maxBrowserVersion` | `number \| 'current'` | — |
+| `perfectCanvasLogs` | `boolean` | `false` |
+| `perfectCanvasRequest` | `string` | — |
+| `enableCustomServer` | `boolean` | `false` |
+| `dynamicPerfectCanvas` | `boolean` | `true` |
+| `enablePrecomputedFingerprints` | `boolean` | `true` |
 
-### `FetchOptions`
+## Components
+
+| File | Vai trò | Độ dài |
+|---|---|---|
+| `src/types/PWChromium.ts` | Interface chính — fluent API methods | 164 dòng |
+| `src/types/fingerprint.ts` | `FingerprintOptions` | 91 dòng |
+| `src/types/proxy.ts` | `ProxyOptions` + type helpers | 210 dòng |
+| `src/types/profile.ts` | `ProfileOptions` | 30 dòng |
+| `src/types/fetch.ts` | `FetchOptions` + `Tag` + `Time` | 137 dòng |
+
+### Export từ src/index.ts
 
 ```ts
-interface FetchOptions {
-  tags?: Tag[];                             // VD: ['Chrome', 'Desktop']
-  timeLimit?: Time;                         // VD: '30 days'
-  minWidth?: number;
-  maxWidth?: number;
-  minHeight?: number;
-  maxHeight?: number;
-  minBrowserVersion?: number | 'current';
-  maxBrowserVersion?: number | 'current';
-  perfectCanvasLogs?: boolean;              // @default false
-  perfectCanvasRequest?: string;
-  enableCustomServer?: boolean;             // @default false
-  dynamicPerfectCanvas?: boolean;           // @default true
-  enablePrecomputedFingerprints?: boolean;  // @default true
-}
-```
-
-### `Tag` type
-
-```ts
-type Tag =
-  | '*' | 'Desktop' | 'Mobile'
-  | 'Microsoft Windows' | 'Apple Mac' | 'Android' | 'Linux' | 'iPad' | 'iPhone'
-  | 'Edge' | 'Chrome' | 'Safari' | 'Firefox' | 'YaBrowser'
-  | 'Windows 7' | 'Windows 8' | 'Windows 10';
-```
-
-### `Time` type
-
-```ts
-type Time = '*' | '15 days' | '30 days' | '60 days';
-```
-
-## Luồng dữ liệu
-
-### Khi người dùng gọi `useFingerprint(fingerprintData, options)`
-
-```
-user code
-   │
-   ▼
-Chromium.useFingerprint(data: string, options?: FingerprintOptions)
-   │
-   ├── Lưu data + options vào browser.fingerprints
-   │
-   ▼
-Chromium.launch()
-   │
-   ▼
-BrowserEngine gọi engine.useFingerprint(data, options)
-   │
-   ▼
-Plugin chuyển options cho engine binary qua API 'setup'
-```
-
-### Khi người dùng gọi `newFingerprint(fetchOptions)`
-
-```
-Chromium.newFingerprint(options: FetchOptions)
-   │
-   ▼
-engine.fetch(options) → gọi API backend → trả về fingerprint JSON
+export { type PWChromium } from './types/PWChromium';
+export {
+  Chromium,
+  type FetchOptions,
+  type FingerprintOptions,
+  type Launcher,
+  type PluginLaunchOptions,
+  type ProfileOptions,
+  type ProxyOptions,
+} from './adapter/playwright/chromium';
 ```
 
 ## Xử lý lỗi
 
-Các type chỉ là định nghĩa -- lỗi xảy ra ở runtime khi giá trị không đúng kiểu mong đợi:
-
-| Lỗi runtime | Nguyên nhân |
+| Tình huống | Hành vi |
 |---|---|
-| `changeWebRTC` nhận giá trị `true` (boolean) thay vì `'enable' | 'disable' | 'replace'` | Engine không hiểu, fallback về mặc định |
-| `dnsMode` nhận `'proxy'` thay vì `'system-proxy'` | Engine set sai chế độ DNS |
-| `timeLimit` nhận `'1 month'` thay vì `'30 days'` | Engine không parse được, dùng mặc định |
+| Dùng sai type (vd: `changeWebRTC: true` thay vì `'replace'`) | TypeScript báo lỗi compile — runtime không throw |
+| Truyền `IPString` thay vì `string` | Compile error nếu dùng sai — runtime là `string` |
+| Dùng `PWChromium` làm class (`new PWChromium()`) | TypeScript báo lỗi — interface không thể new |
 
-## Ghi chú kỹ thuật
+## Kiểm tra
 
-- `PWChromium.ts` import `PluginLaunchOptions` từ `adapter/playwright/chromium.ts` -- đây là dependency duy nhất từ types ra code. Lý do: `PluginLaunchOptions` là type trích xuất từ Playwright, cần được lấy từ adapter (nơi có Playwright).
-- `engine` property trong `PWChromium` có type `object` thay vì type chính xác. Đây là intentional design choice để tránh circular dependency và cho phép thay đổi internal implementation.
-- Các type `IPString`, `PublicIPReplacement`, `PrivateIPReplacement` dùng intersection `string & {}` để tạo branded type -- cho phép TypeScript phân biệt IPString với string thường.
-- `FetchOptions` không đánh dấu field nào là required -- tất cả đều optional. Nếu không truyền, engine sẽ lấy fingerprint bất kỳ.
-
----
+- Happy path: import đúng type, compile pass.
+- Edge case: `changeWebRTC: 'replace'` — string literal type, compile check.
+- Edge case: `ipExtractionMethod: { v4: 'raw', v6: 'xpath' }` — object notation.
+- Error: truyền `changeWebRTC: true` (boolean) — TypeScript báo type error.
+- Export: tất cả public types re-export từ `src/index.ts` đúng.

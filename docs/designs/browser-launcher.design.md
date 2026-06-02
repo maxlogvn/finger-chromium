@@ -1,33 +1,30 @@
-# Design: Browser Launcher
+# Design: Browser Launcher -- Spawn Chromium mặc định
 
-## Vấn đề cần giải quyết
+## Bối cảnh
 
-Engine binary spawn `worker.exe` để chạy Chromium. Thư viện cần:
-1. Spawn Chromium với đúng arguments (debugging port, user data dir, headless mode).
-2. Phát hiện DevTools listening URL từ output của Chromium.
-3. Cung cấp method `close()` để kill Chromium process an toàn.
+Cần một module spawn Chromium, phát hiện DevTools listening URL từ stderr/stdout, và trả về Browser object với close/configure methods.
 
-## Giải pháp chọn
+## Câu hỏi làm rõ
 
-### Spawn Chromium
+- Dùng spawn hay exec? → spawn (stream output, không buffer).
+- Kill process tree? → Dùng `taskkill /T /F` trên Windows (kill cả child processes).
+- Timeout mặc định? → 30s.
 
-Dùng `child_process.spawn` để tạo Chromium process. Các arguments được truyền:
-- `--remote-debugging-port=<port>` -- port cho CDP.
-- `--user-data-dir=<path>` -- thư mục profile (nếu có).
-- Các args khác từ người dùng.
+## Các phương án
 
-**Tại sao dùng `spawn` thay vì `exec`?** `spawn` cho phép stream stdout/stderr real-time, không cần đợi process kết thúc.
+### Phương án 1: Dùng Playwright launch trực tiếp
 
-### Phát hiện DevTools URL
+Đơn giản nhưng không linh hoạt cho fingerprint injection.
 
-Chromium in ra dòng `DevTools listening on ws://127.0.0.1:<port>/...` khi nó đã sẵn sàng. Thư viện dùng `readline` để parse từng dòng trong stderr và stdout.
+### Phương án 2: Spawn thủ công (chọn)
 
-**Tại sao parse cả stderr và stdout?** Một số phiên bản Chromium in DevTools URL ra stderr, số khác in ra stdout. Đọc cả hai để không bỏ sót.
+Spawn worker.exe -> parse DevTools URL từ stdout/stderr -> trả về Browser.
 
-### Kill process với taskkill
+- Ưu điểm: Kiểm soát hoàn toàn process, không qua Playwright layer.
+- Nhược điểm: Phải tự parse URL.
 
-Trên Windows, Chromium có thể spawn child processes riêng (renderer, GPU, ...). `childProcess.kill()` chỉ kill process chính, không kill process tree. Dùng `taskkill /T /F` để kill toàn bộ process tree.
+## Giải pháp được chọn
 
-**Tại sao dùng `taskkill`?** `taskkill /T` kill process tree (bao gồm các child processes). `/F` force kill nếu process không đáp ứng. Đây là cách sạch nhất để tắt Chromium trên Windows.
-
----
+- **Phương án AI đề xuất:** Phương án 2 (spawn thủ công).
+- **Phương án được chọn:** Phương án 2.
+- **Cơ chế:** spawn -> createInterface trên stdout/stderr -> regex `DevTools listening on (.*)` -> parse port -> return Browser.

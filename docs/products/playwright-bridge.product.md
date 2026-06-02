@@ -1,71 +1,71 @@
 # Product: Playwright Bridge
 
-## Tổng quan
+## Mô tả
 
-`PlaywrightFingerprintPlugin` là cầu nối giữa `FingerprintPlugin` và Playwright. Nó cho phép bạn dùng `launchPersistentContext()` quen thuộc của Playwright, trong khi fingerprint, proxy, và profile được engine binary quản lý.
+Playwright Bridge là lớp giúp fingerprint engine làm việc với Playwright. Class chính là `PlaywrightFingerprintPlugin`.
 
-## Cách dùng
+Bridge này không thay thế Playwright. Nó chỉ bọc bước launch để browser được setup fingerprint, proxy và profile trước khi user nhận `BrowserContext`.
+
+## Cách sử dụng
+
+Trong luồng thông thường, user dùng `Chromium` và không cần tạo bridge trực tiếp. Dùng trực tiếp `PlaywrightFingerprintPlugin` khi cần custom launcher hoặc muốn kiểm soát lớp bridge.
 
 ```ts
-import { PlaywrightFingerprintPlugin } from 'fingerprint-chromium-engine/adapter/playwright/engine';
+import { PlaywrightFingerprintPlugin } from './src/adapter/playwright/engine';
 
 const plugin = new PlaywrightFingerprintPlugin();
 
-// Cấu hình giống FingerprintPlugin
-plugin
-  .useFingerprint(fpString, { usePerfectCanvas: true })
-  .useProxy('http://user:pass@proxy:8080', { changeWebRTC: 'replace' })
-  .useProfile('./profiles/myprofile');
+plugin.setServiceKey(process.env.BABLOSOFT_KEY ?? '');
+plugin.useFingerprint(fingerprintData);
+plugin.useProfile('./profiles/user_01', {
+  loadProxy: true,
+  loadFingerprint: true,
+});
 
-// Launch persistent context -- API giống Playwright
-const context = await plugin.launchPersistentContext('', {
-  key: process.env.BABLOSOFT_KEY,
-  args: ['--disable-web-security', '--no-sandbox'],
+const context = await plugin.launchPersistentContext('./profiles/user_01', {
+  viewport: { width: 1280, height: 720 },
 });
 
 const page = await context.newPage();
 await page.goto('https://example.com');
+
+await plugin.cleanup();
 ```
 
-## So sánh với Playwright gốc
+## Hành vi chi tiết
 
-| Playwright gốc | Playwright Bridge |
-|---|---|
-| `browserType.launchPersistentContext(dir, opts)` | `plugin.launchPersistentContext(dir, opts)` |
-| Tự động quản lý profile | Engine quản lý profile |
-| Viewport tự do thay đổi | Viewport bị lock bởi fingerprint |
-| Proxy qua option | Proxy qua `useProxy()` |
-| Không fingerprint | Có fingerprint injection |
+`launchPersistentContext()` là method chính. Đây là API Playwright mở browser với thư mục profile cố định. Engine cần kiểu launch này vì fingerprint và profile phải được chuẩn bị trước khi browser trả context cho user.
 
-## Options không hỗ trợ
+`launch()` vẫn tồn tại, nhưng chỉ fallback sang `launchPersistentContext()`. Nó in warning để user biết cách dùng khuyến nghị.
 
-| Option | Lý do | Thay bằng |
-|---|---|---|
-| `proxy` | Engine binary quản lý proxy riêng | `useProxy()` |
-| `channel` | Chỉ hỗ trợ Chromium mặc định | -- |
-| `firefoxUserPrefs` | Chỉ Firefox mới có | -- |
+Bridge chặn các option sau:
 
-## Viewport tự động
+- `proxy`: proxy phải đi qua fingerprint engine để đồng bộ timezone, WebRTC và geolocation.
+- `channel`: engine tự quyết định browser executable.
+- `firefoxUserPrefs`: flow này chỉ dành cho Chromium.
 
-Mỗi page mới tạo qua `context.newPage()` sẽ tự động resize theo fingerprint.
-`page.setViewportSize()` bị chặn (chỉ in warning) -- viewport đã bị fingerprint lock.
+Bridge cũng xử lý args:
 
-## Luồng xử lý
+- bỏ `--user-data-dir` khỏi args runtime, vì profile path do engine kiểm soát,
+- thêm `--disable-extensions` vào `ignoreDefaultArgs`, vì default arg này có thể làm sai môi trường mà engine cần.
 
-```
-1. launchPersistentContext('', options)
-2. #validateOptions(options) -- throw nếu có proxy/channel/firefoxUserPrefs
-3. Filter --user-data-dir khỏi args
-4. Tạo custom launcher: gọi pwLauncher.launchPersistentContext()
-5. _launch(false, ...) -- spawn worker.exe qua custom launcher
-6. configure() -- bindHooks + onClose + resize page đầu tiên
-7. Return BrowserContext
-```
+## Viewport và cleanup
 
-## Lưu ý
+Sau khi context mở, `configure()` đăng ký cleanup khi context đóng. Nếu engine trả về bounds, bridge kiểm tra page đầu tiên và resize bằng CDP khi cần.
 
-- `launch()` không hỗ trợ đầy đủ -- nó in warning và fallback sang `launchPersistentContext`.
-- `--disable-extensions` tự động bị loại khỏi args vì engine cần extensions.
-- Tất cả instance chia sẻ cùng `serviceKey` (module-level).
+CDP là Chrome DevTools Protocol, giao thức điều khiển Chromium ở mức thấp hơn API page thông thường. Bridge dùng CDP để đạt kích thước viewport đúng hơn khi fingerprint đã khóa kích thước.
 
----
+`bindHooks()` đảm bảo page mới cũng đi qua logic resize. Nó cũng chặn `page.setViewportSize()` vì đổi viewport sau khi fingerprint đã set có thể làm fingerprint lệch.
+
+## Giới hạn và điều kiện
+
+- Cần Playwright tối thiểu `1.27.1`.
+- `launch()` không phải launch thuần. Nên dùng `launchPersistentContext()` trực tiếp.
+- Bridge chỉ hỗ trợ Chromium flow.
+- Nếu dùng launcher custom, launcher phải có `launchPersistentContext()`.
+
+## Tài liệu kỹ thuật liên quan
+
+- Spec: `docs/specs/playwright-bridge.spec.md`
+- Design: `docs/designs/playwright-bridge.design.md`
+- Source: `src/adapter/playwright/engine.ts`

@@ -2,37 +2,64 @@
 
 ## Các bước thực hiện
 
-- [x] **Bước 1: Cài đặt `debug` package** -- đã có trong dependencies.
+- [x] **Bước 1: Cài đặt thư viện debug** (file: `package.json`)
 
-- [x] **Bước 2: Tạo logger trong `connector/index.ts`**
-  - Namespace: `browser-with-fingerprints:connector`.
+    **Signature:**
+    ```json
+    "debug": "^4.4.3"
+    ```
 
-- [x] **Bước 3: Tạo logger trong `connector/engine.ts`**
-  - Namespace: `browser-with-fingerprints:connector:engine`.
+    **Tại sao:** `debug` là thư viện logging nhẹ, theo namespace, kiểm soát qua biến môi trường `DEBUG`.
 
-- [x] **Bước 4: Tạo logger trong `connector/pcapServer/index.ts`**
-  - Namespace: `browser-with-fingerprints:connector:pcapServer`.
+- [x] **Bước 2: Tạo logger cho từng module** (file: `src/plugin/connector/index.ts`, dòng 18-22)
 
-- [x] **Bước 5: Tạo logger trong `plugin/cleaner.ts`**
-  - Namespace: `browser-with-fingerprints:cleaner`.
+    **Signatures:**
+    ```ts
+    import debug from 'debug';
 
-- [x] **Bước 6: Thêm log statements vào các file tương ứng**
-  - engine.ts: IPC request/response, download, extract, spawn, metadata.
-  - index.ts: PCAP server listening.
-  - cleaner.ts: lock compromised.
+    export const log = debug('browser-with-fingerprints:connector');
+    export const logError = debug('browser-with-fingerprints:connector');
+    ```
 
-## File liên quan
+    **Chi tiết các namespace:**
+    | Namespace | File | Mục đích |
+    |---|---|---|
+    | `browser-with-fingerprints:connector` | `src/plugin/connector/index.ts` | API connector chính |
+    | `browser-with-fingerprints:connector:engine` | `src/plugin/connector/engine.ts` | RemoteEngine lifecycle |
+    | `browser-with-fingerprints:connector:pcapServer` | `src/plugin/connector/pcapServer/index.ts` | PCAP server |
+    | `browser-with-fingerprints:cleaner` | `src/plugin/cleaner.ts` | File cleanup daemon |
 
-| File | Namespace |
-|---|---|
-| `src/plugin/connector/index.ts` | `browser-with-fingerprints:connector` |
-| `src/plugin/connector/engine.ts` | `browser-with-fingerprints:connector:engine` |
-| `src/plugin/connector/pcapServer/index.ts` | `browser-with-fingerprints:connector:pcapServer` |
-| `src/plugin/cleaner.ts` | `browser-with-fingerprints:cleaner` |
+    **Tại sao:** Namespace theo module hierarchy — bật `browser-with-fingerprints:connector:*` log tất cả connector sub-modules.
+
+- [x] **Bước 3: Sử dụng logger trong code** (file: các module tương ứng)
+
+    **Pattern:**
+    ```ts
+    log('RemoteEngine: bắt đầu download từ %s', url);
+    logError('cleaner: lỗi xoá file %s', filePath);
+    ```
+
+    **Bật log:**
+    ```bash
+    set DEBUG=browser-with-fingerprints:connector:*  # Windows CMD
+    $env:DEBUG = 'browser-with-fingerprints:connector:*'  # PowerShell
+    ```
+
+    **Edge cases:**
+    - `DEBUG=` rỗng → không log gì.
+    - `DEBUG=*` → log tất cả.
+    - `DEBUG=browser-with-fingerprints:*` → log tất cả module.
+
+    **Tại sao:** Dùng `debug` thay `console.log` — user kiểm soát log level qua env, không log production.
 
 ## Kiểm tra
 
-- `npm run lint` -- 0 errors.
-- Bật DEBUG để kiểm tra output.
+```bash
+npm run lint      # ESLint check
+```
 
----
+## Ghi chú
+
+- 4 namespace, tất cả prefix `browser-with-fingerprints:`.
+- Không log secrets (key, IP proxy).
+- `logError` tái sử dụng namespace — `.error()` tự thêm prefix `ERROR`.

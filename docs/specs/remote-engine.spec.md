@@ -1,147 +1,178 @@
 # Spec: RemoteEngine
 
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
+
 ## Mô tả
 
-RemoteEngine quản lý vòng đời của `FastExecuteScript.exe` -- engine binary từ bablosoft. Nó tự động tải, giải nén, cấu hình, spawn, và giao tiếp với engine qua file-based IPC.
+`RemoteEngine` quản lý toàn bộ vòng đời của engine binary (`FastExecuteScript.exe`). Đây là lớp thấp nhất trong stack — nó tải engine từ bablosoft.com, verify checksum SHA1, giải nén, spawn process, và giao tiếp qua file-based IPC.
 
-## API / Interfaces chính
+Không có `RemoteEngine`, các lớp trên (`API Connector`, `FingerprintPlugin`) không thể gửi lệnh setup fingerprint hay nhận kết quả.
 
-### `RemoteEngine` class
+Source: `src/plugin/connector/engine.ts` (386 dòng).
+
+## Yêu cầu
+
+- Download engine từ bablosoft.com, verify SHA1 checksum.
+- Cache metadata dưới dạng file `<version>_<ARCH>.json`.
+- Extract zip vào thư mục `script/<version>/`.
+- Copy `project.xml`, tạo `worker_command_line.txt`, `settings.ini`.
+- File-based IPC: ghi JSON request file, `chokidar` watch phản hồi.
+- Dọn dẹp request file cũ (process không còn tồn tại) trước mỗi request mới.
+- Hỗ trợ win32 32-bit và 64-bit (ARCH auto-detection).
+- Timeout configurable: `setEngineTimeout()`, `setRequestTimeout()`.
+- `kill()` dừng engine process — an toàn khi gọi nhiều lần.
+- Emit events: `beforeDownload`, `beforeExtract`.
+- `resolvePackageRoot()` — walk-up algorithm để tìm package root sau tsup bundle.
+
+## Thiết kế
+
+### Class hierarchy
+
+```
+EventEmitter
+  └── RemoteEngine
+       ├── #meta: EngineMeta (cache)
+       ├── #cwd: string
+       ├── #args: string[]
+       ├── #engineTimeout / #requestTimeout: number
+       └── #process: ChildProcess
+```
+
+### Luồng runFunction()
+
+```
+runFunction(name, params, timeout)
+ │
+ ├─ #updateMeta() ─── đọc project.xml → fetch/cache metadata
+ │
+ ├─ #startProcess(timeout) ─── download → extract → spawn
+ │    ├─ Nếu cần: download zip, verify checksum
+ │    ├─ Nếu cần: extract zip
+ │    ├─ Copy project.xml + tạo worker_command_line.txt + settings.ini
+ │    └─ Spawn FastExecuteScript.exe
+ │
+ ├─ Tạo thư mục r/
+ ├─ Dọn request file cũ (process không còn tồn tại)
+ ├─ Ghi request file: { name, params }
+ │
+ ├─ chokidar watch request file → engine ghi response
+ │    ├─ Có requestTimeout → reject nếu quá thời gian
+ │    ├─ Engine process close → chờ CLOSE_TIMEOUT rồi resolve ''
+ │    └─ File change → read, unlink, resolve
+ │
+ └─ Parse JSON response → trả FunctionResult
+```
+
+### File-based IPC chi tiết
+
+Engine giao tiếp qua file JSON — không dùng pipe hay socket:
+
+1. `runFunction()` tạo thư mục `r/` trong thư mục script engine.
+2. Ghi file `<pid>_<uuid>.json` chứa `{ name, params }`.
+3. `chokidar` watch file đó cho đến khi engine ghi response vào.
+4. Đọc response, parse JSON, trả kết quả.
+5. Dọn file request cũ trước mỗi request mới: kiểm tra PID còn sống không (signal 0). Nếu ESRCH (process không tồn tại) → xoá file.
+
+Cơ chế file-based được chọn vì `FastExecuteScript.exe` (C/C++) không hỗ trợ stdin/stdout JSON protocol — file là cách đơn giản nhất để hai process giao tiếp.
+
+Tham chiếu design doc: `docs/designs/remote-engine.design.md`.
+
+## API / Data flow
 
 ```ts
-class RemoteEngine extends EventEmitter {
-  constructor(options?: EngineOptions);
+const engine = new RemoteEngine({
+  cwd: './data',
+  engineTimeout: 300_000,
+  requestTimeout: 300_000,
+});
 
-  // Cấu hình
-  setCwd(value?: string): void;        // Thư mục làm việc (mặc định: process.cwd()/data)
-  setArgs(value?: string[]): void;     // Tham số dòng lệnh
-  setEngineTimeout(value?: string | number): void;  // Timeout download+extract+spawn
-  setRequestTimeout(value?: string | number): void; // Timeout IPC request
+engine.on('beforeDownload', () => console.log('Downloading...'));
+engine.on('beforeExtract', () => console.log('Extracting...'));
 
-  // Core method
-  runFunction(name: string, params: unknown, options?: RunFunctionOptions): Promise<FunctionResult>;
+engine.setCwd('./custom/data');
+engine.setArgs(['--mock-pcap-port=54321']);
+engine.setEngineTimeout(300_000);
+engine.setRequestTimeout(60_000);
 
-  // Sự kiện
-  // 'beforeDownload' → khi bắt đầu download
-  // 'beforeExtract'  → khi bắt đầu extract
-}
+const result = await engine.runFunction('setup', {
+  key: 'abc',
+  fingerprint: { value: '...' },
+});
+
+console.log(result.response);
+
+engine.kill();
 ```
 
-### `EngineOptions`
+### Input / Output
 
-```ts
-interface EngineOptions {
-  cwd?: string;                // Thư mục làm việc
-  args?: string[];             // Tham số engine
-  engineTimeout?: string | number;  // ms, mặc định: 300000
-  requestTimeout?: string | number; // ms, mặc định: 300000
-}
-```
+- `runFunction(name, params, opts?)` → `Promise<FunctionResult>`.
+- `kill()` → void.
+- Các setter trả về void.
 
-### `FunctionResult`
+## Components
 
-```ts
-interface FunctionResult {
-  error?: string;
-  response?: unknown;
-  [key: string]: unknown;
-}
-```
+| File | Vai trò | Dòng |
+|---|---|---|
+| `src/plugin/connector/engine.ts` | RemoteEngine class | 386 |
+| `src/plugin/connector/index.ts` | Singleton + cleanup | 99 |
 
-## Luồng dữ liệu
+## API methods
 
-### 1. `runFunction(name, params)` -- gọi hàm trên engine
-
-```
-runFunction(name, params)
-    │
-    ├── Chưa có metadata? → #updateMeta()
-    │       ├── Đọc project.xml → lấy <EngineVersion>
-    │       ├── Fetch metadata từ bablosoft.com
-    │       └── Cache vào file <version>_<ARCH>.json
-    │
-    ├── #startProcess(engineTimeout)
-    │       ├── Kiểm tra checksum SHA1 của zip
-    │       │   └── Sai? → xoá engine cũ
-    │       ├── Download zip nếu chưa có
-    │       │   └── Emit 'beforeDownload'
-    │       ├── Extract zip nếu chưa có
-    │       │   └── Emit 'beforeExtract'
-    │       ├── Copy project.xml + settings.ini + worker_command_line.txt
-    │       └── Spawn FastExecuteScript.exe
-    │
-    ├── Tạo thư mục r/ (nếu chưa có)
-    │
-    ├── Dọn request cũ: kiểm tra PID, xoá file của process đã chết
-    │
-    ├── Ghi file: r/<pid>_<uuid>.json = JSON.stringify({ name, params })
-    │
-    ├── Watch file bằng chokidar, đợi engine ghi đè
-    │   ├── Timeout? → reject RequestTimeoutError
-    │   ├── Process close? → đợi CLOSE_TIMEOUT (60s) rồi resolve rỗng
-    │   └── File change? → đọc nội dung, unlink file, resolve
-    │
-    └── Parse JSON response → trả về FunctionResult
-```
-
-### 2. `#updateMeta()` -- lấy metadata engine
-
-```
-Đọc project.xml → parse <EngineVersion> → version
-    │
-    ├── Cache tồn tại? → đọc file JSON
-    └── Cache không tồn tại?
-        ├── Fetch từ: http://bablosoft.com/distr/.../<version>.meta.json
-        ├── Parse: { Checksum, Url }
-        ├── Lưu cache vào: <cwd>/<version>_<ARCH>.json
-        └── Set this.#meta
-```
-
-### 3. `#startProcessInternal()` -- spawn engine
-
-```
-Kiểm tra engineDir (có chứa zip không)
-    │
-    ├── Có zip? → SHA1 checksum → khớp? → giữ
-    │                           → không khớp? → xoá engineDir
-    │
-    └── Không có engineDir? → download zip
-        │
-        ▼
-    Kiểm tra scriptDir (đã extract chưa?)
-    │
-    ├── Chưa extract? → extract zip → copy config files
-    └── Đã extract? → bỏ qua
-        │
-        ▼
-    Spawn: execFile('FastExecuteScript.exe', ['--silent', ...args], { cwd: scriptDir })
-```
-
-## File liên quan
-
-| File | Vai trò |
+| Method | Mô tả |
 |---|---|
-| `src/plugin/connector/engine.ts` | RemoteEngine class (373 dòng) |
-| `src/plugin/connector/utils.ts` | Hàm helper (notify, thuộc API Connector, không dùng trong RemoteEngine) |
-| `src/plugin/connector/index.ts` | API Connector (singleton + wrapper) |
-| `project.xml` | File cấu hình engine BAS (chứa EngineVersion) |
+| `setCwd(value?)` | Set thư mục làm việc. Mặc định: `process.cwd() + '/data'` |
+| `setArgs(value?)` | Set tham số dòng lệnh cho engine |
+| `setEngineTimeout(value?)` | Timeout khởi động engine (ms). Mặc định: `DEFAULT_TIMEOUT` (300s) |
+| `setRequestTimeout(value?)` | Timeout chờ phản hồi (ms). Mặc định: `DEFAULT_TIMEOUT` (300s) |
+| `get requestTimeout()` | Getter cho request timeout hiện tại |
+| `runFunction(name, params, opts?)` | Gọi hàm trên engine qua file IPC |
+| `kill()` | Kill process engine — kiểm tra `#process.killed` trước khi kill |
+
+## Constants
+
+| Tên | Giá trị | Mô tả |
+|---|---|---|
+| `CLOSE_TIMEOUT` | 60,000 ms | Chờ process engine đóng sau khi spawn (file-based IPC timeout) |
+| `DEFAULT_TIMEOUT` | 300,000 ms (5 phút) | Timeout mặc định cho engine + request |
+| `ARCH` | `'32'` hoặc `'64'` | Auto-detection: `process.arch.includes('32') ? '32' : '64'` |
+| `CWD` | `process.cwd() + '/data'` | Thư mục làm việc mặc định |
+| `PROJECT_PATH` | Walk-up resolved | Đường dẫn `project.xml` trong package root |
+
+### Package Root Resolution
+
+`resolvePackageRoot(startDir)` walk ngược từ `__dirname` đến khi tìm thấy `package.json` có `name === 'fingerprint-chromium-engine'`. Cần thiết vì sau tsup bundle, `__dirname` trong dist/ khác với source. Nếu không tìm thấy, throw error.
+
+## Events
+
+| Event | Khi nào emit | Dùng để |
+|---|---|---|
+| `beforeDownload` | Trước khi tải engine zip | Log progress cho user |
+| `beforeExtract` | Trước khi giải nén engine | Log progress cho user |
 
 ## Xử lý lỗi
 
-| Lỗi | Nơi throw | Nguyên nhân |
-|---|---|---|
-| `EngineTimeoutError` | `#startProcess(timeout)` khi Promise.race timeout | Download/extract/spawn quá lâu |
-| `InvalidEngineError` | `execFile` callback lỗi | Engine binary không chạy được |
-| `RequestTimeoutError` | `runFunction` khi setTimeout reject | Engine không phản hồi kịp |
-| Error('[RemoteEngine] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.') | `resolvePackageRoot` | package.json không có name đúng |
-| Error('Không thể đọc phiên bản Engine từ project.xml') | `#updateMeta` | project.xml không có EngineVersion |
+| Tình huống | Hành vi |
+|---|---|
+| `package.json` không tìm thấy (resolvePackageRoot) | Throw `Error('Không tìm thấy thư mục gốc...')` |
+| `project.xml` không đọc được | Throw Error từ `fs.readFile` |
+| `project.xml` không có EngineVersion | Throw `Error('Không thể đọc phiên bản Engine...')` |
+| Checksum không khớp | Xoá engine cũ (`fs.rm`), tải lại |
+| Download thất bại | Axios throw — propagate lên connector |
+| Extract thất bại | extract-zip throw — propagate |
+| `startProcess` quá `engineTimeout` | Throw `EngineTimeoutError` |
+| Spawn thất bại (exe không tồn tại, lỗi code) | Throw `InvalidEngineError` |
+| `runFunction` chờ response quá `requestTimeout` | Throw `RequestTimeoutError` |
+| Engine process close đột ngột | Chờ `CLOSE_TIMEOUT` ms, resolve rỗng |
+| Response không phải JSON hợp lệ | Trả `{ error: 'Invalid response format from engine' }` |
 
-## Ghi chú kỹ thuật
+## Kiểm tra
 
-- **Đường dẫn tuyệt đối:** `PROJECT_PATH` được resolve bằng cách đi ngược từ `__dirname` cho đến khi tìm thấy `package.json` có `name === 'fingerprint-chromium-engine'`. Điều này đảm bảo đúng ngay cả khi code được bundle vào dist/.
-- **Chokidar watch:** Dùng `awaitWriteFinish: true` để tránh đọc file khi engine chưa ghi xong.
-- **Timeout cấu hình:** Có thể set qua `FINGERPRINT_TIMEOUT` env (ms) hoặc qua method `setEngineTimeout`/`setRequestTimeout`.
-- **Kiểm tra PID còn sống:** Dùng `process.kill(pid, 0)` -- ném `ESRCH` nếu process không tồn tại.
-- **Random UUID trong tên file:** Tránh conflict khi nhiều request cùng PID.
-
----
+- Happy path: `runFunction('setup', {...})` → `{ response: ... }`.
+- Edge case: checksum sai → xoá engine → tải lại → thành công.
+- Edge case: request file cũ (process die) → tự động xoá.
+- Error: request timeout → throw `RequestTimeoutError`.
+- Error: engine startup timeout → throw `EngineTimeoutError`.
+- Error: spawn fail → throw `InvalidEngineError`.
+- Events: `beforeDownload`, `beforeExtract` emit đúng lúc.
+- Kill: gọi `kill()` khi không có process → không throw.

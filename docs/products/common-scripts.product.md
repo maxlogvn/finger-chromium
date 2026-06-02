@@ -1,45 +1,39 @@
 # Product: Common Scripts
 
-## Tổng quan
+## Mô tả
 
-2 in-browser scripts được dùng qua `page.evaluate()` hoặc CDP `Runtime.evaluate` để hỗ trợ resize viewport.
+Common Scripts cung cấp 2 hàm JavaScript chạy trong browser qua `page.evaluate()` hoặc CDP `Runtime.evaluate`. Các script này hỗ trợ resize viewport — được dùng nội bộ bởi `BrowserEngine` khi thay đổi kích thước viewport theo fingerprint.
 
-## `waitForResize`
-
-Dùng ResizeObserver + double requestAnimationFrame để đợi layout ổn định:
+## Cách sử dụng
 
 ```ts
+import { scripts } from './src/common';
+
+// Playwright context
 await page.evaluate(scripts.waitForResize);
-// Lúc này: layout + paint đã hoàn tất, viewport ổn định
-```
+const vp = await page.evaluate(scripts.getViewport);
 
-**Cơ chế**: ResizeObserver detect thay đổi kích thước -> disconnect ngay (tránh leak) -> double rAF (lần 1 layout, lần 2 paint).
-
-## `getViewport`
-
-Lấy kích thước viewport thực tế:
-
-```ts
-const { width, height } = await page.evaluate(scripts.getViewport);
-// { width: window.innerWidth, height: window.innerHeight }
-```
-
-**Dùng `innerWidth` thay `clientWidth`**: viewport fingerprint dùng `innerWidth` (bao gồm scrollbar).
-
-## Dùng qua CDP
-
-```ts
-// plugin/browser.ts -- khi không có page handle
+// CDP context
 await cdp.Runtime.evaluate({
   expression: `(${scripts.waitForResize})()`,
   awaitPromise: true,
 });
 ```
 
-## Lưu ý
+## Hành vi chi tiết
 
-- Scripts chạy trong browser context -- không thể dùng closure variables.
-- `waitForResize` treo vô hạn nếu không có resize -- cần timeout ở caller.
+- `waitForResize`: ResizeObserver detect thay đổi kích thước → disconnect ngay (tránh memory leak) → double `requestAnimationFrame` (lần 1 layout, lần 2 paint).
+- `getViewport`: dùng `window.innerWidth` thay `clientWidth`. Lý do: fingerprint service dùng `innerWidth` (bao gồm scrollbar) để xác định viewport.
+- Scripts được lưu dạng function object. Khi dùng với CDP, gọi `.toString()` để serialize thành string.
+- Closure variables không được capture — mọi thứ trong function body. Điều này đảm bảo script hoạt động đúng khi evaluate ở remote context.
+
+## Giới hạn và điều kiện
+
+- `waitForResize` treo vô hạn nếu không có resize — cần timeout ở caller.
 - Chỉ gọi scripts sau khi page đã load (`DOMContentLoaded`).
 
----
+## Tài liệu kỹ thuật liên quan
+
+- Spec: `docs/specs/common-scripts.spec.md`
+- Design: `docs/designs/common-scripts.design.md`
+- Source: `src/common/index.ts`

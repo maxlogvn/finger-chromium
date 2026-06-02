@@ -1,54 +1,34 @@
 # Overview: Fix quit() không dọn dẹp hết handles
 
-## Kế hoạch vs Thực tế
+## Tóm tắt
 
-| Step | Nội dung | Trạng thái |
-|---|---|---|
-| 1 | engine.ts -- lưu process ref + kill() | Done |
-| 2 | pcapServer/index.ts -- server ref + close() | Done |
-| 3 | connector/index.ts -- cleanup() | Done |
-| 4 | cleaner.ts -- stop() + unlock | Done |
-| 5 | mutex/index.ts -- release() | Done |
-| 6 | plugin/index.ts -- browser ref + cleanup() | Done |
-| 7 | PlaywrightFingerprintPlugin override | Không cần |
-| 8 | chromium.ts -- quit() mở rộng | Done |
+Đã mở rộng `quit()` để dọn dẹp toàn bộ tài nguyên nền: worker.exe, engine process, PCAP server, cleaner timer, mutex. Node.js process có thể thoát tự nhiên sau quit.
 
-## Sai lệch so với plan
+## Kết quả thực hiện
 
-1. **`isConnected()` check** -- `Browser` interface trong launcher không có method này. Thay bằng try/catch đơn giản: `this.browser.close().catch(() => {})`.
-2. **PlaywrightFingerprintPlugin override** (Step 7) -- không cần override vì `FingerprintPlugin.cleanup()` đã xử lý browser.close() và connector. Playwright layer không có tài nguyên riêng cần dọn.
+| Step | Kế hoạch | Thực tế | Sai lệch |
+|---|---|---|---|
+| 1 | engine.ts: process ref + kill() | Done | Không có |
+| 2 | pcapServer: server ref + close() | Done | Không có |
+| 3 | connector: cleanup() | Done | Không có |
+| 4 | cleaner: stop() + unlock | Done | Không có |
+| 5 | mutex: release() | Done | Không có |
+| 6 | plugin: browser ref + cleanup() | Done | Không có |
+| 7 | PlaywrightFingerprintPlugin override | Bỏ qua | Không cần -- plugin.cleanup() đã xử lý |
+| 8 | chromium.ts: quit() mở rộng | Done | Không có |
 
-## Kết quả
+## Sai lệch đáng chú ý
 
-- **Lint:** 0 errors, 16 warnings (all pre-existing `no-explicit-any`)
-- **Build:** tsup bundle thành công (ESM + CJS + DTS)
-- **Test:** Chưa chạy (cần browser thật)
+- **Bỏ `isConnected()` check:** `Browser` interface không có method này. Thay bằng try/catch: `this.browser.close().catch(() => {})`.
+- **Bỏ Step 7:** PlaywrightFingerprintPlugin override không cần thiết.
 
-## Files đã sửa
+## Tài liệu liên quan
 
-| File | Thay đổi |
-|---|---|
-| `src/plugin/connector/engine.ts` | `#process` field, `kill()` method |
-| `src/plugin/connector/pcapServer/index.ts` | Module-level `server`, `close()` export |
-| `src/plugin/connector/index.ts` | `cleanup()` export |
-| `src/plugin/cleaner.ts` | `stop()` method (clear interval + unlock files) |
-| `src/plugin/mutex/index.ts` | `release()` export |
-| `src/plugin/index.ts` | `browser` + `processId` fields, `cleanup()` method, imports |
-| `src/adapter/playwright/chromium.ts` | `quit()`: guard sớm, gọi `engine.cleanup()` |
+- `docs/designs/quit-handle-cleanup.design.md`
+- `docs/specs/quit-handle-cleanup.spec.md`
+- `docs/plans/quit-handle-cleanup.plan.md`
 
-## Cleanup flow hoàn chỉnh
+## Ghi chú
 
-```
-Chromium.quit()
-  1. isLaunched = false                    (guard concurrent)
-  2. BrowserContext.close()                (đã có)
-  3. map profile về thư mục đích           (đã có)
-  4. FingerprintPlugin.cleanup()
-     a. browser.close()                    taskkill worker.exe
-     b. connectorCleanup()
-        - engine.kill()                    kill FastExecuteScript.exe
-        - pcapServer.close()               close TCP server
-     c. mutex.release()                    release BASProcess{pid}
-     d. cleaner.stop()                     clearInterval + unlock
-  5. dataManager.unmap()                   xoá temp dir
-```
+- Lint: 0 errors. Build: success.
+- Thứ tự cleanup quan trọng: browser (worker.exe) trước, engine sau, cleaner cuối.

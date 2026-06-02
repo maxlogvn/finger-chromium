@@ -1,162 +1,167 @@
 # Spec: FingerprintPlugin
 
-## File: `src/plugin/index.ts` (282 dòng)
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
 
-Module-level:
-- `let serviceKey: string | undefined` -- global key cho mọi instance.
-- `export const plugin = new FingerprintPlugin()` -- singleton instance mặc định.
+## Mô tả
 
----
+`FingerprintPlugin` là core orchestrator — lớp trung tâm điều phối toàn bộ vòng đời fingerprint engine. Nó nhận cấu hình từ user (fingerprint, proxy, profile, version), gọi API service (fetch, versions), spawn worker.exe, cấu hình viewpost và file `.ini`, và dọn dẹp tài nguyên khi kết thúc.
 
-## Class `FingerprintPlugin`
+Đây là lớp thấp nhất trong public API chain. `PlaywrightFingerprintPlugin` kế thừa từ nó. `BrowserEngine` gọi nó gián tiếp qua bridge.
 
-### Properties
+Source: `src/plugin/index.ts` (302 dòng).
 
-| Property | Kiểu | Mô tả |
-|---|---|---|
-| `launcher` | `{ launch: (opts) => Promise<Browser> }` | Launcher instance (default hoặc custom) |
-| `version` | `string \| null` | Version browser, mặc định `'default'` |
-| `fingerprint` | `PluginConfig \| undefined` | Fingerprint config (value + options) |
-| `profile` | `PluginConfig \| undefined` | Profile config |
-| `proxy` | `PluginConfig \| undefined` | Proxy config |
+## Yêu cầu
 
-### Constructor
+- Fluent API cho config: `useFingerprint()`, `useProxy()`, `useProfile()`, `useBrowserVersion()` — tất cả trả về `this`.
+- API service: `fetch()` lấy fingerprint, `versions()` lấy danh sách version.
+- Lifecycle: `spawn()` → `_launch()` → `configure()` → `cleanup()`.
+- `setProxyFromArguments()` — fallback lấy proxy từ args nếu `useProxy()` chưa gọi.
+- `setWorkingFolder()`, `setRequestTimeout()`, `setEngineTimeout()` — cấu hình engine.
+- `setServiceKey()` — set key module-level (dùng chung cho mọi instance).
+- `static create(launcher)` — factory method validate launcher trước khi khởi tạo.
+- Export singleton `plugin` — instance global cho Playwright bridge.
+- `cleanup()` phải dọn: browser, connector (engine + PCAP), mutex, cleaner.
 
-```ts
-constructor(launcherInstance?: { launch: (opts) => Promise<Browser> })
+## Thiết kế
+
+### Kiến trúc
+
+```
+FingerprintPlugin
+  ├── Config fields: fingerprint, proxy, profile, version
+  ├── Runtime: browser, processId
+  ├── Engine: connector → api() → RemoteEngine
+  ├── Cleaner: SettingsCleaner (file tạm engine)
+  └── Mutex: Windows named mutex
 ```
 
-Nếu không truyền launcher, dùng mặc định (`launch` từ `./launcher`).
+`serviceKey` là biến **module-level** (không phải instance field). Lý do: engine binary chỉ cần một key cho toàn bộ process. Nếu là instance field, mỗi plugin instance phải set key riêng — dễ quên.
 
-### Factory Method
+Tham chiếu design doc: `docs/designs/fingerprint-plugin.design.md`.
 
-```ts
-static create(launcherInstance): FingerprintPlugin
+### Luồng _launch() (6 bước)
+
+```
+_launch(useDefaultLauncher, options)
+ │
+ ├─ Bước 1: setProxyFromArguments(args)
+ │   Nếu user chưa gọi useProxy(), tìm --proxy-server trong args và dùng làm proxy.
+ │
+ ├─ Bước 2: api('setup', params)
+ │   Gửi lên engine: proxy, fingerprint, version, profile, pid (UUID), key.
+ │   Nhận về: { id, pid, pwd, path, bounds, ...config }
+ │
+ ├─ Bước 3: cleaner.watch(pwd).ignore(pwd, pid, id) + mutex.create()
+ │   Đăng ký file cleanup cho thư mục engine + tạo Windows mutex.
+ │
+ ├─ Bước 4: Chọn launcher
+ │   useDefaultLauncher=true  → launcher mặc định (spawn worker.exe)
+ │   useDefaultLauncher=false → options.launcher ?? this.launcher (custom, từ bridge)
+ │
+ ├─ Bước 5: Spawn worker.exe
+ │   - headless: false (fingerprint check phát hiện headless)
+ │   - userDataDir: undefined (engine tự quản lý)
+ │   - defaultViewport: undefined (engine tự resize)
+ │   - executablePath: browserPath/worker.exe
+ │   - args: --parent-process-id, --unique-process-id, defaultArgs()
+ │
+ └─ Bước 6: configure() + synchronize()
+     - configure(): onClose, bindHooks, resize page đầu tiên
+     - synchronize(): đồng bộ bounds vào .ini file
 ```
 
-Validate launcher bằng `validateLauncher()` rồi gọi constructor.
+## API / Data flow
 
-### Fluent Configuration Methods
+### Input — Config methods
 
-| Method | Tham số | Hành vi |
-|---|---|---|
-| `useFingerprint(value, options)` | `string`, `FingerprintOptions` | Validate + lưu `this.fingerprint` |
-| `useProfile(value, options)` | `string`, `ProfileOptions` | Validate + lưu `this.profile` |
-| `useProxy(value, options)` | `string`, `ProxyOptions` | Validate + lưu `this.proxy` |
-| `useBrowserVersion(version)` | `string` | Set `this.version` (default `'default'`) |
+```ts
+plugin.useFingerprint(jsonData, { safeWebGL: true, safeAudio: true });
+plugin.useProxy('http://user:pass@host:8080', { changeTimezone: true });
+plugin.useProfile('./profiles/user_01', { loadProxy: true, loadFingerprint: true });
+plugin.useBrowserVersion('130');
+```
 
-Tất cả đều `return this` -- hỗ trợ chaining.
+Mỗi config method gọi `validateConfig()` để kiểm tra kiểu dữ liệu, lưu vào field dạng `{ value, options }`.
 
-### Config Helper Methods
+### Input — Engine config methods
 
-| Method | Tham số | Hành vi |
-|---|---|---|
-| `setProxyFromArguments(args)` | `string[]` | Nếu `this.proxy == null`, parse `--proxy-server` từ args |
-| `setWorkingFolder(folder)` | `string` | Gọi `engine.setCwd(path.resolve(folder))` |
-| `setRequestTimeout(timeout)` | `number` | Gọi `engine.setRequestTimeout(timeout \|\| 0)` |
-| `setEngineTimeout(timeout)` | `number` | Gọi `engine.setEngineTimeout(timeout \|\| 0)` |
-| `setServiceKey(key)` | `string` | Gán `serviceKey = key` (module-level) |
+```ts
+plugin.setServiceKey(process.env.BABLOSOFT_KEY ?? '');
+plugin.setWorkingFolder('.tmp/browser/engine');
+plugin.setRequestTimeout(300_000);
+plugin.setEngineTimeout(300_000);
+```
 
-### Runtime Methods
+### Input — API methods
 
-| Method | Tham số | Trả về | Hành vi |
-|---|---|---|---|
-| `fetch(options)` | `FetchOptions` | `Promise<string>` | Gọi `api('fetch', { key, options, version })` |
-| `versions(format)` | `'default' \| 'extended'` | `Promise<string[]> \| Promise<Version[]>` | Gọi `api('versions', { format })` |
-| `spawn(options)` | `BaseLaunchOptions` | `Promise<Browser>` | Gọi `_launch(true, options)` |
+```ts
+const fp = await plugin.fetch({ tags: ['Microsoft Windows', 'Chrome'] });
+const versions = await plugin.versions('extended');
+```
 
-### Protected Methods
+### Output
 
-#### `configure(...args)`
+- `fetch()` → `Promise<string>` — JSON string fingerprint.
+- `versions()` → `Promise<string[] | Version[]>` — danh sách version.
+- `spawn()` → `Promise<Browser>` — browser instance (worker.exe).
 
-Wrapper pass-through gọi `configure` từ `config.ts`. Playwright bridge override method này để nhận `BrowserContext` thay vì `Browser`.
-
-#### `_launch(useDefaultLauncher, options)` -- Core Lifecycle
-
-| Bước | Code | Mô tả |
-|---|---|---|
-| 1 | `setProxyFromArguments(options.args)` | Fallback proxy từ args nếu chưa config |
-| 2 | `api('setup', { proxy, fingerprint, version, profile, pid, key })` | Gửi config xuống engine, nhận `SetupResponse` |
-| 3 | `cleaner.watch(pwd).ignore(pwd, pid, id)` | Đăng ký cleanup cho thư mục pwd |
-| 4 | `mutex.create(\`BASProcess${pid}\`)` | Tạo Windows named mutex |
-| 5. | Chọn launcher | `useDefaultLauncher` → plugin's launch; else → `options.launcher \|\| this.launcher` |
-| 6. | `activeLauncher.launch(options)` | Spawn worker.exe với args đã lọc |
-| 7. | `configure(...)` | Resize viewport + đồng bộ .ini |
-
-**SetupResponse**:
+### Internal data: SetupResponse
 
 ```ts
 interface SetupResponse {
-  id: string;       // Unique process ID
-  pid: string;      // Process ID cho mutex
-  pwd: string;      // Working directory
-  path: string;     // Browser executable path
-  bounds: ViewportBounds;  // Viewport dimensions
-  [key: string]: unknown;  // Engine có thể thêm field
+  id: string;       // unique process ID (từ engine)
+  pid: string;      // parent process ID
+  pwd: string;      // working directory
+  path: string;     // path to worker.exe
+  bounds: { width?: number; height?: number };
+  [key: string]: unknown; // additional config từ engine
 }
 ```
 
-**Launch params hardcoded**:
+## Components
 
-```ts
-{
-  headless: false,          // Fingerprint check phát hiện headless
-  userDataDir: undefined,   // Engine tự quản lý user data
-  defaultViewport: undefined, // Viewport set riêng qua configure()
-  executablePath: `${browserPath}/worker.exe`,
-  args: [
-    `--parent-process-id=${pid}`,
-    `--unique-process-id=${id}`,
-    ...defaultArgs({ ...options, ...config }),
-  ],
-}
-```
+| File | Vai trò | Dòng |
+|---|---|---|
+| `src/plugin/index.ts` | `FingerprintPlugin` + singleton `plugin` | 302 |
+| `src/plugin/utils.ts` | `defaultArgs`, `getProfilePath`, `validateConfig`, `validateLauncher` | — |
+| `src/plugin/config.ts` | `configure()` + `synchronize()` — resize + .ini sync | — |
+| `src/plugin/launcher/index.ts` | Launcher mặc định — spawn worker.exe | 99 |
+| `src/plugin/connector/index.ts` | `api()` + `cleanup()` — connector singleton | — |
+| `src/plugin/cleaner.ts` | `SettingsCleaner` — dọn file tạm engine | — |
+| `src/plugin/mutex/index.ts` | Windows named mutex — đồng bộ process | 75 |
+| `src/plugin/browser.ts` | `setViewport` + `getViewport` qua CDP (plugin path) | — |
 
-### Profile Fallback
+## Constants
 
-Nếu `this.profile` chưa set, `_launch()` tự động tạo profile config từ args:
+| Tên | Vị trí | Giá trị / Ý nghĩa |
+|---|---|---|
+| `serviceKey` | Module-level | Key từ env `BABLOSOFT_KEY`. Set qua `setServiceKey()`. Undefined nếu chưa set. |
 
-```ts
-{
-  value: getProfilePath(options),
-  options: { loadProxy: true, loadFingerprint: true },
-}
-```
+## Environment variables
 
----
-
-## File liên quan
-
-| File | Vai trò |
-|---|---|
-| `src/plugin/index.ts` | Class `FingerprintPlugin` |
-| `src/plugin/config.ts` | `configure()` + `synchronize()` |
-| `src/plugin/browser.ts` | `setViewport()` + `getViewport()` |
-| `src/plugin/utils.ts` | `defaultArgs()`, `getProfilePath()`, `validateConfig()`, `validateLauncher()` |
-| `src/plugin/launcher/index.ts` | `launch()` -- spawn worker.exe |
-| `src/plugin/connector/index.ts` | `api()` -- gọi API engine |
-| `src/plugin/mutex/index.ts` | `create()` -- Windows mutex |
-| `src/plugin/cleaner.ts` | File cleanup daemon |
-
----
+| Biến | Dùng ở đâu | Mô tả |
+|---|---|---|
+| `BABLOSOFT_KEY` | `setServiceKey()` → lấy từ env | Key bảo mật cho API engine |
+| `FINGERPRINT_CWD` | `connector/index.ts` | Thư mục làm việc engine |
+| `FINGERPRINT_TIMEOUT` | `connector/index.ts` | Timeout mặc định (engine + request) |
 
 ## Xử lý lỗi
 
 | Tình huống | Hành vi |
 |---|---|
-| `validateConfig` fail (value không phải string) | Throw `Error('Tham so khong hop le...')` |
-| `validateLauncher` fail (không có method launch) | Throw `Error('Browser launcher khong duoc ho tro...')` |
-| API `setup` timeout | Engine quăng `EngineTimeoutError` |
-| API `fetch` timeout | Engine quăng `RequestTimeoutError` |
-| Mutex không support (non-Windows) | `create()` throw lỗi platform |
-
----
+| `validateConfig()` thất bại (data không phải string, options không phải object) | Throw `Error` với message chung |
+| `validateLauncher()` thất bại (thiếu method `launch`) | Throw Error |
+| `api('setup')` không có key | Connector throw `MissingKeyError` |
+| Engine timeout khi setup | Connector throw `EngineTimeoutError` |
+| `browser.close()` fail trong `cleanup()` | Catch lỗi, cleanup phần còn lại vẫn chạy |
+| `_launch()` gọi nhiều lần | Không có guard ở plugin core — guard ở `BrowserEngine.launch()` |
 
 ## Kiểm tra
 
-- Test cần engine binary thật (`worker.exe`) -- không thể mock hoàn toàn.
-- Test edge case: `setProxyFromArguments` sau `useProxy` -- proxy không bị ghi đè.
-- Test edge case: launch không có `useProfile` -- fallback dùng `getProfilePath`.
-- Test 2 instance cùng `serviceKey` -- không conflict.
-
----
+- Happy path: `useFingerprint()` → `useProxy()` → `spawn()` → browser hoạt động → `cleanup()`.
+- Config: `useFingerprint()` trả về `this` (fluent).
+- Proxy fallback: `setProxyFromArguments(['--proxy-server=http://host'])` set proxy nếu chưa có.
+- API: `fetch()` gọi `api('fetch')` với key, options, version.
+- API: `versions('extended')` trả về `Version[]`.
+- Runtime: `spawn()` gọi `_launch(true, options)`.
+- Cleanup: `cleanup()` gọi `browser.close()`, `connectorCleanup()`, `mutex.release()`, `cleaner.stop()`.

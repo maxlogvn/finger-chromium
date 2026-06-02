@@ -1,75 +1,55 @@
 # Product: Cấu hình Proxy
 
-## Tổng quan
+## Mô tả
 
-Proxy config cho phép route traffic browser, đồng bộ thông tin vị trí theo proxy, kiểm soát WebRTC và DNS. Hỗ trợ HTTP/HTTPS/SOCKS4/SOCKS5.
+Tính năng proxy định tuyến toàn bộ traffic trình duyệt qua HTTP/HTTPS/SOCKS4/SOCKS5 proxy. Engine tự động đồng bộ timezone, geolocation, ngôn ngữ, WebRTC, DNS theo IP của proxy. Tất cả xử lý ở tầng C/C++ — không có dấu vết trong JavaScript context.
 
-## Cách dùng
+## Cách sử dụng
 
 ```ts
-// Cơ bản
-Chromium.useProxy('http://user:pass@192.168.1.1:8080');
+import { Chromium } from 'fingerprint-chromium-engine';
 
-// Với options
-Chromium.useProxy('socks5://127.0.0.1:9050', {
-  changeTimezone: true,
-  changeGeolocation: true,
-  changeWebRTC: 'replace',
-  dnsMode: 'custom-direct',
-  enableTunneling: true,
-  detectExternalIP: true,
-});
+await Chromium
+  .useProxy('http://user:pass@192.168.1.1:8080', {
+    changeTimezone: true,         // đồng bộ timezone theo IP proxy
+    changeGeolocation: true,      // đồng bộ vị trí địa lý
+    changeBrowserLanguage: true,  // đồng bộ Accept-Language
+    changeWebRTC: 'replace',      // thay IP WebRTC bằng IP proxy
+    dnsMode: 'custom-direct',     // DNS tuỳ chỉnh
+    dnsIP: '1.1.1.1',
+  })
+  .launch()
+  .newContext();
 ```
 
-## Các nhóm option
+Proxy không auth:
 
-### Đồng bộ thông tin
+```ts
+.useProxy('socks5://192.168.1.1:1080')
+```
 
-| Option | Mặc định | Mô tả |
+Proxy cũng có thể được trích xuất từ Playwright launch options (nếu không gọi `useProxy()`).
+
+## Hành vi chi tiết
+
+| Option | Mặc định | Giải thích |
 |---|---|---|
-| `changeBrowserLanguage` | `true` | Ngôn ngữ trình duyệt theo proxy |
-| `changeGeolocation` | `false` | Vị trí địa lý (mặc định tắt vì gây popup) |
-| `changeTimezone` | `true` | Múi giờ tự động theo IP |
+| `changeBrowserLanguage` | `true` | Đổi `Accept-Language` và `navigator.language` theo quốc gia IP proxy. |
+| `changeGeolocation` | `false` | Nếu tắt, browser từ chối mọi yêu cầu truy cập vị trí. |
+| `changeWebRTC` | `'replace'` | Thay IP trong WebRTC bằng IP proxy. Cấu hình riêng IPv4/IPv6 public và private. |
+| `dnsMode` | `'system-proxy'` | `'custom-direct'`: DNS tuỳ chỉnh với traffic qua proxy. `'custom-proxy'`: DNS qua proxy (yêu cầu proxy hỗ trợ UDP). |
+| `enableTunneling` | `true` | Nếu `false`, proxy không hoạt động — dùng khi đã có VPN hoặc muốn kết nối trực tiếp. |
+| `enableQUIC` | `false` | Chỉ bật nếu proxy server hỗ trợ UDP. |
 
-### WebRTC
+## Giới hạn và điều kiện
 
-| Giá trị | Mô tả |
-|---|---|
-| `'enable'` | Bật WebRTC -- có thể lộ IP thật |
-| `'disable'` | Tắt WebRTC -- một số site cần WebRTC |
-| `'replace'` | Thay IP trong WebRTC bằng IP proxy -- an toàn nhất |
+- Proxy URL phải đúng format: `protocol://user:pass@host:port` (có auth) hoặc `protocol://host:port` (không auth).
+- Chỉ hỗ trợ Windows 32-bit và 64-bit.
+- Engine tự kiểm tra proxy — nếu không hoạt động, `_launch()` throw error.
+- `dnsMode: 'custom-proxy'` yêu cầu proxy hỗ trợ UDP.
 
-### DNS
+## Tài liệu kỹ thuật liên quan
 
-| Giá trị | Mô tả |
-|---|---|
-| `'system-proxy'` | DNS hệ thống, traffic qua proxy |
-| `'custom-proxy'` | DNS tuỳ chỉnh qua proxy (cần UDP support) |
-| `'custom-direct'` | DNS trực tiếp, traffic còn lại qua proxy |
-
-### IP Detection
-
-Engine tự động phát hiện IP public và thay thế IP trong WebRTC:
-
-```ts
-detectExternalIP: true,
-ipExtractionMethod: 'jsonpath',
-ipExtractionURL: 'https://api.ipify.org?format=json',
-ipExtractionParam: '$.ip',
-```
-
-### Tunneling
-
-```ts
-enableTunneling: true,  // Bật tunneling qua proxy
-enableQUIC: false,      // QUIC -- mặc định tắt, có thể bypass proxy
-```
-
-## Lưu ý
-
-- SOCKS4/5 cho TCP tunneling, HTTP/HTTPS proxy chỉ route HTTP traffic.
-- `changeGeolocation` mặc định false vì geolocation API cần user permission.
-- `enableQUIC` nên để false nếu proxy không hỗ trợ QUIC.
-- Proxy cũng có thể cấu hình qua arg `--proxy-server=...` (fallback).
-
----
+- Spec: `docs/specs/proxy-config.spec.md`
+- Design: `docs/designs/proxy-config.design.md`
+- Source: `src/plugin/config.ts`

@@ -1,118 +1,86 @@
 # Product: FingerprintPlugin
 
-## Tổng quan
+## Mô tả
 
-`FingerprintPlugin` là lớp điều phối trung tâm của toàn bộ thư viện. Nó quản lý cấu hình (fingerprint, proxy, profile), gọi API tới engine binary để thiết lập môi trường, spawn worker.exe, resize viewport, và dọn dẹp tài nguyên sau khi browser đóng.
+`FingerprintPlugin` là lõi điều phối fingerprint engine. Nó không phải lớp tiện nhất cho user cuối, nhưng là lớp quan trọng nhất để hiểu browser được setup như thế nào.
 
-Bạn có thể dùng `FingerprintPlugin` trực tiếp (standalone) hoặc qua `PlaywrightFingerprintPlugin` (tích hợp Playwright).
+Nếu `BrowserEngine` là mặt ngoài của API, thì `FingerprintPlugin` là nơi thật sự gọi service, chuẩn bị profile, spawn `worker.exe`, cấu hình viewport và cleanup.
 
-## Vòng đời
+## Cách sử dụng
 
-```
-User config: useFingerprint() → useProxy() → useProfile()
-                          ↓
-                     spawn(options)
-                          ↓
-        ┌── 1. setProxyFromArguments() ── fallback từ args
-        │  2. api('setup') ─── gửi config xuống engine
-        │  3. cleaner.watch() + mutex.create() ── bảo vệ tài nguyên
-        │  4. Chọn launcher ── default (spawn) hoặc custom (Playwright)
-        │  5. activeLauncher.launch() ── spawn worker.exe
-        └── 6. configure() ── resize viewport + sync .ini
-                          ↓
-                    Return Browser
-                    ↓
-                    6. configure() ── resize viewport + sync .ini
-                          ↓
-                    Return Browser
-                          ↓
-                    User dùng page
-                          ↓
-                    cleanup() ── thủ công hoặc qua quit()
-                      ├── browser.close()      taskkill worker.exe
-                      ├── connector.cleanup()
-                      │   ├── engine.kill()    kill FastExecuteScript.exe
-                      │   └── pcapServer.close()
-                      ├── mutex.release()      release BASProcess{pid}
-                      └── cleaner.stop()       clearInterval + unlock
-```
-
-## API chính
-
-### Configuration
+Thông thường bạn dùng singleton `plugin` qua Playwright Bridge. Khi cần dùng trực tiếp:
 
 ```ts
-const plugin = new FingerprintPlugin();
+import FingerprintPlugin, { plugin } from './src/plugin';
+
+plugin.setServiceKey(process.env.BABLOSOFT_KEY ?? '');
+plugin.setWorkingFolder('.tmp/browser/engine');
+
+const fingerprint = await plugin.fetch({
+  tags: ['Microsoft Windows', 'Chrome'],
+});
 
 plugin
-  .useFingerprint(fpString, { usePerfectCanvas: true, safeWebGL: true })
-  .useProxy('http://user:pass@proxy:8080', { changeWebRTC: 'replace' })
-  .useProfile('./profiles/myprofile', { loadProxy: true })
-  .useBrowserVersion('120');
-```
+  .useFingerprint(fingerprint, { safeWebGL: true })
+  .useProxy('http://user:pass@127.0.0.1:8080', {
+    changeTimezone: true,
+  })
+  .useProfile('./profiles/user_01', {
+    loadProxy: true,
+    loadFingerprint: true,
+  });
 
-### Service Key (module-level)
-
-```ts
-plugin.setServiceKey('your-bablosoft-key');
-// Tất cả instance chia sẻ cùng key này
-```
-
-### Fetch Fingerprint từ Service
-
-```ts
-const fingerprintData = await plugin.fetch({
-  tags: ['Desktop', 'Chrome', 'Windows'],
-  timeLimit: '30 days',
-  quantity: 1,
-});
-```
-
-### Lấy Danh Sách Version
-
-```ts
-const versions = await plugin.versions('default');       // string[]
-const versionsExt = await plugin.versions('extended');   // Version[]
-```
-
-### Spawn Browser
-
-```ts
 const browser = await plugin.spawn({
-  args: ['--disable-gpu', '--no-sandbox'],
-  devtools: false,
+  args: ['--window-size=1280,720'],
 });
-// Browser có process, configure, close
+
+await browser.close();
+await plugin.cleanup();
+
+const customPlugin = FingerprintPlugin.create(customLauncher);
 ```
 
-## 2 Đường Dẫn Launch
+## Hành vi chi tiết
 
-| Chế độ | `useDefaultLauncher` | Launcher | Dùng khi nào |
-|---|---|---|---|
-| **Direct spawn** | `true` | Plugin's `launch()` | Standalone, không Playwright |
-| **Playwright bridge** | `false` | Custom (từ options) | `PlaywrightFingerprintPlugin` |
+Các method cấu hình (`useFingerprint`, `useProxy`, `useProfile`, `useBrowserVersion`) chỉ lưu config đã validate. Chúng trả về `this` để chain.
 
-Ở chế độ bridge, `configure()` được override để nhận `BrowserContext` thay vì `Browser`.
+`fetch()` và `versions()` gọi service qua `api()`. Cả hai dùng `serviceKey` đã set bằng `setServiceKey()`.
+
+`spawn()` gọi `_launch(true, options)`. Với bridge Playwright, `_launch(false, options)` được gọi từ `PlaywrightFingerprintPlugin`.
+
+Lifecycle `_launch()` gồm 6 bước:
+
+1. Lấy proxy từ `--proxy-server` nếu user chưa gọi `useProxy()`.
+2. Gọi `api('setup')` để engine chuẩn bị fingerprint, proxy, profile và browser path.
+3. Đăng ký cleaner và tạo Windows named mutex.
+4. Chọn launcher mặc định hoặc launcher custom.
+5. Spawn `worker.exe` với `headless: false`.
+6. Chạy `configure()` và `synchronize()` để setup viewport và file `.ini`.
+
+`headless: false` được ép ở bước spawn vì một số fingerprint check phát hiện headless mode. Đây là quyết định chủ động để browser giống phiên thật hơn.
 
 ## Cleanup
 
-Gọi `cleanup()` để dọn dẹp tài nguyên sau khi dùng browser xong:
+`cleanup()` dọn theo thứ tự:
 
-```ts
-const plugin = new FingerprintPlugin();
-const browser = await plugin.spawn({...});
-// ... dùng browser ...
-await plugin.cleanup();  // kill worker.exe + engine + PCAP + mutex + cleaner
+```txt
+browser.close()
+  -> connectorCleanup()
+  -> mutex.release()
+  -> cleaner.stop()
 ```
 
-Khi dùng qua `PlaywrightFingerprintPlugin`, cleanup được gọi tự động trong `Chromium.quit()`.
+Thứ tự này giúp đóng browser trước, rồi mới dọn engine connector và tài nguyên nền. Nếu `browser.close()` lỗi, code vẫn tiếp tục cleanup phần còn lại.
 
-## Lưu ý
+## Giới hạn và điều kiện
 
-- `headless: false` luôn được force -- fingerprint check phát hiện headless.
-- `serviceKey` là global -- gọi `setServiceKey()` trên bất kỳ instance nào cũng ảnh hưởng tất cả.
-- Profile có fallback tự động nếu không gọi `useProfile()`: engine tự tìm `--user-data-dir` từ args.
-- Mutex name `BASProcess${pid}` dùng `randomUUID()` -- mỗi lần launch một mutex riêng, không conflict.
-- `cleanup()` an toàn khi gọi nhiều lần (idempotent).
+- Cần gọi `setServiceKey()` trước các thao tác cần service key như `fetch()`, `versions()` hoặc setup.
+- `_launch()` là protected method, không nên gọi trực tiếp từ bên ngoài.
+- `FingerprintPlugin` không tự chặn launch nhiều lần. Wrapper như `BrowserEngine` chịu trách nhiệm guard flow public.
+- Nếu dùng launcher custom, nên tạo qua `FingerprintPlugin.create()` để validate launcher trước.
 
----
+## Tài liệu kỹ thuật liên quan
+
+- Spec: `docs/specs/fingerprint-plugin.spec.md`
+- Design: `docs/designs/fingerprint-plugin.design.md`
+- Source: `src/plugin/index.ts`

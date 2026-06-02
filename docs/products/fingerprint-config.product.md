@@ -1,64 +1,53 @@
 # Product: Cấu hình Fingerprint
 
-## Tổng quan
+## Mô tả
 
-Fingerprint được inject ở cấp C/C++ (không phải JavaScript override) -- không để lại dấu vết cho bot detection. Bạn cung cấp JSON fingerprint (từ bablosoft service) và `FingerprintOptions` để kiểm soát từng kỹ thuật giả lập.
+Tính năng fingerprint cho phép gắn fingerprint thật vào browser Chromium thông qua `useFingerprint(data, options)`. Data là JSON string từ service (lấy qua `fetch()` hoặc `newFingerprint()`), options kiểm soát từng kỹ thuật giả lập như WebGL noise, Canvas noise, PerfectCanvas, Battery API, Sensor API,...
 
-## Cách dùng
+Tất cả fingerprint được inject ở tầng C/C++ trước khi Chromium khởi động — không có dấu hiệu override trong JavaScript context.
+
+## Cách sử dụng
 
 ```ts
-// Cách 1: Dùng fingerprint có sẵn
-Chromium.useFingerprint(fingerprintJson, {
-  usePerfectCanvas: true,
-  safeWebGL: true,
-  safeAudio: true,
-  safeCanvas: true,
-  safeBattery: true,
-  emulateDeviceScaleFactor: true,
-  emulateSensorAPI: true,
-  useFontPack: true,
+import { Chromium } from 'fingerprint-chromium-engine';
+
+const fingerprintData = await Chromium.newFingerprint({
+  tags: ['Microsoft Windows', 'Chrome'],
 });
 
-// Cách 2: Fetch fingerprint từ service
-const fp = await Chromium.newFingerprint({
-  tags: ['Desktop', 'Chrome', 'Windows 10'],
-  timeLimit: '15 days',
-  minWidth: 1920,
-  minHeight: 1080,
-});
-Chromium.useFingerprint(fp, { usePerfectCanvas: true });
+await Chromium
+  .useFingerprint(fingerprintData, {
+    usePerfectCanvas: true,       // canvas chính xác (mạnh nhất)
+    safeWebGL: true,              // nhiễu WebGL
+    safeAudio: true,              // nhiễu Audio API
+    safeCanvas: true,             // nhiễu Canvas 2D
+    safeBattery: true,            // giả lập Battery API
+    emulateDeviceScaleFactor: true, // HiDPI/Retina
+    emulateSensorAPI: true,       // Sensor API (di động)
+    useFontPack: true,            // đồng bộ font
+    safeElementSize: false,       // che giấu element coordinates
+  })
+  .launch()
+  .newContext();
 ```
 
-## Từng Option Chi Tiết
+## Hành vi chi tiết
 
-### `usePerfectCanvas` (mặc định: `true`)
-Canvas rendering khớp chính xác với fingerprint thật. Yêu cầu fingerprint có PerfectCanvas data.
+- `data` phải là JSON string từ fingerprint service. Engine parse và inject ở native layer.
+- Options được validate: `data` phải là string, `options` phải là object không null.
+- `usePerfectCanvas`: thay thế toàn bộ Canvas data bằng bản chính xác từ fingerprint thật — kỹ thuật mạnh nhất nhưng cần fingerprint có PerfectCanvas data.
+- `safeElementSize` mặc định `false`: che giấu tọa độ DOM element là kỹ thuật nặng, không cần thiết cho mọi use case. Chỉ bật khi cần chống ClientRects fingerprinting.
+- `useFontPack`: engine đồng bộ danh sách font với fingerprint — tránh bị phát hiện qua `window.fonts` khác biệt.
 
-### `safeWebGL` / `safeAudio` / `safeCanvas` (mặc định: `true`)
-Thêm nhiễu vào các API đồ hoạ và âm thanh:
-- **WebGL**: che GPU, driver, renderer
-- **Audio**: che sample rate, audio buffer
-- **Canvas**: canvas fingerprinting 2D
+## Giới hạn và điều kiện
 
-### `safeBattery` (mặc định: `true`)
-Mỗi session giá trị pin khác nhau. Nếu thiết bị gốc không có Battery API, luôn trả về 100%.
+- `useFontPack` cần FontPack đã cài trên hệ thống.
+- `usePerfectCanvas` yêu cầu fingerprint chứa PerfectCanvas data.
+- Nếu không gọi `useFingerprint`, engine vẫn launch với fingerprint mặc định.
+- Không thể thay đổi options sau khi `launch()` đã gọi.
 
-### `safeElementSize` (mặc định: `false`)
-Che giấu kích thước DOM element qua ClientRects. **Mặc định tắt** vì có thể ảnh hưởng layout website.
+## Tài liệu kỹ thuật liên quan
 
-### `emulateDeviceScaleFactor` (mặc định: `true`)
-HiDPI/Retina emulation. `devicePixelRatio` luôn được thay thế đúng dù bật hay tắt.
-
-### `emulateSensorAPI` (mặc định: `true`)
-Giả lập gia tốc kế, con quay hồi chuyển, cảm biến ánh sáng. Nên bật cho fingerprint di động.
-
-### `useFontPack` (mặc định: `true`)
-Đồng bộ danh sách font chữ với fingerprint target. FontPack thường ~5-10MB, tải tại https://wiki.bablosoft.com/doku.php?id=fontpack
-
-## Lưu ý
-
-- `safeWebGL` và `usePerfectCanvas` có thể ảnh hưởng performance trên GPU yếu.
-- `safeElementSize` nên chỉ bật khi cần tránh detection từ script đo kích thước element.
-- Fingerprint JSON không được validate ở JS layer -- lỗi format xuất hiện từ engine response.
-
----
+- Spec: `docs/specs/fingerprint-config.spec.md`
+- Design: `docs/designs/fingerprint-config.design.md`
+- Source: `src/plugin/config.ts`

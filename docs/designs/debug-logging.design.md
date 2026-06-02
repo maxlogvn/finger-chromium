@@ -1,42 +1,43 @@
 # Design: Debug Logging
 
-## Vấn đề
+## Bối cảnh
 
-Cần logging theo module để debug từng layer: connector (IPC với engine), plugin (lifecycle orchestration), adapter (Playwright bridge). Dễ bật/tắt, không ảnh hưởng production.
+Dự án có nhiều layer (connector IPC, engine lifecycle, PCAP server, file cleanup). Khi debug, cần logging theo module để dễ theo dõi, nhưng không muốn log ảnh hưởng production.
 
-## Giải pháp: `debug` package
+Cần một giải pháp logging dễ bật/tắt, structured, không overhead khi không dùng.
 
-Namespace convention: `browser-with-fingerprints:<module>`
+## Câu hỏi làm rõ
 
-### Namespace map
+- Log ra stdout hay stderr? → stderr (`debug` package default).
+- Có cần log level (info/warn/error) không? → Không, `debug` dùng namespace pattern.
+- Có cần tích hợp với file logging? → Chưa, chỉ console trong giai đoạn hiện tại.
 
-| Namespace | File | Mục đích |
-|---|---|---|
-| `browser-with-fingerprints:connector` | `connector/index.ts` | API Connector, PCAP server start |
-| `browser-with-fingerprints:connector:engine` | `connector/engine.ts` | Engine IPC, download, extract, spawn |
-| `browser-with-fingerprints:connector:pcapServer` | `connector/pcapServer/index.ts` | PCAP server lifecycle |
-| `browser-with-fingerprints:cleaner` | `plugin/cleaner.ts` | File cleanup daemon |
+## Các phương án
 
-### Cách bật
+### Phương án 1: console.log + flag
 
-```bash
-# Tất cả
-set DEBUG=browser-with-fingerprints:* & node app.js
+Kiểm tra biến môi trường DEBUG thủ công, dùng `console.log` / `console.error`.
 
-# Một module
-set DEBUG=browser-with-fingerprints:connector & node app.js
+- Ưu điểm: Không phụ thuộc thư viện.
+- Nhược điểm: Không có namespace, không wildcard, không format chuẩn.
 
-# Nhiều module
-set DEBUG=browser-with-fingerprints:connector,browser-with-fingerprints:cleaner & node app.js
-```
+### Phương án 2: winston / pino
 
-### Tại sao chọn `debug`?
+Dùng thư viện logging mạnh mẽ.
 
-- Zero dependency (nhẹ).
-- Namespace với wildcard support.
-- Output có màu (terminal), format `namespace message +elapsed-time`.
-- Zero overhead khi tắt -- nếu DEBUG env không match, function là no-op.
+- Ưu điểm: Log levels, transports, format tùy biến.
+- Nhược điểm: Nặng, quá mức cần thiết cho debug logging.
 
----
+### Phương án 3: `debug` package (chọn)
 
-Xem thêm: [Spec](../specs/debug-logging.spec.md) | [Plan](../plans/debug-logging.plan.md)
+Thư viện nhẹ chuyên cho debug logging, namespace + wildcard + zero overhead khi tắt.
+
+- Ưu điểm: Zero dependency, namespace có wildcard, tự động format timestamp + màu, no-op khi tắt.
+- Nhược điểm: Chỉ log ra stderr, không có file transport.
+
+## Giải pháp được chọn
+
+- **Phương án AI đề xuất:** Phương án 3 (`debug` package).
+- **Phương án được chọn:** Phương án 3.
+- **Lý do:** Nhẹ, đúng mục đích debug logging, zero overhead khi tắt.
+- **Ràng buộc:** Namespace convention `browser-with-fingerprints:<module>` để dễ filter.

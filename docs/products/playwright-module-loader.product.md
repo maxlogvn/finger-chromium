@@ -1,25 +1,19 @@
 # Product: Playwright Module Loader
 
-## Tổng quan
+## Mô tả
 
-Loader tự động tìm kiếm playwright trong `node_modules`, hỗ trợ cả `playwright` lẫn `playwright-core`. Nếu không tìm thấy, throw error hướng dẫn cài đặt.
+Loader tự động tìm kiếm Playwright trong `node_modules`, hỗ trợ cả `playwright` (bản đầy đủ) lẫn `playwright-core` (bản nhẹ). Nếu không tìm thấy hoặc version không đạt tối thiểu, throw error hướng dẫn cài đặt.
 
-## Cách hoạt động
-
-Quy trình resolve:
-
-1. Thử `require('playwright')` -- nếu có (bản đầy đủ), dùng luôn.
-2. Nếu không, thử `require('playwright-core')` -- bản nhẹ hơn, chỉ có core API.
-3. Kiểm tra version >= 1.27.1.
-4. Trả về `module.chromium` (BrowserType).
+## Cách sử dụng
 
 ```ts
-// Trong engine.ts -- tự động resolve
-import defaultLoader from './loader';
+import defaultLoader from './adapter/playwright/loader';
+// Tự động resolve: thử 'playwright' -> 'playwright-core'
 const browserType = defaultLoader.load<'chromium'>('chromium');
+// browserType là Playwright BrowserType.chromium
 ```
 
-## Cài đặt playwright
+Cài đặt Playwright:
 
 ```bash
 # Option 1: Bản đầy đủ (recommended)
@@ -29,12 +23,25 @@ npm install playwright
 npm install playwright-core
 ```
 
-## Version requirement
+## Hành vi chi tiết
 
-Minimum: **1.27.1**. Nếu version thấp hơn, bạn sẽ thấy lỗi:
+Quy trình resolve:
 
-```
-Version 1.25.0 of the "playwright" package is not supported - use version 1.27.1 or higher.
-```
+1. Thử `require('playwright')` — nếu có (bản đầy đủ), dùng luôn.
+2. Nếu không, thử `require('playwright-core')` — bản nhẹ hơn.
+3. Kiểm tra version >= **1.27.1** (so sánh bằng `compare-versions`).
+4. Trả về `module.chromium` (BrowserType cho Chromium).
+5. Nếu property `chromium` không tồn tại, trả về toàn bộ module (fallback cho cấu trúc module lạ).
 
----
+Loader class trong `src/loader/index.ts` cung cấp cơ chế resolve tổng quát. `src/adapter/playwright/loader.ts` là instance dùng config mặc định (target `>= 1.27.1`, fallback packages `['playwright-core']`).
+
+## Giới hạn và điều kiện
+
+- Yêu cầu Playwright Core >= 1.27.1 (peer dependency).
+- Chỉ hoạt động với CJS packages (dùng `createRequire`).
+
+## Tài liệu kỹ thuật liên quan
+
+- Spec: `docs/specs/playwright-module-loader.spec.md`
+- Design: `docs/designs/playwright-module-loader.design.md`
+- Source: `src/loader/index.ts`, `src/adapter/playwright/loader.ts`

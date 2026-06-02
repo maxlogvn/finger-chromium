@@ -1,46 +1,29 @@
-# Design: PCAP Server
+# Design: PCAP Server -- Mock TCP server
 
-## Vấn đề cần giải quyết
+## Bối cảnh
 
-Engine binary (`FastExecuteScript.exe`) cố gắng kết nối tới một PCAP interface để capture network traffic. Tuy nhiên, trong môi trường phát triển, chúng ta không có PCAP hardware thật. Engine có chế độ `--mock-connector` cho phép giả lập PCAP qua TCP socket.
+Engine yêu cầu một PCAP interface để giao tiếp. Thay vì dùng PCAP thật (phức tạp, cần driver), ta tạo một TCP server đơn giản mô phỏng giao thức PCAP.
 
-Cần một TCP server nhỏ để:
-1. **Phản hồi request ID** khi engine hỏi `0x01` -- engine cần một ID để định danh.
-2. **Phản hồi heartbeat** khi engine gửi `0x07` -- engine kiểm tra kết nối còn sống không.
-3. **Chịu lỗi port** -- nếu port đã được dùng, thử lại sau 1 giây.
+## Câu hỏi làm rõ
 
-## Giải pháp chọn
+- Cần implement đầy đủ giao thức PCAP không? → Không, chỉ cần 2 lệnh engine dùng: 0x01 (request ID) và 0x07 (heartbeat).
+- Retry port khi EADDRINUSE? → Có, retry sau 1s.
 
-### Kiến trúc
+## Các phương án
 
-```
-Engine (FastExecuteScript.exe)
-    │
-    ├── TCP connect → pcapServer (127.0.0.1:<port>)
-    │
-    ├── Gửi 0x01 (request ID)
-    │   └── Server trả: header (7 bytes) + ID (4 bytes)
-    │       └── ID tăng dần mỗi lần request
-    │
-    └── Gửi 0x07 (heartbeat)
-        └── Server trả: header 5 bytes
-```
+### Phương án 1: Dùng thư viện PCAP thật
 
-### Giao thức binary
+Phức tạp, cần driver, không portable.
 
-Mỗi request từ engine là 1 byte đầu tiên xác định loại lệnh:
+### Phương án 2: Mock TCP server (chọn)
 
-| Byte | Lệnh | Response |
-|---|---|---|
-| `0x01` | Request ID | `[0x01, 0x04, 0x00, 0x00, 0x00, 0x0a, id(3 bytes)]` |
-| `0x07` | Heartbeat | `[0x07, 0x00, 0x00, 0x00, 0x00]` |
+net.createServer đơn giản, phản hồi 2 lệnh binary.
 
-### Tại sao dùng `once()` cho `listen()`?
+- Ưu điểm: Nhẹ, đơn giản, chỉ 71 dòng.
+- Nhược điểm: Không phải PCAP thật, nhưng engine không cần.
 
-PCAP server chỉ cần một instance cho toàn bộ ứng dụng. `once()` đảm bảo dù `listen()` được gọi bao nhiêu lần, chỉ một server được tạo.
+## Giải pháp được chọn
 
-### Tại sao retry khi EADDRINUSE?
-
-Port có thể bị chiếm bởi instance trước (nếu app crash không kịp giải phóng). Retry sau 1 giây giúp tự động phục hồi.
-
----
+- **Phương án AI đề xuất:** Phương án 2 (mock TCP).
+- **Phương án được chọn:** Phương án 2.
+- **Cơ chế:** `once()` đảm bảo chỉ một server. Retry port 1s khi EADDRINUSE. `close()` giải phóng port.

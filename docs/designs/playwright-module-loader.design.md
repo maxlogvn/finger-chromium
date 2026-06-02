@@ -1,45 +1,43 @@
 # Design: Playwright Module Loader
 
-## Vấn đề
+## Bối cảnh
 
 Playwright là peer dependency -- user có thể cài `playwright` (bản đầy đủ) hoặc `playwright-core` (nhẹ hơn). Cần một cơ chế linh hoạt để resolve package nào có sẵn, kiểm tra version >= minimum, và trả về đúng property (ví dụ `chromium`).
 
 Ngoài ra, source code là ESM (`import`/`export`) nhưng playwright là CJS package -- cần `createRequire` để require.
 
-## Giải pháp: Loader class
+## Câu hỏi làm rõ
 
-### 3-layer resolution
+- Dùng dynamic `import()` hay `createRequire`? → `createRequire` vì playwright là CJS.
+- Có cần support range version (1.27.x) không? → Không, chỉ so sánh `<` với `compare-versions`.
+- Nếu cả `playwright` và `playwright-core` đều không có? → Throw Error hướng dẫn cài đặt.
 
-```
-Loader.import([target, ...fallbacks])
-  -> thử require(target) -> nếu fail -> thử require(fallback[0]) -> ...
+## Các phương án
 
-Loader.load(property = 'chromium')
-  -> gọi Loader.import() với [target, ...packages]
-  -> validate version với compare-versions
-  -> trả về module[property] || module
-```
+### Phương án 1: Hardcode playwright-core
 
-### Tại sao dùng property fallback?
+Luôn require `playwright-core`, không fallback.
 
-Playwright export dạng `{ chromium, firefox, webkit }` -> cần `module.chromium`. Nếu module không có property (ví dụ custom launcher), fallback về chính module đó.
+- Ưu điểm: Đơn giản, không cần Loader class.
+- Nhược điểm: Bỏ lỡ `playwright` bản đầy đủ. Người dùng cài `playwright` vẫn phải cài thêm `playwright-core`.
 
-### Tại sao dùng createRequire?
+### Phương án 2: Loader class generic (chọn)
 
-File là ESM (import/export). `require` không có sẵn trong ESM. `createRequire` từ `node:module` tạo require function tương thích với CJS packages.
+Class `Loader` nhận target, version, fallback packages. Static `import()` thử từng package. Instance `load()` validate version và trả về property.
 
-### Version validation
+- Ưu điểm: Generic, dùng được cho bất kỳ dependency nào. Linh hoạt trong resolution order.
+- Nhược điểm: Cần tạo class riêng. Hơi over-engineering nếu chỉ dùng cho Playwright.
 
-Dùng `compare-versions` library. Chỉ reject nếu version hiện tại < minimum. Cho phép version >=, kể cả major version mới.
+### Phương án 3: Dùng dynamic import() + try/catch
 
-### Playwright loader instance
+Thử `import('playwright')`, nếu fail thì `import('playwright-core')`.
 
-```ts
-// src/adapter/playwright/loader.ts
-const loader = new Loader('playwright', '1.27.1', ['playwright-core']);
-export default loader;
-```
+- Ưu điểm: Không cần createRequire.
+- Nhược điểm: Dynamic import trả về Promise -- cần async. Có thể bị transform trong bundle.
 
----
+## Giải pháp được chọn
 
-Xem thêm: [Spec](../specs/playwright-module-loader.spec.md) | [Plan](../plans/playwright-module-loader.plan.md)
+- **Phương án AI đề xuất:** Phương án 2 (Loader class generic).
+- **Phương án được chọn:** Phương án 2.
+- **Lý do:** Generic, có thể tái dùng, xử lý version validation tập trung. `createRequire` phù hợp để require CJS từ ESM.
+- **Ràng buộc:** Loader dùng `require()` -- chỉ hoạt động với CJS packages.

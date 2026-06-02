@@ -1,131 +1,136 @@
 # Spec: Quản lý Viewport
 
-## 3 files: `plugin/browser.ts`, `plugin/config.ts`, `adapter/playwright/utils.ts`
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
 
----
+## Mô tả
 
-## CDP setViewport (`plugin/browser.ts`)
+Tính năng tự động đặt kích thước viewport cho browser dựa trên fingerprint data. Có hai implementation path: một dùng `chrome-remote-interface` (cho plugin path — spawn worker trực tiếp) và một dùng Playwright `CDPSession` (cho Playwright bridge). Cả hai đều dùng retry tối đa 3 lần với delta correction để đạt kích thước chính xác.
 
-### Function `setViewport(browser, { diff, width, height })`
+Sau khi viewport set, `page.setViewportSize()` bị chặn — tránh thay đổi viewport làm fingerprint lệch.
 
-```ts
-export const setViewport = async (
-  browser: Browser,
-  { diff, width, height }: SetViewportOptions
-): Promise<void>
+Source: `src/plugin/browser.ts` (88 dòng), `src/plugin/config.ts` (86 dòng), `src/adapter/playwright/utils.ts` (124 dòng).
+
+## Yêu cầu
+
+- Resize viewport đến kích thước từ fingerprint data.
+- Retry tối đa 3 lần với delta correction (tự điều chỉnh nếu sai lệch do window chrome, DPI scaling).
+- Hỗ trợ cả 2 path: plugin (chrome-remote-interface) và Playwright bridge (CDPSession).
+- Đồng bộ `availWidth`/`availHeight` vào file `.ini` của engine — fingerprint service dùng giá trị này.
+- Chặn `page.setViewportSize()` sau khi viewport đã set.
+
+## Thiết kế
+
+### Viewport resize flow
+
+```
+Plugin path (browser.ts):
+  setViewport(browser, { width, height })
+    ├─ chrome-remote-interface.connect(browser)
+    ├─ Browser.getWindowForTarget() → windowId
+    ├─ Loop 3 lần:
+    │    ├─ bounds = desired + delta
+    │    ├─ Browser.setWindowBounds() + waitForResize()
+    │    ├─ getViewport() verify
+    │    ├─ match → break
+    │    └─ không match → adjust delta
+    └─ cdp.close()
+
+Playwright bridge path (utils.ts):
+  setViewport(page, { width, height })
+    ├─ CDPSession = page.context().newCDPSession(page)
+    ├─ Browser.getWindowForTarget() → windowId
+    ├─ Loop 3 lần (giống trên)
+    └─ cdp.detach()
 ```
 
-Flow:
+### synchronize() flow
 
-| Bước | Code | Mô tả |
+```
+synchronize(id, pwd, bounds, action)
+  │
+  ├─ Đọc file: pwd/s/{id}1.ini
+  │
+  ├─ [Round 1]: Set availWidth = "BAS_NOT_SET" (reset)
+  │    → action() chạy (resize viewport)
+  │    → Wait 2s
+  │
+  └─ [Round 2]: Set availWidth = bounds.width, availHeight = bounds.height
+       → Wait 2s
+```
+
+Tại sao reset trước khi set? Engine cần thấy giá trị "not set" để biết viewport đang được thay đổi. Nếu set thẳng giá trị mới, engine có thể ignore.
+
+### Delta correction
+
+```
+Delta ban đầu: { width: 16, height: 88 } (window chrome)
+
+Vòng 1:
+  bounds = { width: 1280 + 16, height: 720 + 88 }
+  setWindowBounds → đo viewport thực tế → { width: 1275, height: 715 }
+
+Vòng 2:
+  delta.height += 720 - 715 = 5
+  delta.width += 1280 - 1275 = 5
+  bounds = { width: 1280 + 21, height: 720 + 93 }
+  → đo lại → match → break
+```
+
+Tham chiếu design doc: `docs/designs/viewport-management.design.md`.
+
+## API / Data flow
+
+```ts
+// Plugin path
+import { setViewport } from '../plugin/browser';
+await setViewport(browser, { width: 1280, height: 720 });
+
+// Playwright bridge path
+import { setViewport } from '../adapter/playwright/utils';
+await setViewport(page, { width: 1280, height: 720 });
+```
+
+### Input
+
+- `setViewport(browser | page, { width, height, diff? })`.
+- `width`, `height` — desired viewport size.
+- `diff` — optional delta override (mặc định 16x88).
+
+### Output
+
+- void. Side effect: window bounds thay đổi.
+
+## Components
+
+| File | Vai trò | Dòng |
 |---|---|---|
-| 1 | `const cdp = await connect(browser)` | Kết nối CDP qua chrome-remote-interface |
-| 2 | `const { windowId } = await cdp.Browser.getWindowForTarget()` | Lấy window handle |
-| 3 | `delta = diff ?? { width: 16, height: 88 }` | Delta mặc định (window chrome) |
-| 4 | Loop `i < MAX_RESIZE_RETRIES (3)` | Retry tối đa 3 lần |
-| 4a | `bounds = { width: desiredW + deltaW, height: desiredH + deltaH }` | Tính bounds |
-| 4b | `await Promise.all([cdp.Browser.setWindowBounds({ bounds, windowId }), waitForResize(cdp)])` | Set bounds + chờ resize |
-| 4c | `viewport = await getViewport(cdp)` | Verify kích thước |
-| 4d | Nếu match -> break | Đúng kích thước |
-| 4e | `delta += height - viewport.height` (tương tự width) | Tự điều chỉnh |
-| 5 | `await cdp.close()` | Ngắt kết nối CDP |
+| `src/plugin/browser.ts` | `setViewport` + `getViewport` qua chrome-remote-interface | 88 |
+| `src/plugin/config.ts` | `configure()` + `synchronize()` — .ini sync | 86 |
+| `src/adapter/playwright/utils.ts` | `setViewport` qua Playwright CDPSession | 124 |
+| `src/adapter/playwright/engine.ts` | `configure()` gọi setViewport + bindHooks | 111 |
+| `src/common/index.ts` | `waitForResize` + `getViewport` in-browser scripts | 25 |
 
-### Function `getViewport(cdp)`
+## Constants
 
-```ts
-const { result } = await cdp.Runtime.evaluate({
-  expression: `(${scripts.getViewport})()`,
-  returnByValue: true,
-});
-return result.value;  // { width, height }
-```
-
-### Function `waitForResize(cdp)`
-
-```ts
-await cdp.Runtime.evaluate({
-  expression: `(${scripts.waitForResize})()`,
-  returnByValue: true,
-  awaitPromise: true,
-});
-```
-
----
-
-## CDP setViewport (`adapter/playwright/utils.ts`)
-
-### Function `setViewport(page, { diff, width, height })`
-
-Tương tự `plugin/browser.ts` nhưng khác cách kết nối CDP:
-
-| Bước | Code | Mô tả |
+| Tên | Giá trị | Vai trò |
 |---|---|---|
-| 1 | `const cdp = await page.context().newCDPSession(page)` | Tạo CDP session từ Playwright page |
-| 2 | ... | ... giống plugin/browser.ts |
-| 9 | `await cdp.detach()` | Ngắt CDP session |
+| `MAX_RESIZE_RETRIES` | `3` | Số lần retry tối đa |
 
-### Function `getViewport(page)`
+## Xử lý lỗi
 
-```ts
-page.evaluate(scripts.getViewport)  // { width, height }
-```
-
-### Function `waitForResize(page)`
-
-```ts
-page.evaluate(scripts.waitForResize)
-```
-
----
-
-## Configure + Synchronize (`plugin/config.ts`)
-
-### Function `configure(cleanup, browser, bounds, sync)`
-
-| Bước | Code | Mô tả |
-|---|---|---|
-| 1 | `browser.process.once('exit', () => cleanup(browser))` | Cleanup khi process kết thúc |
-| 2 | `browser.configure = async () => { if (bounds) await sync(() => setViewport(browser, bounds)) }` | Set configure callback |
-| 3 | `await browser.configure()` | Gọi configure ngay |
-
-### Function `synchronize(id, pwd, bounds, action)`
-
-| Bước | Code | Mô tả |
-|---|---|---|
-| 1 | `configPath = \`${pwd}/s/${id}1.ini\`` | Đường dẫn file .ini |
-| 2 | `lock.acquire(id, async () => { ... })` | AsyncLock per instance |
-| 3 | Phase 1: đọc file, replace `availWidth`/`availHeight` bằng `BAS_NOT_SET` | Reset |
-| 4 | Gọi `action()` | Resize |
-| 5 | `await setTimeout(2000)` | Delay 2s |
-| 6 | Phase 2: replace `availWidth`/`availHeight` bằng giá trị thật | Set real values |
-| 7 | `await setTimeout(2000)` | Delay 2s |
-
----
-
-## In-browser Scripts (`src/common/index.ts`)
-
-```ts
-// waitForResize: ResizeObserver + double requestAnimationFrame
-scripts.waitForResize = `
-  new Promise(resolve => {
-    new ResizeObserver(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-      .observe(document.body)
-  })
-`;
-
-// getViewport: window.innerWidth/innerHeight
-scripts.getViewport = `
-  () => ({ width: window.innerWidth, height: window.innerHeight })
-`;
-```
-
----
+| Tình huống | Hành vi |
+|---|---|
+| CDP kết nối thất bại | Throw error từ `connect()` hoặc `newCDPSession()` |
+| `Browser.getWindowForTarget` fail | Throw error — không thể lấy window handle |
+| Sau 3 lần retry vẫn lệch | `console.warn`, không throw — chấp nhận sai số |
+| `.ini` file không tồn tại | `synchronize()` throw từ `readFile` |
+| `synchronize()` — lock không acquire được | AsyncLock xếp hàng — đợi lock release |
 
 ## Kiểm tra
 
-- Cần browser thật để test resize -- không thể mock CDP response.
-- Verify `availWidth`/`availHeight` trong file .ini sau synchronize.
-- Test edge: resize khi fullscreen (window chrome khác).
-- Test edge: resize nhiều lần trên cùng instance -- lock không deadlock.
-
----
+- Happy path: viewport được set chính xác sau 1-2 lần retry.
+- Edge case: DPI scaling 125%, 150% — delta tự điều chỉnh.
+- Edge case: cùng kích thước với viewport hiện tại — 1 lần retry là đủ.
+- Error: CDP timeout → throw.
+- synchronize: `.ini` file được cập nhật availWidth/availHeight.
+- synchronize reset: giá trị "BAS_NOT_SET" trước khi set thật.

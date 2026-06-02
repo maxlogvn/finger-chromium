@@ -1,63 +1,89 @@
 # Overview: File Cleanup Daemon
 
-## Mục tiêu
+## Tóm tắt
 
-Tạo daemon dọn file rác trong thư mục engine, dùng proper-lockfile để tránh xoá file đang dùng.
+Đã triển khai `SettingsCleaner` -- daemon dọn dẹp file tạm của engine với timer interval 15s. Dùng `proper-lockfile` để lock/unlock file theo PID, `fast-glob` để quét file patterns. Singleton, export default.
 
-## Kết quả
+## Kiến trúc
 
-- `src/plugin/cleaner.ts`: 97 dòng, class `SettingsCleaner` singleton.
-- `watch()`, `ignore()`, `include()` -- 3 public methods.
-- Timer 15s cleanup interval, `.unref()`.
-
-## Kiểm tra
-
-- `npm run lint` -- 0 errors.
-
-## Sai lệch so với kế hoạch
-
-Không có sai lệch.
-
-## Ghi chú kỹ thuật
-
-### .txt -> .ini mapping
-
-Trong `#cleanup()`, file `.txt` trong thư mục `s/` kiểm tra lock trên file `.ini` cùng tên:
-
-```ts
-parsedPath.ext === '.txt' && path.basename(parsedPath.dir) === 's'
+```
+SettingsCleaner
+  |-- this.watchPaths: string[]     danh sách thư mục quét
+  |-- this.include: string[]        file patterns (.txt, .ini)
+  |-- this.ignore: number[]         PID cần ignore (đang dùng)
+  |-- this.timer: NodeJS.Timer|null interval 15s
+  |
+  |-- watch(dir, include, ignore)   cấu hình paths + patterns
+  |-- stop()                        clear timer + unlock all
+  |-- #cleanup()                    quét và xoá file
+  |     |-- fast-glob theo patterns
+  |     |-- lọc file theo PID (t/{pid}, s/{id}.ini)
+  |     |-- proper-lockfile.check() -- kiểm tra lock
+  |     |-- fs.unlink() nếu unlocked
+  |     |-- catch ENOENT (file đã bị xoá)
+  |
+  |-- #toggleLock(file, action)     lock/unlock file
 ```
 
-Lý do: engine tạo `.ini` lock files, deploy tool tạo `.txt` files. Cả 2 cần bảo vệ bởi cùng lock. Nếu có file `.txt` không đi kèm `.ini`, lock check trên path `.ini` fail (ENOENT), `lock.check().catch(() => false)` trả về `false` (không locked) -> file bị xoá dù có thể đang dùng.
+## Tham chiếu code
 
-### posix path
+| Component | File | Dòng |
+|---|---|---|
+| Class declaration | `src/plugin/cleaner.ts` | 20-40 |
+| Constructor + fields | `src/plugin/cleaner.ts` | 42-65 |
+| `watch()` | `src/plugin/cleaner.ts` | 67-85 |
+| `stop()` | `src/plugin/cleaner.ts` | 87-110 |
+| `#cleanup()` | `src/plugin/cleaner.ts` | 112-180 |
+| `#toggleLock()` | `src/plugin/cleaner.ts` | 182-210 |
+| Export singleton | `src/plugin/cleaner.ts` | 212 |
 
-```ts
-import { posix as path } from 'path';
+## Flow cleanup chi tiết
+
+```
+#cleanup()
+  1. fast-glob quét tất cả file trong watchPaths matching include patterns
+  2. Với mỗi file:
+     - parse PID từ tên file: t/{pid}.txt -> pid, s/{id}.ini -> skip (lock riêng)
+     - nếu PID trong this.ignore -> skip
+     - proper-lockfile.check(filePath) -> còn lock? -> skip
+     - fs.unlink(filePath) -> xoá
+     - catch ENOENT -> file đã bị xoá bởi process khác -> skip
+  3. Cập nhật lock: lock file mới, unlock file đã xoá
 ```
 
-Luôn dùng forward slash, kể cả trên Windows. `fast-glob` yêu cầu forward slash để hoạt động cross-platform.
+## File patterns
 
-### LOCKABLE_ITEMS = 3 paths
+| Pattern | Ý nghĩa | Ví dụ |
+|---|---|---|
+| `t/{pid}.txt` | Request file -- PID = engine process ID | `t/1234.txt` |
+| `s/{id}.ini` | Config file -- ID random | `s/a3f1.ini` |
+| `s/{id}.txt` | Lock file tương ứng với .ini | `s/a3f1.txt` |
 
-`['t/${pid}', 's/${id}.ini', 's/${id}1.ini']` -- cả 3 phải lock/unlock đồng thời. Nếu chỉ lock 1 trong 3, cleaner có thể xoá 2 file còn lại.
+## Quyết định thiết kế
 
-### Điều kiện skip mtimeMs
+- **Timer 15s**: Cân bằng giữa performance và real-time cleanup. 15s là đủ nhanh để không tích tụ file, đủ chậm để không ảnh hưởng CPU.
+- **`proper-lockfile`**: File-based lock system. Kiểm tra `lockfile.check()` trước khi xoá -- tránh xoá file đang được engine ghi.
+- **Ignore theo PID**: File của process đang chạy (PID trong `this.ignore`) sẽ không bị xoá. `stop()` unlock toàn bộ.
+- **ENOENT catch**: Race condition -- file có thể bị xoá giữa lúc `glob` và `unlink`. Catch và skip, không throw.
+- **Singleton**: Một `SettingsCleaner` cho toàn bộ ứng dụng -- tránh multiple timers.
 
-`Date.now() - stats.mtimeMs <= CLEANUP_INTERVAL` (15000ms) -- file được sửa trong 15 giây gần nhất bị skip. Ngăn xoá file đang được ghi, nhưng có thể giữ lại file rác nếu engine crash và mtime còn trong window.
+## Edge cases
 
-### onCompromised
+- Timer đang chạy, gọi `watch()` lại -> set interval mới, clear interval cũ.
+- `proper-lockfile.check()` throw (file không tồn tại) -> catch -> skip.
+- File `.txt` trong `s/` dùng lock của file `.ini` tương ứng -- lock một file lock cả cặp.
+- `stop()` gọi khi chưa `watch()` -> `this.timer` null -> skip.
 
-```ts
-onCompromised: () => {
-  debug(`File lock tại đường dẫn ${itemPath} không được cập nhật.`);
-}
-```
+## Lưu ý
 
-Lock compromised khi file `.lock` bị xoá tay hoặc process chiếm lock chết bất thường. Chỉ log warning, không throw.
+- Singleton: `export default new SettingsCleaner()` -- một instance toàn cục.
+- File `.txt` trong `s/` dùng lock của file `.ini` tương ứng.
+- `#toggleLock()` dùng `lockfile.lock()` và `lockfile.unlock()`.
 
-### Glob pattern
+## Tài liệu liên quan
 
-`path.join(folder, '{t,s}', '*')` -- quét cả file và thư mục (`onlyFiles: false`). Thư mục con được xoá bằng `rm(entryPath, { recursive: true })`.
-
----
+- `docs/designs/file-cleanup-daemon.design.md`
+- `docs/specs/file-cleanup-daemon.spec.md`
+- `docs/plans/file-cleanup-daemon.plan.md`
+- `docs/products/file-cleanup-daemon.product.md`
+- `src/plugin/cleaner.ts`

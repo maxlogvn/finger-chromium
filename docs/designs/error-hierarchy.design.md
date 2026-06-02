@@ -1,73 +1,61 @@
 # Design: Hệ thống lỗi (Error Hierarchy)
 
-## Vấn đề cần giải quyết
+## Bối cảnh
 
-Khi thư viện gặp lỗi, người dùng cần biết:
-1. **Có lỗi gì xảy ra?** (mô tả lỗi)
-2. **Loại lỗi gì?** (timeout, thiếu key, engine lỗi...)
-3. **Cách khắc phục?** (hướng dẫn trong message)
+Cần một hệ thống lỗi thống nhất cho toàn bộ engine. Thay vì dùng `Error` thô, mỗi loại lỗi có class riêng để dễ catch và debug.
 
-Nếu chỉ dùng `throw new Error('something wrong')`, người dùng không thể phân biệt được các loại lỗi để xử lý khác nhau. Ví dụ: lỗi timeout cần retry, lỗi thiếu key cần cấu hình lại, lỗi engine cần tải lại.
+## Câu hỏi làm rõ
 
-## Các phương án đã cân nhắc
+- Có cần nhiều cấp độ lỗi không? → Chỉ cần base class + 4 subclass là đủ.
+- Có cần thêm trường `code` (số) không? → Không, dùng `name` (constructor name) là đủ.
+- Có cần i18n cho message không? → Không, message tiếng Việt cho developer.
 
-### 1. Dùng Error code (số)
+## Các phương án
 
-```ts
-throw { code: 1001, message: 'Timeout' };
-```
+### Phương án 1: Dùng Error thô với message prefix
 
-**Ưu điểm:** Nhẹ, dễ so sánh.
+- Ưu điểm: Đơn giản, không cần thêm class.
+- Nhược điểm: Không thể catch theo type, message prefix dễ sai.
 
-**Nhược điểm:** Không có stack trace, không tận dụng được `instanceof`, khó debug.
+### Phương án 2: Class hierarchy (chọn)
 
-### 2. Dùng Error class hierarchy (chọn)
+PluginError base + 4 subclass.
 
-Kế thừa từ `Error`, mỗi loại lỗi là một class riêng.
+- Ưu điểm: Catch đúng type, message chuyên biệt, dễ maintain.
+- Nhược điểm: Nhiều class hơn, nhưng đáng giá.
 
-**Ưu điểm:**
-- Dùng được `instanceof` để phân loại.
-- Có stack trace đầy đủ.
-- Có thể thêm message hướng dẫn khắc phục.
-- TypeScript hỗ trợ type narrowing qua `instanceof`.
+## Giải pháp được chọn
 
-**Nhược điểm:** Nặng hơn một chút so với Error code, nhưng không đáng kể.
+- **Phương án AI đề xuất:** Phương án 2 (class hierarchy).
+- **Phương án được chọn:** Phương án 2.
+- **Lý do:** Dễ catch lỗi, message rõ ràng, dễ mở rộng.
+- **Cấu trúc:**
+  - `PluginError` — base, extends Error, tự set `name = constructor.name`.
+  - `MissingKeyError` — thiếu key bảo mật.
+  - `InvalidEngineError` — engine chưa tải/giải nén.
+  - `EngineTimeoutError` — timeout khởi động engine.
+  - `RequestTimeoutError` — timeout request.
 
-## Giải pháp chọn
+## Chi tiết triển khai
 
-### PluginError (base class)
+### Tại sao `Error.captureStackTrace`?
+Xoá constructor call khỏi stack trace, giúp stack trace ngắn gọn, dễ đọc hơn -- không hiển thị dòng `new PluginError(...)`.
 
-```ts
-class PluginError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = this.constructor.name;
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
-```
+### Tại sao `Symbol.toStringTag`?
+Khi dùng `Object.prototype.toString.call(err)`, nếu không có `Symbol.toStringTag`, nó trả về `[object Error]` thay vì `[object MissingKeyError]`. Có tag này giúp debug tools hiển thị đúng tên class.
 
-**Tại sao tự set `this.name`?** Vì JavaScript `Error` class không tự động set `name` khi kế thừa -- nó luôn để là `'Error'`. Set `this.constructor.name` giúp `instance.name` trả về tên class thật.
+### Tại sao `dedent`?
+Các message lỗi có hướng dẫn khắc phục dài (3-4 dòng). `dedent` giúp viết multi-line template string gọn, không bị thụt lề thừa khi định dạng code.
 
-**Tại sao dùng `Error.captureStackTrace`?** V8 (Node.js) có method này để loại bỏ constructor khỏi stack trace, giúp stack trace sạch hơn. Trên các runtime khác, nó chỉ là no-op.
+### Nội dung message
+Mỗi subclass tự động thêm hướng dẫn khắc phục vào cuối message:
 
-**Tại sao có `Symbol.toStringTag`?** Khi bạn log `String(error)`, nó hiển thị `PluginError: message` thay vì `Error: message`.
+| Class | Hướng dẫn thêm |
+|---|---|
+| `MissingKeyError` | Nhắc người dùng set key cả khi nhận fingerprint lẫn khi áp dụng |
+| `InvalidEngineError` | 3 bước: xoá engine folder, chạy lại code, mở issue nếu còn lỗi |
+| `EngineTimeoutError` | Gợi ý dùng `setEngineTimeout()` để tăng thời gian chờ |
+| `RequestTimeoutError` | Gợi ý dùng `setRequestTimeout()` để tăng thời gian chờ |
 
-### Các lỗi cụ thể
-
-| Class | Khi nào throw | Message hướng dẫn |
-|---|---|---|
-| `PluginError` | Lỗi cơ bản, không thuộc loại nào khác | Message gốc |
-| `MissingKeyError` | Thiếu key bảo mật | Giải thích cần set key cho cả fetch và apply |
-| `InvalidEngineError` | Engine chưa được tải/giải nén đúng | Hướng dẫn xoá engine cũ, tải lại |
-| `EngineTimeoutError` | Timeout khi khởi động engine | Hướng dẫn tăng timeout |
-| `RequestTimeoutError` | Timeout khi chờ request | Hướng dẫn tăng request timeout |
-
-### Tại sao message lại dài?
-
-Các message lỗi được viết bằng `dedent` template, chứa hướng dẫn khắc phục chi tiết. Lý do:
-- Người dùng mới không biết `setEngineTimeout` là gì -- cần hướng dẫn cụ thể.
-- Giảm số lần người dùng phải mở docs/tài liệu.
-- Lỗi càng rõ ràng, càng ít support request.
-
----
+### Tại sao message lỗi viết tiếng Việt?
+Developer target là người Việt, message tiếng Việt giúp đọc nhanh, hiểu ngay hướng dẫn khắc phục mà không cần dịch.

@@ -1,54 +1,31 @@
-# Design: Cấu hình Fingerprint
+# Design: Fingerprint Config -- Gắn fingerprint vào browser
 
-## Vấn đề
+## Bối cảnh
 
-Trình duyệt cần giả lập thiết bị thật để tránh bot detection. Fingerprint chứa thông tin GPU (WebGL), màn hình (canvas), âm thanh (audio), font chữ, pin, cảm biến. Những thông tin này cần được inject sao cho không để lại dấu vết trong JavaScript context.
+Fingerprint data cần được inject vào browser ở tầng native C/C++ trước khi Chromium khởi động. User cần API để truyền fingerprint data + options (PerfectCanvas, WebGL noise, Audio noise...).
 
-## Giải pháp
+## Câu hỏi làm rõ
 
-Fingerprint được inject ở cấp độ C/C++ thông qua engine binary -- không phải JavaScript override. Người dùng cung cấp fingerprint JSON (từ bablosoft service) kèm `FingerprintOptions` để kiểm soát từng kỹ thuật giả lập.
+- Options mặc định bật/tắt? → Đa số bật (true) -- chỉ safeElementSize mặc định false.
+- Fingerprint data format? → JSON string từ service, có thể chứa PerfectCanvas data.
+- Inject ở đâu? → Qua engine `Setup` API (connector) trước khi spawn worker.
 
-### API
+## Các phương án
+
+### Phương án 1: Chỉ truyền data string, không options
+
+Đơn giản nhưng không linh hoạt — user không kiểm soát được noise techniques.
+
+### Phương án 2: Data + options object (chọn)
 
 ```ts
-Chromium.useFingerprint(fingerprintJson, {
-  usePerfectCanvas: true,
-  safeWebGL: true,
-  safeAudio: true,
-  safeCanvas: true,
-  safeBattery: true,
-  safeElementSize: false,
-  emulateDeviceScaleFactor: true,
-  emulateSensorAPI: true,
-  useFontPack: true,
-});
+useFingerprint(data: string, options?: FingerprintOptions)
 ```
+Options kiểm soát từng technique riêng biệt.
 
-### 9 Options (8 default true, 1 default false)
+## Giải pháp được chọn
 
-| Option | Default | Mục đích |
-|---|---|---|
-| `usePerfectCanvas` | `true` | Canvas rendering khớp chính xác fingerprint thật |
-| `safeWebGL` | `true` | Nhiễu WebGL -- che GPU, driver, renderer |
-| `safeAudio` | `true` | Nhiễu Audio -- che sample rate, audio buffer |
-| `safeCanvas` | `true` | Nhiễu Canvas 2D -- chống canvas fingerprinting |
-| `safeBattery` | `true` | Giả lập Battery API -- mỗi phiên giá trị khác nhau |
-| `emulateDeviceScaleFactor` | `true` | HiDPI/Retina -- mật độ pixel theo fingerprint |
-| `emulateSensorAPI` | `true` | Sensor API -- gia tốc kế, con quay hồi chuyển |
-| `useFontPack` | `true` | Đồng bộ font chữ với fingerprint target |
-| `safeElementSize` | `false` | Che giấu DOM element coordinates -- có thể ảnh hưởng layout |
-
-### Luồng xử lý
-
-1. User gọi `useFingerprint(fingerprintJson, options)`.
-2. `FingerprintPlugin.useFingerprint()` lưu vào `this.fingerprint = { value: jsonString, options }`.
-3. Khi `_launch()`, gửi `fingerprint` trong `api('setup', ...)`.
-4. Engine binary nhận config, inject fingerprint vào browser process ở C level.
-
-### Validation
-
-`validateConfig('fingerprint', value, options)` kiểm tra value là string, options là object không null. Engine binary chịu trách nhiệm parse fingerprint JSON và áp dụng option.
-
----
-
-Xem thêm: [Spec](../specs/fingerprint-config.spec.md) | [Plan](../plans/fingerprint-config.plan.md)
+- **Phương án AI đề xuất:** Phương án 2.
+- **Phương án được chọn:** Phương án 2.
+- **Lý do:** Cần options để user kiểm soát từng kỹ thuật noise riêng lẻ (PerfectCanvas, WebGL, Audio...) thay vì bật/tắt toàn bộ.
+- **Cơ chế:** Fingerprint data + options → validate → lưu config → gửi qua API `setup` khi launch.

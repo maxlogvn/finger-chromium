@@ -1,134 +1,140 @@
 # Spec: Playwright Bridge
 
-## File: `src/adapter/playwright/engine.ts` (111 dòng)
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
 
-Module-level:
+## Mô tả
 
-```ts
-const browserType: BrowserType = defaultLoader.load();
-const defaultLauncher: Launcher = {
-  launch: browserType.launch.bind(browserType),
-  launchPersistentContext: browserType.launchPersistentContext.bind(browserType),
-};
+`PlaywrightFingerprintPlugin` là lớp bridge giữa `FingerprintPlugin` (plugin core) và Playwright `BrowserType`. Nó override `launchPersistentContext()` để inject fingerprint/proxy/profile vào BrowserContext thông qua engine, nhưng vẫn dùng Playwright để thực sự spawn browser.
+
+Nói cách khác: plugin core quản lý fingerprint engine (C/C++), Playwright Bridge quản lý Playwright processes và kết nối chúng.
+
+Source: `src/adapter/playwright/engine.ts` (111 dòng).
+
+## Yêu cầu
+
+- Kế thừa `FingerprintPlugin` để có toàn bộ lifecycle (setup, spawn, configure, cleanup).
+- Constructor nhận `Launcher` tuỳ chỉnh — mặc định load Playwright từ `playwright-core`.
+- `launch()` fallback sang `launchPersistentContext()` với warning — vì launch thuần không hỗ trợ fingerprint.
+- `launchPersistentContext()` phải:
+  - validate unsupported options trước khi launch.
+  - ép `viewport: null` — fingerprint tự resize viewport, Playwright làm trước là thừa và gây conflict.
+  - lược bỏ `--user-data-dir` khỏi args runtime — vì engine tự quản lý profile path.
+  - thêm `--disable-extensions` vào `ignoreDefaultArgs` để tránh extension xung đột fingerprint.
+- `configure()` phải:
+  - đăng ký cleanup handler khi context close.
+  - bind hooks cho page mới (viewport resize).
+  - resize page đầu tiên nếu context đã có page.
+- Chặn các option không hỗ trợ: `proxy`, `channel`, `firefoxUserPrefs`.
+
+## Thiết kế
+
+### Class hierarchy
+
+```
+FingerprintPlugin (src/plugin/index.ts)
+  └── PlaywrightFingerprintPlugin (src/adapter/playwright/engine.ts)
+       └── pwLauncher: Launcher (Playwright BrowserType)
 ```
 
----
+### Luồng launchPersistentContext
 
-## Hằng số
+```
+User gọi launchPersistentContext(userDataDir, options)
+  │
+  ├─ #validateOptions(options) ─── kiểm tra proxy/channel/firefoxUserPrefs
+  │
+  ├─ Tạo launcher proxy:
+  │    launch(opts) {
+  │      filteredArgs = opts.args.filter(!--user-data-dir)
+  │      return pwLauncher.launchPersistentContext(userDataDir, { ...opts, args: filteredArgs })
+  │    }
+  │
+  ├─ _launch(false, {
+  │     ...options,
+  │     userDataDir,
+  │     viewport: null,           ─── chống Playwright tự resize
+  │     launcher: proxy,           ─── launcher proxy thay vì mặc định
+  │     ignoreDefaultArgs: [
+  │       ...options.ignoreDefaultArgs,
+  │       '--disable-extensions',  ─── tránh extension xung đột fingerprint
+  │     ],
+  │   })
+  │
+  └─ _launch() gọi configure() sau spawn
+       ├─ onClose(context, cleanup) ─── cleanup khi context close
+       ├─ bindHooks(context, { onPageCreated: resize })
+       └─ resize page đầu tiên (nếu có)
+```
 
-| Tên | Giá trị | Mô tả |
+### Tại sao ép viewport: null
+
+Playwright tự động set viewport cho context mới qua option `viewport`. Engine cũng tự resize viewport theo fingerprint data (qua CDP). Nếu cả hai cùng set, kết quả không xác định. Ép `null` để Playwright không can thiệp — engine làm việc này.
+
+### Tại sao lược bỏ --user-data-dir
+
+Engine chọn profile path và truyền cho Playwright. Nếu args từ user chứa `--user-data-dir`, nó override profile path của engine — làm profile management sai.
+
+Tham chiếu design doc: `docs/designs/playwright-bridge.design.md`.
+
+## API / Data flow
+
+```ts
+// Dùng qua BrowserEngine (không gọi trực tiếp)
+const context = await Chromium.launch().newContext();
+
+// Dùng trực tiếp (internal use)
+import { PlaywrightFingerprintPlugin } from './adapter/playwright/engine';
+const plugin = new PlaywrightFingerprintPlugin();
+plugin.setServiceKey(process.env.BABLOSOFT_KEY ?? '');
+context = await plugin.launchPersistentContext('./profiles/user_01', {
+  viewport: { width: 1280, height: 720 },
+});
+await plugin.cleanup();
+```
+
+### Input
+
+- `launchPersistentContext(userDataDir: string, options: PluginLaunchOptions)`.
+- `launch(options: PluginLaunchOptions)`.
+- `configure(cleanup, browser, bounds, sync)` — gọi từ `_launch()`.
+
+### Output
+
+- `BrowserContext` — context có fingerprint, viewport đã resize.
+
+## Components
+
+| File | Vai trò | Dòng |
 |---|---|---|
-| `IGNORED_ARGUMENTS` | `['--disable-extensions']` | Loại bỏ khỏi args trước khi launch |
-| `UNSUPPORTED_OPTIONS` | `['proxy', 'channel', 'firefoxUserPrefs']` | Throw error nếu có trong options |
-| `LAUNCH_FALLBACK_WARNING` | Warning text | Cảnh báo khi gọi launch() thay vì launchPersistentContext() |
+| `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin` class | 111 |
+| `src/adapter/playwright/utils.ts` | `onClose`, `bindHooks`, `setViewport`, `getViewport` | — |
+| `src/adapter/playwright/loader.ts` | Load Playwright chromium module | 13 |
+| `src/plugin/index.ts` | Base class `FingerprintPlugin` | 302 |
+| `src/plugin/config.ts` | `configure()` và `synchronize()` | — |
 
----
+## Constants
 
-## Class `PlaywrightFingerprintPlugin`
-
-```ts
-class PlaywrightFingerprintPlugin extends FingerprintPlugin {
-  protected readonly pwLauncher: Launcher;
-}
-```
-
-### Constructor
-
-```ts
-constructor(launcher: Launcher = defaultLauncher)
-```
-
-Nhận `Launcher` (gồm `launch` và `launchPersistentContext`). Mặc định lấy từ Playwright BrowserType.
-Gọi `super()` không truyền launcher -- `FingerprintPlugin` dùng mặc định (spawn worker.exe).
-
-### `launch(options)`
-
-```ts
-async launch(options: PluginLaunchOptions = {}): Promise<BrowserContext>
-```
-
-| Bước | Hành vi |
-|---|---|
-| 1 | `#validateOptions(options)` |
-| 2 | `console.warn(LAUNCH_FALLBACK_WARNING)` |
-| 3 | `return this.launchPersistentContext('', options)` |
-
-### `launchPersistentContext(userDataDir, options)`
-
-```ts
-async launchPersistentContext(
-  userDataDir: string,
-  options: PluginLaunchOptions = {}
-): Promise<BrowserContext>
-```
-
-| Bước | Hành vi |
-|---|---|
-| 1 | `#validateOptions(options)` |
-| 2 | Filter `--user-data-dir` khỏi `options.args` |
-| 3 | Tạo custom launcher: `launch(opts) => pwLauncher.launchPersistentContext(userDataDir, {...opts, args: filteredArgs})` |
-| 4 | Xử lý `ignoreDefaultArgs`: array thì concat `IGNORED_ARGUMENTS`, `true` thì giữ nguyên `true`, `false`/`undefined` thì dùng `IGNORED_ARGUMENTS` |
-| 5 | Gọi `this._launch(false, { ...options, userDataDir, viewport: null, launcher })` |
-| 6 | Return `BrowserContext` |
-
-### `configure(cleanup, browser, bounds, sync)` -- Override
-
-```ts
-async configure(
-  cleanup: (target: any) => void,
-  browser: any,
-  bounds: { width: number; height: number },
-  sync: (fn: () => Promise<void>) => Promise<void>
-): Promise<void>
-```
-
-| Bước | Hành vi |
-|---|---|
-| 1 | Cast `browser` thành `BrowserContext` |
-| 2 | `onClose(context, () => cleanup(context))` -- lắng nghe close event |
-| 3 | Nếu có bounds: tạo `resize(page)` function kiểm tra viewport hiện tại, gọi `sync(() => setViewport(page, bounds))` nếu khác |
-| 4 | `bindHooks(context, { onPageCreated: resize })` -- proxy newPage + block setViewportSize |
-| 5 | Nếu đã có page đầu tiên (`context.pages()[0]`), gọi `resize(firstPage)` ngay |
-
-### `#validateOptions(options)` -- Private
-
-```ts
-#validateOptions(options: Record<string, unknown> = {}): void
-```
-
-Duyệt `UNSUPPORTED_OPTIONS`, nếu `option in options` thì throw `Error('Option "${option}" không được hỗ trợ...')`.
-
----
-
-## Liên quan
-
-| File | Vai trò |
-|---|---|
-| `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin` |
-| `src/adapter/playwright/loader.ts` | Loader Playwright module |
-| `src/adapter/playwright/utils.ts` | `onClose`, `bindHooks`, `setViewport`, `getViewport` |
-| `src/adapter/playwright/chromium.ts` | `Launcher`, `PluginLaunchOptions` types |
-| `src/plugin/index.ts` | `FingerprintPlugin` (parent class) |
-
----
+| Constant | Giá trị | Vai trò |
+|---|---|---|
+| `IGNORED_ARGUMENTS` | `['--disable-extensions']` | Thêm vào `ignoreDefaultArgs` — tránh extension xung đột fingerprint injection. |
+| `UNSUPPORTED_OPTIONS` | `['proxy', 'channel', 'firefoxUserPrefs']` | `proxy`: engine tự quản lý proxy ở tầng C/C++. `channel`: chỉ hỗ trợ Chromium. `firefoxUserPrefs`: không hỗ trợ Firefox. |
+| `LAUNCH_FALLBACK_WARNING` | Chuỗi cảnh báo | Nhắc user dùng `launchPersistentContext` trực tiếp. |
 
 ## Xử lý lỗi
 
 | Tình huống | Hành vi |
 |---|---|
-| `proxy`/`channel`/`firefoxUserPrefs` trong options | `#validateOptions` throw Error |
-| Launcher thiếu `launchPersistentContext` | Throw `Error('Launcher không hỗ trợ phương thức...')` |
-| Không cài playwright | `defaultLoader.load()` throw lỗi module not found |
-
----
+| Option không hỗ trợ (`proxy`, `channel`, `firefoxUserPrefs`) | Throw `Error('Option "<name>" không được hỗ trợ trong plugin này.')` |
+| Launcher thiếu `launchPersistentContext` | Throw `Error('Launcher không hỗ trợ phương thức "launchPersistentContext".')` |
+| `launch()` (không persistent) | In warning + fallback sang `launchPersistentContext('', options)` |
+| Resize viewport thất bại | Warning, không throw — không làm crash launch chỉ vì viewport lệch |
+| Browser close đột ngột | Cleanup handler chạy qua event `disconnected` |
 
 ## Kiểm tra
 
-- Cần cài `playwright` hoặc `playwright-core` để test.
-- Verify: `launch()` fallback sang `launchPersistentContext` và in warning.
-- Verify: `UNSUPPORTED_OPTIONS` throw error đúng option.
-- Verify: `--user-data-dir` bị filter khỏi args.
-- Verify: `ignoreDefaultArgs` được merge đúng (array vs boolean).
-- Verify: viewport page mới luôn được resize.
-
----
+- Happy path: `launchPersistentContext()` trả về `BrowserContext` có fingerprint.
+- Fallback: `launch()` in warning và gọi `launchPersistentContext()`.
+- Validate: truyền `proxy`, `channel`, `firefoxUserPrefs` phải throw.
+- Args: launcher proxy lược bỏ `--user-data-dir` khỏi args.
+- Viewport: `configure()` resize page đầu tiên nếu bounds khác viewport hiện tại.
+- Cleanup: context close → cleanup handler chạy.

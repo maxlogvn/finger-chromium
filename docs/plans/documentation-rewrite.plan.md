@@ -1,544 +1,551 @@
-# Plan: Viết lại toàn bộ tài liệu tính năng
+# Plan: Viết lại toàn bộ tài liệu theo template chuẩn
 
-> **Mục tiêu:** Viết lại 103 file tài liệu (design, spec, plan, product, overview) cho 20 features + 1 non-feature, dựa trên code thật, đảm bảo chính xác, dễ hiểu, thân thiện với developer.
+> **For agentic workers:** Implementation follows roadmap order, top to bottom. Mỗi task xử lý một feature, viết 5 file tài liệu theo template.
 
-> **Kiến trúc:** Với mỗi feature, đọc toàn bộ code liên quan -> phân tích API, luồng dữ liệu, lifecycle -> viết 5 file tài liệu từ code. Xử lý tuần tự theo thứ tự roadmap từ trên xuống dưới.
+**Goal:** Rewrite toàn bộ ~105 file tài liệu (design, spec, plan, product, overview) cho 21 features, đảm bảo cấu trúc khớp template và nội dung khớp code thật.
 
-> **Tech Stack:** TypeScript, Markdown
+**Architecture:** Với mỗi feature, đọc code -> viết 5 file theo template. Xử lý tuần tự theo roadmap.
+
+**Tech Stack:** Markdown, TypeScript source code.
 
 ---
 
-## Quy trình chung cho mỗi feature
+## Quy trình chung cho mỗi task
 
-1. **Đọc code:** Xác định tất cả file source liên quan đến feature. Đọc kỹ để hiểu API, luồng, lifecycle, xử lý lỗi.
-2. **Viết design.md:** Giải thích "tại sao" -- vấn đề, phương án, giải pháp chọn, luồng hoạt động tổng quát.
-3. **Viết spec.md:** Mô tả kỹ thuật chi tiết -- API, interfaces, luồng dữ liệu, file liên quan, xử lý lỗi.
-4. **Viết plan.md:** Ghi lại các bước đã thực hiện từ code (retrospective plan).
-5. **Viết product.md:** Hướng dẫn sử dụng dễ đọc, có ví dụ code, lifecycle rules, API tóm tắt.
-6. **Viết overview.md:** Báo cáo kết quả -- mục tiêu, kết quả, kiểm tra, sai lệch.
-7. **Kiểm tra:** `npm run lint` đảm bảo không lỗi.
+Mỗi task đều có 5 bước giống nhau, chỉ khác file source cần đọc và tên file output.
+
+### Bước 1: Đọc code
+Đọc toàn bộ file source liên quan đến feature. Ghi chú: API, interfaces, lifecycle, xử lý lỗi, dependencies.
+
+### Bước 2: Viết design.md
+Theo `docs/templates/design.template.md`:
+```markdown
+# Design: <tên feature>
+
+## Bối cảnh
+<Vấn đề cần giải quyết, lý do feature này tồn tại>
+
+## Câu hỏi làm rõ
+<Các câu hỏi đã được trả lời trong quá trình thiết kế>
+
+## Các phương án
+
+### Phương án 1: <tên>
+<Mô tả>
+- Ưu điểm: ...
+- Nhược điểm: ...
+
+### Phương án 2: <tên>
+...
+
+## Giải pháp được chọn
+- Phương án được chọn: ...
+- Lý do: ...
+- Luồng hoạt động tổng quát: ...
+```
+
+### Bước 3: Viết spec.md
+Theo `docs/templates/spec.template.md`:
+```markdown
+# Spec: <tên feature>
+
+## Mô tả
+...
+
+## Yêu cầu
+- Functional requirements
+- Non-functional requirements
+
+## Thiết kế
+<Kiến trúc tổng quan, tham chiếu design doc>
+
+## API / Data flow
+<Input, output, schema, luồng>
+
+## Components
+<Danh sách file, vai trò từng file>
+
+## Xử lý lỗi
+<Error cases + handling>
+
+## Kiểm tra
+<Happy path, edge cases, error cases>
+```
+
+### Bước 4: Viết plan.md
+Theo `docs/templates/plan.template.md`:
+```markdown
+# Plan: <tên feature>
+
+## Các bước thực hiện
+
+- [ ] Bước 1: <tên>
+    - Làm gì: ...
+    - File liên quan: ...
+
+## Kiểm tra
+...
+
+## Ghi chú
+...
+```
+
+### Bước 5: Viết product.md
+Theo `docs/templates/product.template.md`:
+```markdown
+# Product: <tên feature>
+
+## Mô tả
+...
+
+## Cách sử dụng
+<Ví dụ code, các bước thao tác>
+
+## Hành vi chi tiết
+<Edge cases, special behaviors>
+
+## Giới hạn và điều kiện
+<Ràng buộc, yêu cầu hệ thống>
+
+## Tài liệu kỹ thuật liên quan
+- Spec: ...
+- Design: ...
+```
+
+### Bước 6: Viết overview.md
+Theo `docs/templates/overview.template.md`:
+```markdown
+# Overview: <tên feature>
+
+## Tóm tắt
+...
+
+## Kết quả thực hiện
+
+| Bước | Kế hoạch | Thực tế | Sai lệch |
+|---|---|---|---|
+| Bước 1 | ... | ... | Không có |
+
+## Sai lệch đáng chú ý
+...
+
+## Tài liệu liên quan
+...
+
+## Ghi chú
+...
+```
 
 ---
 
 ## Task 1: Project Infrastructure
 
-**Files cần đọc:**
+**Source files cần đọc:**
 - `package.json` -- dependencies, scripts, exports, peerDependencies
-- `tsconfig.json` -- strict mode, target ES2022, paths alias `@src/*`
-- `tsup.config.ts` -- ESM + CJS, dts.resolve: false, external list, skipNodeModulesBundle
+- `tsconfig.json` -- strict mode, target ES2022
+- `tsup.config.ts` -- ESM + CJS, dts.resolve
 - `eslint.config.ts` -- typescript-eslint, consistent-type-imports
-- `.prettierrc` -- tabs, single quotes, 100 printWidth, trailingComma all
-- `.mocharc.yml` -- tsx loader, tests/**/*.ts, timeout 10s
+- `.prettierrc` -- tabs, single quotes, trailingComma all
+- `.mocharc.yml` -- tsx loader, tests timeout
+- `project.xml` -- EngineVersion
 - `src/index.ts` -- public exports
-- `project.xml` -- file cấu hình engine
+- `README.md` -- tổng quan dự án
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/project-infrastructure.design.md`
 - `docs/specs/project-infrastructure.spec.md`
 - `docs/plans/project-infrastructure.plan.md`
 - `docs/products/project-infrastructure.product.md`
 - `docs/overviews/project-infrastructure.overview.md`
 
-- [ ] **Bước 1: Đọc và phân tích code**
-  - Đọc `package.json`: lưu ý `peerDependencies` có `playwright-core >=1.60.0`, `dependencies` có 11 packages, `devDependencies` có ESLint, Mocha, tsup, Prettier, TypeScript ~5.8.
-  - Đọc `tsconfig.json`: strict mode, `moduleResolution: "Bundler"`, paths `@src/*`, exclude `tests/`.
-  - Đọc `tsup.config.ts`: entry `src/index.ts`, format `['cjs','esm']`, external 13 packages, `dts.resolve: false`, `skipNodeModulesBundle: true`, `minify: true`, `treeshake: true`.
-  - Đọc `eslint.config.ts`: dùng `typescript-eslint`, `consistent-type-imports`, `no-explicit-any` là warn.
-  - Đọc `.prettierrc`: `@cheshire-caat/prettier-config`, tabs, single quotes, trailingComma all.
-  - Đọc `.mocharc.yml`: spec `tests/**/*.ts`, tsx loader.
-  - Đọc `src/index.ts`: export Chromium + PWChromium + các type helper từ `adapter/playwright/chromium.ts`.
-  - Đọc `project.xml`: file XML cho engine BAS, chứa `<EngineVersion>`.
-
-- [ ] **Bước 2: Viết design.md**
-  - Cấu trúc: Vấn đề -> Giải pháp -> Build pipeline -> External dependencies -> Chiến lược test -> Xử lý Windows
-  - Nội dung chính: giải thích vì sao dùng tsup thay vì tsc, vì sao `dts.resolve: false`, vì sao để playwright-core là peer dependency, vì sao dùng browser thật cho test.
-
-- [ ] **Bước 3: Viết spec.md**
-  - Cấu trúc: Mô tả -> API / Interfaces chính -> Luồng dữ liệu -> File liên quan -> Xử lý lỗi -> Ghi chú kỹ thuật
-  - Nội dung chính: liệt kê đầy đủ cấu trúc thư mục src/ (5 nhánh), build pipeline (tsup config), linting/formatting (ESLint + Prettier), testing (mocha + tsx + browser thật).
-  - Ghi chú kỹ thuật: external list gồm 13 packages (kể cả dotenv), format script chỉ chạy `src/`, ESLint ignores dist/node_modules, `npm run clean` dùng `rm -rf` không chạy trên Windows.
-
-- [ ] **Bước 4: Viết plan.md**
-  - Cấu trúc: Các bước thực hiện -> File liên quan -> Kiểm tra -> Ghi chú
-  - Nội dung chính: ghi lại các bước đã làm từ code (tạo package.json, cấu hình tsconfig, tsup, ESLint, Prettier, Mocha, thư mục, index.ts).
-
-- [ ] **Bước 5: Viết product.md**
-  - Cấu trúc: Tổng quan -> Cách dùng / Ví dụ code -> API -> Lifecycle -> Xử lý lỗi -> Môi trường
-  - Nội dung chính: hướng dẫn cài đặt (npm install), yêu cầu hệ thống (Node >=18, Windows), ví dụ sử dụng nhanh, build/test/lint commands.
-  - Lưu ý: giải thích headless:false, BABLOSOFT_KEY, chỉ launch một lần.
-
-- [ ] **Bước 6: Viết overview.md**
-  - Cấu trúc: Mục tiêu -> Kết quả -> Kiểm tra -> Sai lệch so với kế hoạch
-  - Nội dung chính: pre-existing bug `npm run clean` dùng `rm -rf`, external list phải đầy đủ, `createRequire(import.meta.url)` trong ESM.
-
-- [ ] **Bước 7: Chạy lint kiểm tra**
-  - Chạy: `npm run lint`
-  - Sửa lỗi nếu có
+- [ ] **Bước 1: Đọc source code** -- đọc 8 files trên, ghi chú API export, cấu hình build, dependencies.
+- [ ] **Bước 2: Viết design.md** -- theo template, tập trung giải thích vì sao dùng tsup, vì sao peer dependency playwright-core.
+- [ ] **Bước 3: Viết spec.md** -- liệt kê script, dependencies, cấu trúc thư mục, build pipeline.
+- [ ] **Bước 4: Viết plan.md** -- ghi lại các bước đã thực hiện (tạo package.json, tsconfig, tsup, ESLint, Mocha, index.ts).
+- [ ] **Bước 5: Viết product.md** -- hướng dẫn cài đặt, yêu cầu hệ thống, ví dụ sử dụng, lifecycle table.
+- [ ] **Bước 6: Viết overview.md** -- tóm tắt kết quả, bảng sai lệch, tài liệu liên quan.
 
 ---
 
 ## Task 2: Type System
 
-**Files cần đọc:**
+**Source files cần đọc:**
 - `src/types/PWChromium.ts` -- interface Chromium public API
-- `src/types/fingerprint.ts` -- FingerprintOptions
-- `src/types/proxy.ts` -- ProxyOptions
-- `src/types/profile.ts` -- ProfileOptions
+- `src/types/fingerprint.ts` -- FingerprintOptions (PerfectCanvas, WebGL, Audio, Canvas, Battery, Sensor, HiDPI, FontPack, ElementSize)
+- `src/types/proxy.ts` -- ProxyOptions (protocol, timezone, geolocation, WebRTC, DNS, tunneling, QUIC)
+- `src/types/profile.ts` -- ProfileOptions (loadProxy, loadFingerprint)
 - `src/types/fetch.ts` -- FetchOptions, Tag, Time
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/type-system.design.md`
 - `docs/specs/type-system.spec.md`
 - `docs/plans/type-system.plan.md`
 - `docs/products/type-system.product.md`
 - `docs/overviews/type-system.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Đọc `PWChromium.ts`: interface chính với các method `useFingerprint`, `useProxy`, `useProfile`, `usePrivateKey`, `launch`, `newContext`, `newFingerprint`, `quit`, `repackChromium`.
-  - Đọc `fingerprint.ts`: `FingerprintOptions` với `usePerfectCanvas`, `safeWebGL`, `safeAudio`, `safeCanvas`, `safeBattery`, `useFontPack`, `safeElementSize`, `emulateSensorAPI`, `emulateDeviceScaleFactor`.
-  - Đọc `proxy.ts`: `ProxyOptions` với `changeWebRTC` ('enable'|'disable'|'replace'), `dnsMode` ('system-proxy'|'custom-proxy'|'custom-direct'), `enableQUIC`, `enableTunneling`, `changeTimezone`, `changeGeolocation`, `changeBrowserLanguage`, IP detection options.
-  - Đọc `profile.ts`: `ProfileOptions` với `loadProxy` (boolean), `loadFingerprint` (boolean).
-  - Đọc `fetch.ts`: `FetchOptions` với `tags` (Tag[]), `timeLimit` (string | Time), `minBrowserVersion`, `maxBrowserVersion`, ... `Tag` và `Time` types.
-
-- [ ] **Bước 2: Viết design.md**
-  - Giải thích vì sao thiết kế 5 file type riêng, vì sao PWChromium là interface cho singleton Chromium.
-  - Giải thích lựa chọn các option (ví dụ `changeWebRTC: 'replace'` mặc định).
-
-- [ ] **Bước 3: Viết spec.md**
-  - Liệt kê từng file type, các interface/type chính, mô tả từng field.
-  - Ghi rõ kiểu dữ liệu, giá trị mặc định (nếu có), ví dụ.
-
-- [ ] **Bước 4: Viết plan.md**
-  - Ghi lại thứ tự tạo file, dependencies giữa các type.
-
-- [ ] **Bước 5: Viết product.md**
-  - Hướng dẫn import type, ví dụ sử dụng từng type.
-  - Giải thích các option phức tạp (DNS mode, WebRTC, IP detection).
-
-- [ ] **Bước 6: Viết overview.md**
-
-- [ ] **Bước 7: Chạy lint**
+- [ ] **Bước 1: Đọc code** -- 5 file types, ghi chú từng interface, field, kiểu dữ liệu.
+- [ ] **Bước 2: Viết design.md** -- giải thích vì sao tách 5 file riêng, vì sao PWChromium là interface.
+- [ ] **Bước 3: Viết spec.md** -- liệt kê chi tiết từng type, field, giá trị mặc định.
+- [ ] **Bước 4: Viết plan.md** -- thứ tự tạo file, dependencies giữa các type.
+- [ ] **Bước 5: Viết product.md** -- hướng dẫn import type, ví dụ sử dụng.
+- [ ] **Bước 6: Viết overview.md** -- kết quả, sai lệch.
 
 ---
 
 ## Task 3: Error Hierarchy
 
-**Files cần đọc:**
+**Source files:**
 - `src/plugin/errors.ts` -- PluginError, MissingKeyError, InvalidEngineError, EngineTimeoutError, RequestTimeoutError
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/error-hierarchy.design.md`
 - `docs/specs/error-hierarchy.spec.md`
 - `docs/plans/error-hierarchy.plan.md`
 - `docs/products/error-hierarchy.product.md`
 - `docs/overviews/error-hierarchy.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Đọc `errors.ts`: PluginError extends Error, các subclass, mỗi class có prefix message, constructor nhận message string.
-
-- [ ] **Bước 2: Viết design.md**
-  - Giải thích tại sao cần Error hierarchy thay vì Error thô, tại sao cần prefix cho dễ debug.
-
-- [ ] **Bước 3: Viết spec.md**
-  - Liệt kê class hierarchy, constructor signature, khi nào throw từng loại.
-
-- [ ] **Bước 4: Viết plan.md**
-
-- [ ] **Bước 5: Viết product.md**
-  - Hướng dẫn catch error theo từng loại, ví dụ code.
-
-- [ ] **Bước 6: Viết overview.md**
-
-- [ ] **Bước 7: Chạy lint**
+- [ ] **Bước 1: Đọc code** -- `errors.ts`: class hierarchy, constructor signature.
+- [ ] **Bước 2: Viết design.md** -- giải thích tại sao cần Error hierarchy thay vì Error thô.
+- [ ] **Bước 3: Viết spec.md** -- liệt kệ class hierarchy, khi nào throw từng loại.
+- [ ] **Bước 4: Viết plan.md** -- các bước tạo class.
+- [ ] **Bước 5: Viết product.md** -- hướng dẫn catch error theo từng loại, ví dụ code.
+- [ ] **Bước 6: Viết overview.md** -- kết quả, sai lệch.
 
 ---
 
 ## Task 4: RemoteEngine
 
-**Files cần đọc:**
-- `src/plugin/connector/engine.ts` -- RemoteEngine class (373 dòng)
-- `src/plugin/connector/utils.ts`
-- `project.xml` -- chứa EngineVersion
+**Source files:**
+- `src/plugin/connector/engine.ts` -- RemoteEngine class (download, extract, IPC, spawn)
+- `src/plugin/connector/utils.ts` -- helper functions
+- `project.xml` -- EngineVersion
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/remote-engine.design.md`
 - `docs/specs/remote-engine.spec.md`
 - `docs/plans/remote-engine.plan.md`
 - `docs/products/remote-engine.product.md`
 - `docs/overviews/remote-engine.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Phân tích `engine.ts`: `RemoteEngine extends EventEmitter`
-    - `#updateMeta()`: đọc `project.xml`, parse `<EngineVersion>`, fetch metadata từ `bablosoft.com`, cache vào JSON file.
-    - `#startProcess(timeout)`: gọi `#startProcessInternal()`, download/extract/spawn engine, kiểm tra checksum SHA1.
-    - `runFunction(name, params)`: IPC file-based -- ghi JSON request, chokidar watch response, dọn request cũ.
-    - `CLOSE_TIMEOUT = 60s`, `DEFAULT_TIMEOUT = 300s`.
-    - `PROJECT_PATH` resolve từ `package.json` root.
-  - Đọc `utils.ts`: các hàm helper.
-
-- [ ] **Bước 2: Viết design.md**
-  - Giải thích tại sao file-based IPC thay vì pipe/socket, tại sao fetch metadata từ bablosoft, cache để làm gì.
-  - Giải thích cơ chế retry khi download lỗi, checksum verify.
-
-- [ ] **Bước 3: Viết spec.md**
-  - Mô tả chi tiết lifecycle: constructor -> updateMeta -> startProcess -> runFunction (tạo request, watch, parse response).
-  - API: `setCwd`, `setArgs`, `setEngineTimeout`, `setRequestTimeout`, `runFunction`.
-  - Sự kiện: `'beforeDownload'`, `'beforeExtract'`.
-  - Error: `EngineTimeoutError`, `InvalidEngineError`, `RequestTimeoutError`.
-  - Cấu trúc thư mục engine data.
-
-- [ ] **Bước 4: Viết plan.md**
-  - Ghi lại các bước đã code: tạo class, implement metadata fetching, download/extract/spawn, file-based IPC.
-
-- [ ] **Bước 5: Viết product.md**
-  - Ví dụ dùng RemoteEngine trực tiếp (nếu có).
-  - Giải thích timeout config, events.
-  - Cảnh báo: quá trình download có thể mất 1-2 phút.
-
-- [ ] **Bước 6: Viết overview.md**
-
-- [ ] **Bước 7: Chạy lint**
+- [ ] **Bước 1: Đọc code** -- `engine.ts`: lifecycle (updateMeta -> startProcess -> runFunction), events, timeout config.
+- [ ] **Bước 2: Viết design.md** -- giải thích file-based IPC, checksum verify, caching metadata.
+- [ ] **Bước 3: Viết spec.md** -- lifecycle chi tiết, API methods, events, error types.
+- [ ] **Bước 4: Viết plan.md** -- các bước code class RemoteEngine.
+- [ ] **Bước 5: Viết product.md** -- ví dụ dùng, timeout config, events, cảnh báo thời gian download.
+- [ ] **Bước 6: Viết overview.md** -- kết quả, sai lệch.
 
 ---
 
 ## Task 5: API Connector
 
-**Files cần đọc:**
-- `src/plugin/connector/index.ts` -- API connector (singleton)
-- `src/plugin/connector/utils.ts`
+**Source files:**
+- `src/plugin/connector/index.ts` -- singleton connector, async-lock, api() wrapper
+- `src/plugin/connector/utils.ts` -- helpers
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/api-connector.design.md`
 - `docs/specs/api-connector.spec.md`
 - `docs/plans/api-connector.plan.md`
 - `docs/products/api-connector.product.md`
 - `docs/overviews/api-connector.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Phân tích `connector/index.ts`: singleton pattern, async-lock, `api(name, params)` wrapper, auto-start PCAP server.
-  - Các API method: `setup`, `versions`, `get_bounds`, `get_defaults`.
-
-- [ ] **Bước 2-7: Viết lần lượt các file** (tương tự cấu trúc các task trên)
+- [ ] **Bước 1: Đọc code** -- connector pattern, api() wrapper, auto-start PCAP, method list.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
 
 ---
 
 ## Task 6: PCAP Server
 
-**Files cần đọc:**
-- `src/plugin/connector/pcapServer/index.ts`
+**Source files:**
+- `src/plugin/connector/pcapServer/index.ts` -- TCP server mô phỏng PCAP
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/pcap-server.design.md`
 - `docs/specs/pcap-server.spec.md`
 - `docs/plans/pcap-server.plan.md`
 - `docs/products/pcap-server.product.md`
 - `docs/overviews/pcap-server.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Phân tích: TCP server mô phỏng PCAP interface, xử lý 2 lệnh binary `0x01` (request ID), `0x07` (heartbeat), retry port khi EADDRINUSE.
-
-- [ ] **Bước 2-7: Viết lần lượt các file**
+- [ ] **Bước 1: Đọc code** -- binary commands (0x01 request ID, 0x07 heartbeat), retry port.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
 
 ---
 
 ## Task 7: Browser Launcher
 
-**Files cần đọc:**
-- `src/plugin/launcher/index.ts`
+**Source files:**
+- `src/plugin/launcher/index.ts` -- spawn Chromium, detect DevTools URL, Browser interface
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/browser-launcher.design.md`
 - `docs/specs/browser-launcher.spec.md`
 - `docs/plans/browser-launcher.plan.md`
 - `docs/products/browser-launcher.product.md`
 - `docs/overviews/browser-launcher.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Phân tích: spawn Chromium child process, detect DevTools listening URL từ stderr/stdout, interface Browser với configure, close.
-
-- [ ] **Bước 2-7: Viết lần lượt các file**
+- [ ] **Bước 1: Đọc code** -- spawn logic, DevTools URL parsing, configure/close methods.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
 
 ---
 
 ## Task 8: Native Mutex
 
-**Files cần đọc:**
-- `src/plugin/mutex/index.ts`
+**Source files:**
+- `src/plugin/mutex/index.ts` -- native C++ addon wrapper, resolvePackageRoot
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/native-mutex.design.md`
 - `docs/specs/native-mutex.spec.md`
 - `docs/plans/native-mutex.plan.md`
 - `docs/products/native-mutex.product.md`
 - `docs/overviews/native-mutex.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Phân tích: native C++ addon mutex.node, hỗ trợ win32 32-bit + 64-bit, `create(name)` tạo named mutex.
-
-- [ ] **Bước 2-7: Viết lần lượt các file**
+- [ ] **Bước 1: Đọc code** -- create() method, path resolution, win32 arch support.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
 
 ---
 
 ## Task 9: FingerprintPlugin
 
-**Files cần đọc:**
-- `src/plugin/index.ts` -- FingerprintPlugin class
-- `src/plugin/config.ts`
-- `src/plugin/browser.ts`
-- `src/plugin/utils.ts`
+**Source files:**
+- `src/plugin/index.ts` -- FingerprintPlugin class (core orchestrator)
+- `src/plugin/config.ts` -- configuration conversion
+- `src/plugin/browser.ts` -- browser management
+- `src/plugin/utils.ts` -- helpers
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/fingerprint-plugin.design.md`
 - `docs/specs/fingerprint-plugin.spec.md`
 - `docs/plans/fingerprint-plugin.plan.md`
 - `docs/products/fingerprint-plugin.product.md`
 - `docs/overviews/fingerprint-plugin.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Phân tích: lifecycle setup -> spawn -> configure -> cleanup.
-  - Fluent config: `useFingerprint`, `useProxy`, `useProfile`, `useBrowserVersion`.
-  - `fetch()` -- lấy fingerprint từ service.
-  - `versions()` -- danh sách browser version.
-  - `_launch()` -- core: gọi `api('setup')`, spawn worker.exe, cleaner.watch, mutex.create, configure viewport, sync.
-
-- [ ] **Bước 2-7: Viết lần lượt các file**
+- [ ] **Bước 1: Đọc code** -- lifecycle (setup -> spawn -> configure -> cleanup), fluent methods, _launch() core.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
 
 ---
 
 ## Task 10: Playwright Bridge
 
-**Files cần đọc:**
-- `src/adapter/playwright/engine.ts`
+**Source files:**
+- `src/adapter/playwright/engine.ts` -- PlaywrightFingerprintPlugin bridge
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/playwright-bridge.design.md`
 - `docs/specs/playwright-bridge.spec.md`
 - `docs/plans/playwright-bridge.plan.md`
 - `docs/products/playwright-bridge.product.md`
 - `docs/overviews/playwright-bridge.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Phân tích: bridge giữa FingerprintPlugin và Playwright BrowserType.
-  - Override `launch`/`launchPersistentContext`.
-  - Validate unsupported options (proxy, channel, firefoxUserPrefs).
-  - Filter ignored Chromium arguments.
-
-- [ ] **Bước 2-7: Viết lần lượt các file**
+- [ ] **Bước 1: Đọc code** -- override launch/launchPersistentContext, validate options, filter args.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
 
 ---
 
 ## Task 11: BrowserEngine
 
-**Files cần đọc:**
-- `src/adapter/playwright/chromium.ts` -- BrowserEngine class (228 dòng)
+**Source files:**
+- `src/adapter/playwright/chromium.ts` -- BrowserEngine class, fluent API, singleton Chromium
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/browser-engine.design.md`
 - `docs/specs/browser-engine.spec.md`
 - `docs/plans/browser-engine.plan.md`
 - `docs/products/browser-engine.product.md`
 - `docs/overviews/browser-engine.overview.md`
 
-- [ ] **Bước 1: Đọc code**
-  - Phân tích: singleton Chromium, fluent API `usePrivateKey -> useFingerprint -> useProxy -> useProfile -> launch -> newContext -> quit`.
-  - `repackChromium()`: thay thế launcher.
-  - `launch()`: hợp nhất options, cấu hình engine, chỉ launch 1 lần.
-  - `quit()`: close context, unmap profile.
-  - Constants: `PRIVATE_KEY`, `BROWSER_RUNNING_DIR`, `ENGINE_WORKING_DIR`.
-  - `DEFAULT_CONTEXT_OPTIONS`: `{ headless: false, hasTouch: true }`.
-
-- [ ] **Bước 2: Viết design.md**
-  - Giải thích tại sao singleton, tại sao fluent pattern, tại sao `headless: false`, `hasTouch: true`.
-  - Giải thích profile safety (copy -> run -> copy back).
-
-- [ ] **Bước 3: Viết spec.md**
-  - API đầy đủ: tất cả method, tham số, kiểu trả về.
-  - Lifecycle rules (launch/newContext/quit/use*).
-  - Constants và môi trường.
-  - Flow: khởi tạo -> cấu hình -> launch -> newContext -> quit.
-
-- [ ] **Bước 4: Viết plan.md**
-  - Các bước đã code: BrowserEngine class, fluent methods, lifecycle management, adapter data manager.
-
-- [ ] **Bước 5: Viết product.md**
-  - Ví dụ đầy đủ từ đầu đến cuối.
-  - Lifecycle rules dạng bảng.
-  - Profile safety giải thích.
-  - repackChromium custom launcher.
-  - Môi trường: BABLOSOFT_KEY, BROWSER_RUNNING_DIR, ENGINE_WORKING_DIR.
-
-- [ ] **Bước 6: Viết overview.md**
-
-- [ ] **Bước 7: Chạy lint**
+- [ ] **Bước 1: Đọc code** -- singleton pattern, fluent methods, launch/newContext/quit lifecycle.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
 
 ---
 
-## Task 12: Cấu hình Fingerprint
+## Task 12: Cau hinh Fingerprint
 
-**Files cần đọc:**
-- `src/types/fingerprint.ts`
-- `src/plugin/config.ts` -- phần xử lý fingerprint options
-- `src/plugin/index.ts` -- phần useFingerprint
+**Source files:**
+- `src/types/fingerprint.ts` -- FingerprintOptions
+- `src/plugin/config.ts` -- xử lý fingerprint
+- `src/plugin/index.ts` -- useFingerprint()
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/fingerprint-config.design.md`
 - `docs/specs/fingerprint-config.spec.md`
 - `docs/plans/fingerprint-config.plan.md`
 - `docs/products/fingerprint-config.product.md`
 - `docs/overviews/fingerprint-config.overview.md`
 
+- [ ] **Bước 1: Đọc code** -- các option fingerprint, cách engine áp dụng.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
+
 ---
 
-## Task 13: Cấu hình Proxy
+## Task 13: Cau hinh Proxy
 
-**Files cần đọc:**
-- `src/types/proxy.ts`
-- `src/plugin/config.ts` -- phần proxy
-- `src/plugin/index.ts` -- phần useProxy
+**Source files:**
+- `src/types/proxy.ts` -- ProxyOptions
+- `src/plugin/config.ts` -- xử lý proxy
+- `src/plugin/index.ts` -- useProxy()
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/proxy-config.design.md`
 - `docs/specs/proxy-config.spec.md`
 - `docs/plans/proxy-config.plan.md`
 - `docs/products/proxy-config.product.md`
 - `docs/overviews/proxy-config.overview.md`
 
+- [ ] **Bước 1: Đọc code** -- proxy protocols, DNS mode, WebRTC, timezone/geo sync.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
+
 ---
 
-## Task 14: Quản lý Profile
+## Task 14: Quan ly Profile
 
-**Files cần đọc:**
+**Source files:**
 - `src/adapter/playwright/data.ts` -- AdapterDataManager
-- `src/plugin/index.ts` -- phần useProfile
+- `src/plugin/index.ts` -- useProfile()
 - `src/plugin/config.ts`
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/profile-management.design.md`
 - `docs/specs/profile-management.spec.md`
 - `docs/plans/profile-management.plan.md`
 - `docs/products/profile-management.product.md`
 - `docs/overviews/profile-management.overview.md`
 
+- [ ] **Bước 1: Đọc code** -- profile mapping (dirPath -> temp), unmap khi quit, load lại config.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
+
 ---
 
-## Task 15: Quản lý Viewport
+## Task 15: Quan ly Viewport
 
-**Files cần đọc:**
+**Source files:**
 - `src/adapter/playwright/utils.ts` -- setViewport, bindHooks
 - `src/plugin/browser.ts`
 - `src/plugin/config.ts`
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/viewport-management.design.md`
 - `docs/specs/viewport-management.spec.md`
 - `docs/plans/viewport-management.plan.md`
 - `docs/products/viewport-management.product.md`
 - `docs/overviews/viewport-management.overview.md`
 
+- [ ] **Bước 1: Đọc code** -- CDP resize với retries, sync availWidth/availHeight vào .ini.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
+
 ---
 
 ## Task 16: File Cleanup Daemon
 
-**Files cần đọc:**
-- `src/plugin/cleaner.ts`
+**Source files:**
+- `src/plugin/cleaner.ts` -- FileCleanupDaemon
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/file-cleanup-daemon.design.md`
 - `docs/specs/file-cleanup-daemon.spec.md`
 - `docs/plans/file-cleanup-daemon.plan.md`
 - `docs/products/file-cleanup-daemon.product.md`
 - `docs/overviews/file-cleanup-daemon.overview.md`
 
+- [ ] **Bước 1: Đọc code** -- proper-lockfile, timer 15s, ignore/include theo PID.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
+
 ---
 
 ## Task 17: Hook Binding
 
-**Files cần đọc:**
-- `src/adapter/playwright/utils.ts`
+**Source files:**
+- `src/adapter/playwright/utils.ts` -- onClose, bindHooks, setViewport
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/hook-binding.design.md`
 - `docs/specs/hook-binding.spec.md`
 - `docs/plans/hook-binding.plan.md`
 - `docs/products/hook-binding.product.md`
 - `docs/overviews/hook-binding.overview.md`
 
+- [ ] **Bước 1: Đọc code** -- hook proxy cho newContext/newPage/setViewportSize.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
+
 ---
 
 ## Task 18: Common Scripts
 
-**Files cần đọc:**
-- `src/common/index.ts`
+**Source files:**
+- `src/common/index.ts` -- waitForResize, getViewport
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/common-scripts.design.md`
 - `docs/specs/common-scripts.spec.md`
 - `docs/plans/common-scripts.plan.md`
 - `docs/products/common-scripts.product.md`
 - `docs/overviews/common-scripts.overview.md`
 
+- [ ] **Bước 1: Đọc code** -- in-browser scripts, ResizeObserver, requestAnimationFrame.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
+
 ---
 
 ## Task 19: Playwright Module Loader
 
-**Files cần đọc:**
+**Source files:**
 - `src/loader/index.ts` -- Loader class
 - `src/adapter/playwright/loader.ts` -- Playwright loader
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/playwright-module-loader.design.md`
 - `docs/specs/playwright-module-loader.spec.md`
 - `docs/plans/playwright-module-loader.plan.md`
 - `docs/products/playwright-module-loader.product.md`
 - `docs/overviews/playwright-module-loader.overview.md`
 
+- [ ] **Bước 1: Đọc code** -- resolve package, validate version >= minimum.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
+
 ---
 
 ## Task 20: Debug Logging
 
-**Files cần đọc:**
-- `src/plugin/index.ts` -- debug namespace
-- `src/plugin/connector/engine.ts` -- debug namespace
-- `src/plugin/connector/index.ts` -- debug namespace
-- `src/adapter/playwright/chromium.ts` -- debug namespace
-- `src/adapter/playwright/engine.ts` -- debug namespace
-- `src/cleaner.ts` -- debug namespace
-- Tìm tất cả `debugFactory` usage trong codebase
+**Source files:**
+- Tất cả file dùng `debugFactory()` -- kiểm tra namespace: `browser-with-fingerprints:*`
 
-**Files sẽ viết (ghi đè):**
+**Output files:**
 - `docs/designs/debug-logging.design.md`
 - `docs/specs/debug-logging.spec.md`
 - `docs/plans/debug-logging.plan.md`
 - `docs/products/debug-logging.product.md`
 - `docs/overviews/debug-logging.overview.md`
 
+- [ ] **Bước 1: Đọc code** -- tìm tất cả debugFactory usage, ghi chú namespace.
+- [ ] **Bước 2-6: Viết 5 file tài liệu** -- theo template.
+
 ---
 
-## Task 21: Format và Comment Codebase (non-feature)
+## Task 21: Non-feature tasks
 
-**Files cần đọc:**
-- Toàn bộ source files (đã được format ở task trước)
-- `AGENTS.md`
+**Gồm 4 non-feature tasks** (chỉ cần overview theo WORKFLOW, nhưng viết đủ 5 file để đồng bộ):
 
-**Files sẽ viết (ghi đè):**
-- `docs/designs/format-comment-codebase.design.md`
-- `docs/specs/format-comment-codebase.spec.md`
-- `docs/plans/format-comment-codebase.plan.md`
-- `docs/overviews/format-comment-codebase.overview.md`
+- `build-config-install-docs` -- Source: `package.json`, `tsup.config.ts`, `README.md`
+- `format-comment-codebase` -- Source: toàn bộ source files (đã format)
+- `known-issues-separate` -- Source: `docs/KNOWN_ISSUES.md`
+- `quit-handle-cleanup` -- Source: `src/adapter/playwright/chromium.ts`, `src/plugin/index.ts`, `src/plugin/connector/index.ts`, `src/plugin/connector/pcapServer/index.ts`, `src/plugin/cleaner.ts`, `src/plugin/mutex/index.ts`
+
+- [ ] **Task 21a: build-config-install-docs** -- viết 5 file tài liệu.
+- [ ] **Task 21b: format-comment-codebase** -- viết 5 file tài liệu.
+- [ ] **Task 21c: known-issues-separate** -- viết 5 file tài liệu.
+- [ ] **Task 21d: quit-handle-cleanup** -- viết 5 file tài liệu.
 
 ---
 
 ## Kiểm tra tổng thể
 
-Sau khi hoàn thành tất cả task:
-
-- [ ] Chạy `npm run lint` -- toàn bộ src/ không lỗi
-- [ ] Chạy `npm run build` -- build thành công (ESM + CJS + DTS)
-- [ ] Kiểm tra docs/ không có file nào bị thiếu
+- [ ] Đếm số file trong mỗi thư mục `docs/designs/`, `docs/specs/`, `docs/plans/`, `docs/products/`, `docs/overviews/` -- tối thiểu 21 file mỗi thư mục.
+- [ ] Mỗi file phải có đúng section theo template tương ứng.
+- [ ] Không cần chạy lint/build (tài liệu .md).
 
 ## Ghi chú
 
-- Mỗi task có thể chạy độc lập -- không phụ thuộc vào nhau về mặt nội dung.
-- Nếu phát hiện sai lệch giữa code và docs cũ, ưu tiên code là chuẩn.
-- Pre-existing bug: `npm run clean` dùng `rm -rf` không chạy trên Windows (ghi nhận trong overview của Task 1).
-- External list có 14 packages trong tsup.config.ts -- nếu thay đổi, cập nhật spec của Task 1.
+- Các tài liệu viết bằng tiếng Việt, thân thiện, dễ hiểu.
+- Không dùng emoji trong tài liệu.
+- Tài liệu cũ (hiện tại) sẽ bị ghi đè hoàn toàn.
+- Nếu phát hiện sai lệch giữa code và tài liệu cũ, ưu tiên code là chuẩn.

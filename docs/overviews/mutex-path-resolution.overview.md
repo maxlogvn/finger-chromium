@@ -1,46 +1,32 @@
 # Overview: Mutex Path Resolution
 
-## Mục tiêu
+## Tóm tắt
 
-Fix lỗi `Unsupported OS architecture for named mutex` xảy ra sau khi tsup bundle. Nguyên nhân: hardcoded relative path `../../../` trong `src/plugin/mutex/index.ts` bị sai vị trí thư mục sau khi bundle vào `dist/index.js`.
+Fix lỗi `Unsupported OS architecture for named mutex` xảy ra sau khi tsup bundle. Nguyên nhân: hardcoded relative path `../../../` trong `src/plugin/mutex/index.ts` bị sai vị trí thư mục sau khi bundle vào `dist/index.js`. Đã thay bằng walk-up algorithm tìm package root.
 
-## Kết quả
+## Kết quả thực hiện
 
-### File đã sửa
+| Bước | Kế hoạch | Thực tế | Sai lệch |
+|---|---|---|---|
+| Bước 1: Phân tích | Xác định nguyên nhân hardcoded path | Đúng kế hoạch | Không có |
+| Bước 2: Thiết kế | 3 phương án, chọn walk-up inline | Đúng kế hoạch | Không có |
+| Bước 3: Code | Thêm `resolvePackageRoot()`, thay path | Đúng kế hoạch | Không có |
+| Bước 4: Build + Lint | `npm run build`, `npm run lint` | Build success, lint 0 errors | Không có |
+| Bước 5: Test | `npm test` | Không chạy được do lỗi mocha/tsx pre-existing | Sai lệch: test environment bug có từ trước |
 
-| File | Thay đổi |
-|---|---|
-| `src/plugin/mutex/index.ts` | Thêm hàm `resolvePackageRoot(startDir)` dùng walk-up algorithm thay hardcoded path |
+## Sai lệch đáng chú ý
 
-### Tài liệu đã tạo
+- `npm test` không chạy được do lỗi cấu hình mocha/tsx có từ trước (`.mocharc.yml` dùng `loader: tsx` deprecated, tsx 4.x yêu cầu `--import`). Không ảnh hưởng đến fix.
 
-| File | Nội dung |
-|---|---|
-| `finger-chromium/designs/mutex-path-resolution.design.md` | Phân tích 3 phương án, chọn walk-up inline |
-| `finger-chromium/specs/mutex-path-resolution.spec.md` | Đặc tả chi tiết, xử lý lỗi, kiểm tra |
-| `finger-chromium/plans/mutex-path-resolution.plan.md` | Kế hoạch 9 bước |
-| `finger-chromium/overviews/mutex-path-resolution.overview.md` | File này |
+## Tài liệu liên quan
 
-### Cập nhật
+- `docs/designs/mutex-path-resolution.design.md`
+- `docs/specs/mutex-path-resolution.spec.md`
+- `docs/plans/mutex-path-resolution.plan.md`
+- `src/plugin/mutex/index.ts`
 
-- `finger-chromium/ROADMAP.md` -- mục Native Mutex, thêm ghi chú bug fix
-
-## Kiểm tra
-
-- `npm run build` -- tsup build thành công (ESM + CJS + DTS)
-- `npm run lint` -- 0 errors, 16 warnings (pre-existing, không do thay đổi này)
-- `npm test` -- **Không chạy được** do lỗi pre-existing: `.mocharc.yml` dùng `loader: tsx` (deprecated), tsx 4.x yêu cầu `--import`. Cần fix riêng.
-- **Xác nhận thủ công:** `require('./dist/index.cjs')` load thành công, không còn lỗi mutex, PCAP server khởi động bình thường.
-
-## Sai lệch so với kế hoạch
-
-- `npm test` không chạy được do lỗi cấu hình mocha/tsx có từ trước. Không ảnh hưởng đến fix.
-
-## Ghi chú kỹ thuật
+## Ghi chú
 
 - Hàm `resolvePackageRoot` dùng `createRequire` để đọc `package.json` từ thư mục cha, kiểm tra `name === 'fingerprint-chromium-engine'`. Giống hệt thuật toán đã dùng trong `src/plugin/connector/engine.ts`.
 - Mutex module được khởi tạo ở top-level scope (IIFE), nếu không tìm thấy package root sẽ crash sớm với error message rõ ràng.
 - Cần fix `.mocharc.yml` riêng: đổi `loader: tsx` thành `import: tsx` (hoặc dùng `NODE_OPTIONS='--import tsx'`).
-
----
-

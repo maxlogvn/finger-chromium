@@ -1,49 +1,30 @@
-# Design: API Connector
+# Design: API Connector -- Giao tiếp với engine
 
-## Vấn đề cần giải quyết
+## Bối cảnh
 
-RemoteEngine cung cấp method `runFunction(name, params)` để gọi engine binary, nhưng người dùng (FingerprintPlugin) cần một interface cao hơn, có:
-1. **Singleton:** Chỉ một RemoteEngine instance cho toàn bộ ứng dụng.
-2. **Đồng bộ:** Không gọi engine cùng lúc (engine chỉ xử lý một request).
-3. **Error normalization:** Chuyển lỗi thô từ engine thành `PluginError` / `MissingKeyError`.
-4. **PCAP server integration:** Tự động khởi động PCAP server và truyền port cho engine.
+Cần một lớp giao tiếp chuẩn giữa FingerprintPlugin và RemoteEngine. API Connector là singleton wrapper với async-lock để đồng bộ request, tự động khởi động PCAP server, và chuẩn hóa lỗi.
 
-## Giải pháp chọn
+## Câu hỏi làm rõ
 
-### Kiến trúc
+- Singleton hay instance? → Singleton, vì chỉ có một engine duy nhất.
+- Có cần lock không? → Có, dùng async-lock để tránh request chồng chéo.
+- PCAP server auto-start? → Có, listen ngay khi connector khởi tạo.
 
-```
-FingerprintPlugin
-    │
-    ▼
-api('setup', { fingerprint, proxy, profile })
-    │
-    ├── async-lock 'client' → đảm bảo chỉ 1 request
-    │
-    ├── engine.runFunction('setup', params)
-    │       │
-    │       ├── Thành công → return result.response
-    │       └── Lỗi "key is missing" → throw MissingKeyError
-    │           Lỗi khác → throw PluginError
-    │
-    └── clearTimeout(notifyTimer)
-```
+## Các phương án
 
-### Tại sao dùng async-lock?
+### Phương án 1: Mỗi request tạo engine instance mới
 
-Engine chỉ xử lý một request tại một thời điểm. Nếu có 2 request cùng lúc:
-- Request 1: ghi file a.json
-- Request 2: ghi file b.json (cùng lúc)
-- Engine chỉ đọc được 1 file
+- Ưu điểm: Cô lập request.
+- Nhược điểm: Tốn tài nguyên, không tận dụng được process có sẵn.
 
-async-lock với key `'client'` xếp hàng các request, đảm bảo chỉ một request được gọi `runFunction` tại một thời điểm.
+### Phương án 2: Singleton + lock (chọn)
 
-### Tại sao auto-start PCAP server?
+- Ưu điểm: Tái sử dụng engine process, lock đồng bộ, dễ quản lý.
+- Nhược điểm: Request phải chờ nhau.
 
-PCAP server cần chạy trước khi engine spawn, vì engine cần biết port để kết nối. Connector tự động start server và set `--mock-pcap-port=<port>` vào args của engine.
+## Giải pháp được chọn
 
-### Tại sao tự động notify khi thiếu key?
-
-Khi dùng bản free (không có BABLOSOFT_KEY), engine vẫn hoạt động nhưng bị giới hạn. Connector hiển thị thông báo upgrade và cảnh báo delay -- chỉ một lần duy nhất (dùng `once()`).
-
----
+- **Phương án AI đề xuất:** Phương án 2 (singleton + async-lock).
+- **Phương án được chọn:** Phương án 2.
+- **API:** `api(name, params)` -> lock.acquire -> engine.runFunction -> normalize error.
+- **Cleanup:** `cleanup()` kill engine + close PCAP server.

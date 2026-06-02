@@ -3,32 +3,40 @@
 > Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
 
 ## Mô tả
+
 Tách phần Known Issues từ `docs/Welcome.md` sang file `docs/KNOWN_ISSUES.md` riêng, giúp phân tách rõ ràng giữa tài liệu onboarding và tài liệu tracking issue.
 
 ## Yêu cầu
-- Known Issues trong Welcome.md được chuyển sang KNOWN_ISSUES.md, giữ nguyên cấu trúc OPEN/FIXED.
+
+- Known Issues trong Welcome.md chuyển sang KNOWN_ISSUES.md, giữ nguyên cấu trúc OPEN/FIXED.
 - Welcome.md giữ lại link dẫn đến KNOWN_ISSUES.md + dòng tóm tắt số lượng issue.
-- Cấu trúc thư mục docs trong Welcome.md và WORKFLOW.md được cập nhật để liệt kê KNOWN_ISSUES.md.
+- Cấu trúc thư mục docs trong Welcome.md và WORKFLOW.md cập nhật thêm KNOWN_ISSUES.md.
 
 ## Thiết kế
-Tham chiếu design doc: `docs/designs/known-issues-separate.design.md`
+
+Xem [Design](../designs/known-issues-separate.design.md).
 
 ## API / Data flow
-Không có API. Đây là thay đổi tài liệu thuần túy:
-- Welcome.md: xoá phần Known Issues chi tiết, thêm link + summary.
-- KNOWN_ISSUES.md: chứa toàn bộ nội dung Known Issues (giữ nguyên).
+
+Không có API. Thay đổi tài liệu thuần tuý:
+- Welcome.md: xoá Known Issues chi tiết, thêm link + summary.
+- KNOWN_ISSUES.md: chứa toàn bộ nội dung Known Issues.
 - WORKFLOW.md: thêm KNOWN_ISSUES.md vào cấu trúc thư mục.
 
 ## Components
-- `docs/Welcome.md` (sửa) — xoá Known Issues detail, thêm link summary.
-- `docs/KNOWN_ISSUES.md` (tạo mới) — toàn bộ nội dung Known Issues.
-- `docs/WORKFLOW.md` (sửa) — thêm KNOWN_ISSUES.md vào cấu trúc thư mục mẫu.
+
+| File | Thay đổi |
+|---|---|
+| `docs/Welcome.md` (sửa) | Xoá Known Issues detail, thêm link summary |
+| `docs/KNOWN_ISSUES.md` (tạo mới) | Toàn bộ nội dung Known Issues |
+| `docs/WORKFLOW.md` (sửa) | Thêm KNOWN_ISSUES.md vào cấu trúc thư mục |
 
 ## Xử lý lỗi
-- File KNOWN_ISSUES.md đã tồn tại → báo lỗi và không ghi đè.
-- Link trong Welcome.md trỏ sai → kiểm tra sau khi tạo file.
+
+- KNOWN_ISSUES.md đã tồn tại → báo lỗi và không ghi đè.
+- Link Welcome.md trỏ sai → kiểm tra sau khi tạo file.
 
 ## Kiểm tra
-- `npm run lint` — ESLint pass (không ảnh hưởng tới source code, chỉ verify config).
-- Kiểm tra thủ công: mở Welcome.md, xác nhận link đến KNOWN_ISSUES.md hoạt động.
-- Kiểm tra thủ công: mở KNOWN_ISSUES.md, xác nhận nội dung khớp với issue trong Welcome.md cũ.
+
+- `npm run lint` -- ESLint pass (không ảnh hưởng source code).
+- Kiểm tra thủ công: mở Welcome.md, xác nhận link KNOWN_ISSUES.md hoạt động.

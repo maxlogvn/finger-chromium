@@ -1,54 +1,71 @@
-# Design: FingerprintPlugin
+# Design: FingerprintPlugin -- Core orchestrator
 
-## Vấn đề
+## Bối cảnh
 
-Cần một lớp trung tâm quản lý toàn bộ vòng đời của fingerprint engine:
-- Nhận cấu hình từ user (fingerprint, proxy, profile, version browser).
-- Gọi API `setup` để engine binary khởi tạo môi trường.
-- Spawn worker.exe (hoặc dùng custom launcher từ Playwright bridge).
-- Resize viewport và đồng bộ cấu hình vào file .ini.
-- Dọn dẹp tài nguyên sau khi browser đóng.
+`FingerprintPlugin` là lõi điều phối của thư viện. Nó nhận cấu hình fingerprint, proxy, profile, gọi service qua `API Connector`, spawn `worker.exe`, rồi cấu hình browser sau khi mở.
 
-## Giải pháp
+Source làm nguồn sự thật: `src/plugin/index.ts`. Helper liên quan nằm ở `src/plugin/utils.ts` và `src/plugin/config.ts`.
 
-Class `FingerprintPlugin` với 3 lớp method:
+`BrowserEngine` và `PlaywrightFingerprintPlugin` đều đi xuống lớp này. Vì vậy docs của `FingerprintPlugin` phải giải thích đủ rõ lifecycle, nếu không developer sẽ khó debug các lỗi launch, setup, profile hoặc cleanup.
 
-### 1. Fluent Configuration
+## Câu hỏi làm rõ
 
-User gọi các method dạng `useXxx()` để đăng ký cấu hình. Mỗi method validate tham số rồi lưu vào property dạng `PluginConfig { value, options }`.
+- `FingerprintPlugin` có phải public API không? → Có thể dùng trực tiếp, nhưng thường được dùng qua `PlaywrightFingerprintPlugin` hoặc singleton `plugin`.
+- Fluent API hay config object? → Fluent API, vì fingerprint, proxy, profile và browser version có vòng đời riêng.
+- Có cần singleton không? → Có export `plugin` singleton để bridge Playwright dùng mặc định.
+- Có hỗ trợ launcher custom không? → Có, qua constructor hoặc `static create()`.
+- `spawn()` khác bridge Playwright thế nào? → `spawn()` dùng launcher mặc định và trả `Browser`; bridge gọi `_launch(false, options)` để trả `BrowserContext`.
 
+## Các phương án
+
+### Phương án 1: Đưa toàn bộ logic vào Playwright Bridge
+
+Bridge tự validate config, gọi API, spawn browser, resize viewport và cleanup.
+
+- Ưu điểm: Ít lớp hơn khi đọc riêng Playwright.
+- Nhược điểm: Logic fingerprint bị khóa vào Playwright. Khó dùng launcher khác và dễ duplicate cleanup.
+
+### Phương án 2: Tách plugin core và bridge
+
+`FingerprintPlugin` giữ lifecycle core. Bridge chỉ chuyển đổi sang API Playwright.
+
+- Ưu điểm: Lifecycle setup/spawn/configure/cleanup nằm một nơi. Bridge nhỏ hơn và dễ kiểm.
+- Nhược điểm: Cần hiểu `_launch()` khi debug sâu.
+
+### Phương án 3: Chỉ dùng API Connector trực tiếp
+
+Caller tự gọi `api('setup')`, tự spawn browser và tự cleanup.
+
+- Ưu điểm: Linh hoạt nhất.
+- Nhược điểm: Caller phải biết quá nhiều chi tiết engine. Dễ leak process hoặc sai profile path.
+
+## Giải pháp được chọn
+
+- Phương án AI đề xuất: Phương án 2.
+- Phương án được chọn: Phương án 2.
+- Lý do: Tách plugin core giúp giữ lifecycle fingerprint ở một nơi, trong khi Playwright Bridge chỉ lo tương thích API Playwright.
+- Ràng buộc hoặc điều kiện kèm theo:
+  - Config methods phải validate input bằng `validateConfig()`.
+  - `_launch()` là protected method vì caller bên ngoài không nên tự bỏ qua lifecycle.
+  - `headless` bị ép về `false` khi spawn để giảm rủi ro bị fingerprint check phát hiện headless.
+  - Cleanup phải đóng browser trước, rồi mới dọn connector, mutex và cleaner.
+
+## Lifecycle được chọn
+
+```txt
+useFingerprint/useProxy/useProfile/useBrowserVersion
+  -> fetch()/versions() nếu cần dữ liệu service
+  -> spawn() hoặc Playwright Bridge gọi _launch()
+  -> api('setup')
+  -> cleaner + mutex
+  -> spawn worker.exe
+  -> configure + synchronize
+  -> cleanup()
 ```
-useFingerprint(value, options)  → this.fingerprint = { value, options }
-useProfile(value, options)      → this.profile = { value, options }
-useProxy(value, options)        → this.proxy = { value, options }
-useBrowserVersion(version)      → this.version = version || 'default'
-```
 
-### 2. API Calls
+`_launch()` có hai chế độ:
 
-Hai method gọi API tới engine binary:
-- `fetch(options)` → gọi `api('fetch', { key, options, version })`, trả về JSON string fingerprint.
-- `versions(format)` → gọi `api('versions', { format })`, trả về `string[]` hoặc `Version[]`.
+- `useDefaultLauncher = true`: dùng launcher mặc định từ `src/plugin/launcher`.
+- `useDefaultLauncher = false`: dùng launcher custom, thường là launcher proxy từ Playwright Bridge.
 
-### 3. Spawn + Lifecycle
-
-`spawn(options)` gọi `_launch(true, options)` -- core lifecycle gồm 6 bước:
-
-1. **setProxyFromArguments()**: Nếu proxy chưa config (this.proxy == null), parse `--proxy-server` từ args.
-2. **api('setup')**: Gửi toàn bộ config (fingerprint, proxy, profile, version, pid, key) xuống engine. Engine trả về `{ id, pid, pwd, path, bounds }`.
-3. **Cleaner + Mutex**: Đăng ký thư mục pwd với cleaner để tránh bị xoá nhầm; tạo Windows mutex `BASProcess${pid}` cho engine.
-4. **Chọn launcher**: Nếu `useDefaultLauncher=true` → dùng plugin's launch (spawn worker.exe). Nếu false → dùng custom launcher (Playwright bridge).
-5. **Spawn**: Gọi `launcher.launch()` với `headless: false` (hardcoded), `executablePath` trỏ tới `worker.exe`, args gồm `--parent-process-id` và `--unique-process-id`.
-6. **Configure**: Gọi `configure()` từ `config.ts` để resize viewport + đồng bộ availWidth/availHeight vào .ini.
-
-### Module-level serviceKey
-
-`serviceKey` là biến module (không phải class property). Tất cả instance chia sẻ cùng một key. `setServiceKey(key)` ghi đè global key.
-
-### Singleton Plugin
-
-Cuối file export `plugin = new FingerprintPlugin()` -- instance mặc định dùng launcher spawn worker.exe. Playwright bridge tạo instance riêng với custom launcher.
-
----
-
-Xem thêm: [Spec](../specs/fingerprint-plugin.spec.md) | [Plan](../plans/fingerprint-plugin.plan.md)
+Thiết kế này giúp cùng một lifecycle setup engine có thể phục vụ cả browser launcher mặc định và Playwright persistent context.

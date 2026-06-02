@@ -1,96 +1,148 @@
 # Spec: Hook Binding
 
-## File: `src/adapter/playwright/utils.ts` (124 dòng)
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
 
-### Functions
+## Mô tả
 
-| Function | Input | Output | Mô tả |
-|---|---|---|---|
-| `onClose` | `Browser \| BrowserContext + listener` | `void` | Đăng ký cleanup handler |
-| `bindHooks` | `Browser \| BrowserContext + Hooks` | `void` | Proxy methods |
-| `setViewport` | `Page + ViewportBounds` | `Promise<void>` | CDP resize |
-| `getViewport` | `Page` | `Promise<{width, height}>` | Lấy viewport |
+Hook Binding intercept các Playwright method (`Browser.newContext`, `BrowserContext.newPage`, `Page.setViewportSize`) để tự động resize viewport theo fingerprint và chặn thay đổi kích thước sau khi đã set.
 
-### Constants
+Giải quyết vấn đề: Playwright tự ý set viewport khi tạo context mới — nếu engine đã resize theo fingerprint data, Playwright set lại làm mất hiệu lực fingerprint viewport.
 
-```ts
-export const MAX_RESIZE_RETRIES = 3;
+Source: `src/adapter/playwright/utils.ts` (124 dòng).
+
+## Yêu cầu
+
+1. `Browser.newContext()` phải bị intercept để force `viewport: null` — ngăn Playwright tự resize trước fingerprint.
+2. `BrowserContext.newPage()` phải trigger `onPageCreated` hook để resize viewport theo fingerprint.
+3. `Page.setViewportSize()` phải bị chặn — in warning, không cho thay đổi viewport sau fingerprint.
+4. `onClose()` — đăng ký cleanup handler tự động chạy khi browser disconnected hoặc context close.
+5. Hỗ trợ cả `Browser` và `BrowserContext` làm target.
+6. `setViewport()` CDP-based resize với retries (tối đa 3 lần) và delta correction.
+
+## Thiết kế
+
+### Proxy chain
+
+```
+Browser.newContext()
+  → resetOptions() — force viewport: null
+  → patchContext()
+    → ctx.newPage()
+      → onPageCreated hook (resize theo fingerprint)
+      → patchPage()
+        → page.setViewportSize() — warning + no-op
 ```
 
 ### Type guard
 
 ```ts
 const isBrowser = (target: unknown): target is Browser =>
-  typeof target === 'object' && target !== null
-    && 'version' in target && typeof (target as Browser).version === 'function';
+  typeof target === 'object' &&
+  target !== null &&
+  'version' in target &&
+  typeof (target as Browser).version === 'function';
 ```
 
-### Proxy chain chi tiết
+`version` là function — property unique của `Browser` class trong Playwright. Dùng để phân biệt `Browser` vs `BrowserContext`.
+
+### setViewport() flow (CDP-based resize)
 
 ```
-Browser.newContext()
-  -> resetOptions (force viewport: null)
-  -> patchContext()
-    -> ctx.newPage()
-      -> proxy: hooks.onPageCreated(page)
-      -> patchPage()
-        -> page.setViewportSize()
-          -> proxy: warning + no-op
+setViewport(page, { width, height })
+  │
+  ├─ Tạo CDP session: page.context().newCDPSession(page)
+  ├─ Lấy window handle: Browser.getWindowForTarget()
+  │
+  ├─ delta = { width: 16, height: 88 } (window chrome mặc định)
+  │
+  └─ Loop tối đa 3 lần:
+       ├─ bounds = desired + delta
+       ├─ Browser.setWindowBounds() + waitForResize() (song song)
+       ├─ Verify: getViewport()
+       ├─ Nếu match → break
+       └─ Nếu không → delta += (desired - actual)
+            └─ console.warn nếu lần cuối
+  │
+  └─ Detach CDP session
 ```
 
-### `bindHooks()` Flow
+Delta correction: mỗi lần retry, tính lại delta dựa trên sai lệch thực tế. Vòng 1: window chrome mặc định 16x88. Vòng 2: điều chỉnh nếu sai. Vòng 3: lần cuối, warning nếu vẫn không chính xác.
 
-| Bước | Code | Mô tả |
+### Fallback cho launchPersistentContext
+
+Nếu dùng `launchPersistentContext()`, `bindHooks()` nhận `BrowserContext` trực tiếp (vì không có `Browser` instance). Trường hợp này gọi `patchContext()` ngay, không qua proxy `newContext()`.
+
+Tham chiếu design doc: `docs/designs/hook-binding.design.md`.
+
+## API / Data flow
+
+### Input
+
+```ts
+bindHooks(target, hooks)
+  - target: Browser | BrowserContext
+  - hooks: { onPageCreated?: (page: Page) => Promise<void> }
+
+onClose(target, listener)
+  - target: Browser | BrowserContext
+  - listener: () => void
+
+setViewport(page, { diff?, width?, height? })
+  - page: Page
+  - diff: optional window chrome delta
+  - width, height: desired viewport size
+
+getViewport(page)
+  - page: Page
+  - returns Promise<{ width, height }>
+```
+
+### Output
+
+- `bindHooks`: void. Side effect: proxy methods của target.
+- `onClose`: void. Side effect: đăng ký event listener.
+- `setViewport`: Promise<void>. Side effect: resize viewport qua CDP.
+- `getViewport`: `Promise<{ width: number; height: number }>`.
+
+### Luồng
+
+```
+PlaywrightFingerprintPlugin.configure()
+  → onClose(context, cleanup)           ─── cleanup khi context close
+  → bindHooks(context, { onPageCreated: resizeHandler })
+  → resize page đầu tiên nếu có         ─── context đã có page
+```
+
+## Components
+
+| File | Vai trò | Dòng |
 |---|---|---|
-| 1 | `if (isBrowser(target))` | Nếu là Browser -> proxy newContext |
-| 2 | `target.newContext = new Proxy(...)` | Apply: resetOptions + patchContext |
-| 3 | `patchContext(ctx)` | Proxy ctx.newPage -> onPageCreated hook + patchPage |
-| 4 | `patchPage(page)` | Proxy page.setViewportSize -> warning no-op |
-| 5 | `if (!isBrowser && !target.newContext)` | Fallback: patchContext trực tiếp |
+| `src/adapter/playwright/utils.ts` | `onClose`, `bindHooks`, `setViewport`, `getViewport`, `resetOptions` | 124 |
+| `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin.configure()` gọi bindHooks | — |
+| `src/common/index.ts` | `waitForResize` và `getViewport` in-browser scripts | — |
 
-### `setViewport()` (adapter version)
+## Constants
 
-```ts
-export const setViewport = async (page: Page, { diff, width, height }): Promise<void>
-```
-
-Flow:
-
-| Bước | Code | Mô tả |
+| Tên | Giá trị | Vai trò |
 |---|---|---|
-| 1 | `const cdp = await page.context().newCDPSession(page)` | Tạo CDP session từ Playwright page |
-| 2 | `const { windowId } = await cdp.send('Browser.getWindowForTarget')` | Lấy window handle |
-| 3 | `delta = diff ?? { width: 16, height: 88 }` | Delta mặc định (window chrome) |
-| 4 | Loop `MAX_RESIZE_RETRIES (3)` | Retry |
-| 4a | `bounds = { width: desiredW + deltaW, height: desiredH + deltaH }` | Tính bounds |
-| 4b | `await Promise.all([cdp.send('Browser.setWindowBounds', { bounds, windowId }), waitForResize(page)])` | Set + chờ |
-| 4c | `viewport = await getViewport(page)` | Verify |
-| 4d | Nếu match -> break | Đúng |
-| 4e | `delta += expected - actual` | Điều chỉnh |
-| 5 | `await cdp.detach()` | Ngắt CDP session |
+| `MAX_RESIZE_RETRIES` | `3` | Số lần retry tối đa cho setViewport |
 
-### `getViewport()` (adapter version)
+## Xử lý lỗi
 
-```ts
-page.evaluate(scripts.getViewport)  // { width, height }
-```
-
-### `onClose()` Flow
-
-```ts
-if (isBrowser(target)) {
-  target.once('disconnected', listener);
-} else {
-  target.once('close', () => listener());
-}
-```
-
----
+| Tình huống | Hành vi |
+|---|---|
+| CDP session không tạo được (`newCDPSession` fail) | Throw error — không thể resize |
+| `Browser.getWindowForTarget` fail | Throw error — không thể lấy window handle |
+| Resize không match sau 3 lần retry | `console.warn`, không throw — chấp nhận sai số |
+| User gọi `page.setViewportSize()` sau fingerprint | `console.warn` — không throw, không crash |
+| Target không phải Browser/BrowserContext | Không intercept — hoạt động bình thường |
+| Browser đóng đột ngột (disconnected) | Cleanup handler chạy |
 
 ## Kiểm tra
 
-- Cần browser thật -- không thể mock proxy chain.
-- Verify: `page.setViewportSize()` in warning, không đổi viewport.
-- Verify: `onClose` cleanup chạy khi browser disconnected hoặc context close.
-
----
+- Happy path: `newContext()` → force `viewport: null` → `newPage()` → resize viewport → thành công.
+- Block: `page.setViewportSize()` in warning, viewport không đổi.
+- Cleanup: `onClose()` chạy khi context close hoặc browser disconnected.
+- Retry: resize sai lần 1 → điều chỉnh delta → lần 2 đúng.
+- Fallback: launchPersistentContext path → patch context trực tiếp.
+- Type guard: `isBrowser` phân biệt đúng Browser vs BrowserContext.

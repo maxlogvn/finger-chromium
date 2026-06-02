@@ -1,64 +1,51 @@
 # Product: Browser Launcher
 
-## Tổng quan
+## Mô tả
 
-Browser Launcher chịu trách nhiệm khởi chạy Chromium và phát hiện CDP (Chrome DevTools Protocol) endpoint để các thành phần khác (như FingerprintPlugin) có thể inject fingerprint qua CDP.
+`Browser Launcher` có nhiệm vụ spawn Chromium `worker.exe` và phát hiện DevTools listening URL từ output của process. Đây là lớp thấp nhất trong chuỗi launch — sau khi `FingerprintPlugin._launch()` gọi `api('setup')` để engine chuẩn bị cấu hình, nó dùng launcher này để thực sự mở browser.
 
-Bạn không dùng Browser Launcher trực tiếp -- nó được gọi ngầm bởi `Chromium.launch()`.
+## Cách sử dụng
 
-## Cách hoạt động
+Trong luồng thông thường, bạn không gọi launcher trực tiếp. Nó được `FingerprintPlugin._launch()` gọi nội bộ.
 
-1. **Spawn Chromium** với `--remote-debugging-port` và các arguments.
-2. **Đọc output** của Chromius (stderr + stdout) dòng từng dòng.
-3. **Tìm dòng** `DevTools listening on ws://127.0.0.1:<port>/...`.
-4. **Parse port** từ URL.
-5. **Trả về** `Browser` object với method `close()` để tắt.
-
-## API
-
-### `launch(options)`
-
-| Tham số | Kiểu | Mặc định | Mô tả |
-|---|---|---|---|
-| `args` | `string[]` | `[]` | Arguments cho Chromium |
-| `timeout` | `number` | `30000` | Thời gian chờ tối đa (ms) |
-| `userDataDir` | `string` | `''` | Thư mục profile |
-| `debuggingPort` | `number` | `0` | Port debugging (`0` = random) |
-| `executablePath` | `string` | `''` | Đường dẫn Chromium |
+Dùng trực tiếp khi cần debug hoặc custom:
 
 ```ts
+import { launch } from './plugin/launcher';
+
 const browser = await launch({
-  executablePath: 'C:\\Program Files\\Chromium\\chrome.exe',
-  args: ['--disable-web-security'],
+  executablePath: './path/to/worker.exe',
   debuggingPort: 9222,
-  timeout: 60000,
+  args: ['--window-size=1280,720', '--parent-process-id=12345'],
 });
-console.log(`DevTools URL: ${browser.url}`);
+
+console.log('DevTools URL:', browser.url);
 await browser.close();
 ```
 
-### `Browser` object
+## Hành vi chi tiết
 
-| Property | Mô tả |
-|---|---|
-| `process` | ChildProcess của Chromium |
-| `port` | Port debugging |
-| `url` | WebSocket URL của DevTools |
-| `close()` | Kill Chromium và toàn bộ process con |
-| `configure()` | (Hiện tại chưa làm gì) |
+- `launch()` spawn `worker.exe` và parse dòng đầu tiên khớp `DevTools listening on <url>` từ stderr/stdout.
+- Nếu không tìm thấy URL sau 30 giây, throw error.
+- `close()` dùng `taskkill /pid <pid> /T /F` (Windows) để kill toàn bộ process tree — đảm bảo không còn child process sống sót.
+- `configure()` là no-op — chỉ để tương thích với interface `Browser`.
 
-## Xử lý lỗi
+```ts
+interface Browser {
+  url: string;
+  close: () => Promise<void>;
+  configure: () => Promise<void>;
+}
+```
 
-| Lỗi | Nguyên nhân |
-|---|---|
-| Timeout | Chromium không in DevTools URL kịp |
-| taskkill lỗi | Fallback về `childProcess.kill()` |
+## Giới hạn và điều kiện
 
-## Lưu ý
+- Chỉ hoạt động trên Windows (dùng `taskkill`).
+- Cần `executablePath` trỏ đến `worker.exe` hợp lệ.
+- `close()` dùng `SIGKILL` tương đương — process không có cơ hội cleanup.
 
-- **`close()` dùng `taskkill /T /F`** -- Windows-specific. Kill toàn bộ process tree (kể cả renderer, GPU).
-- **Timeout mặc định 30 giây** -- nếu Chromium chậm, có thể tăng lên.
-- **`configure()` là no-op** -- dự phòng cho tương lai.
-- Cần parse cả stderr và stdout vì mỗi phiên bản Chromium có thể in DevTools URL ở nơi khác nhau.
+## Tài liệu kỹ thuật liên quan
 
----
+- Spec: `docs/specs/browser-launcher.spec.md`
+- Design: `docs/designs/browser-launcher.design.md`
+- Source: `src/plugin/launcher/index.ts`

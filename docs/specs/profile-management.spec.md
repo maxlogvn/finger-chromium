@@ -1,101 +1,122 @@
 # Spec: Quản lý Profile
 
-## File: `src/adapter/playwright/data.ts` (98 dòng)
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
 
-### Class `AdapterDataManager`
+## Mô tả
 
-#### Properties
+Tính năng profile lưu và tái sử dụng dữ liệu trình duyệt (cookie, localStorage, session) giữa các lần chạy. Profile được copy vào thư mục tạm trước khi browser khởi động — tránh corrupt dữ liệu gốc — và được sao lưu lại sau khi kết thúc session.
 
-| Property | Kiểu | Mô tả |
-|---|---|---|
-| `tempRootDir` | `string` (private) | Thư mục gốc chứa temp profiles |
-| `instanceTempDir` | `string` (private) | Thư mục tạm riêng cho instance này |
+Ngoài ra, engine tự động load lại proxy và fingerprint đã dùng lần trước từ profile nếu `loadProxy` / `loadFingerprint` là `true`.
 
-#### Constructor
+Source: `src/adapter/playwright/data.ts` (98 dòng), `src/types/profile.ts` (30 dòng).
+
+## Yêu cầu
+
+- Copy profile từ thư mục gốc sang thư mục tạm trước khi launch.
+- Tạo tên temp dir duy nhất (timestamp + random hex) để tránh xung đột.
+- `map(source)` → copy source → temp. `map(temp, dest)` → copy temp → dest.
+- Xoá temp dir khi kết thúc session (`unmap()`).
+- Hỗ trợ map ngược: copy từ temp dir về thư mục đích sau khi close context.
+- Tuỳ chọn load lại proxy và fingerprint từ profile cũ.
+
+## Thiết kế
+
+### AdapterDataManager
+
+```
+AdapterDataManager
+  ├── instanceTempDir: BROWSER_RUNNING_DIR/profile/{timestamp}_{hex}
+  ├── map(sourceDir) ────────── copy source → instanceTempDir
+  ├── map(tempDir, destDir) ─── copy tempDir → destDir
+  ├── unmap(tempDir) ────────── xoá thư mục
+  └── dispose() ─────────────── xoá instanceTempDir
+```
+
+### Luồng lifecycle
+
+```
+BrowserEngine.useProfile(dirPath, options)
+  │
+  ├─ dataManager.map(dirPath) ─── copy dirPath → temp dir
+  │
+  └─ launch()
+       ├─ engine.useProfile(tempPath, options)
+       └─ engine._launch() gửi tempPath lên engine
+            │
+            └─ Browser chạy trên temp dir
+
+BrowserEngine.quit(saveDataPath?)
+  │
+  ├─ context.close()
+  │
+  ├─ dataManager.map(tempPath, saveDataPath ?? dirPath)
+  │    └─ copy temp → gốc
+  │
+  └─ dataManager.unmap(tempDir)
+       └─ xoá temp dir
+```
+
+Tại sao dùng temp dir? Nếu browser crash trong lúc chạy, profile gốc vẫn còn nguyên. Nếu không có temp dir, crash có thể corrupt thư mục profile.
+
+Tham chiếu design doc: `docs/designs/profile-management.design.md`.
+
+## API / Data flow
 
 ```ts
-constructor(options: AdaDataManagerOptions = {}) {
-  this.tempRootDir = options.tempRootDir ?? path.join(BROWSER_RUNNING_DIR, 'profile');
-  this.instanceTempDir = path.join(this.tempRootDir, this.generateUniqueName());
+import { AdapterDataManager } from './adapter/playwright/data';
+
+const manager = new AdapterDataManager({
+  tempRootDir: '.tmp/browser/running/profile',
+});
+
+// Map source → temp (trước launch)
+const tempPath = manager.map('./profiles/user_01');
+// tempPath = ".tmp/browser/running/profile/1685000000_abcd"
+
+// Map temp → dest (sau quit)
+manager.map(tempPath, './profiles/user_01');
+
+// Xoá temp
+manager.unmap(tempPath);
+```
+
+### ProfileOptions
+
+```ts
+interface ProfileOptions {
+  loadProxy?: boolean;        // @default true
+  loadFingerprint?: boolean;  // @default true
 }
 ```
 
-#### Methods
+### Input / Output
 
-| Method | Tham số | Trả về | Mô tả |
-|---|---|---|---|
-| `map(inputDir)` | `string` | `string` | Copy inputDir vào instanceTempDir, trả về temp path |
-| `map(inputDir, targetDir)` | `string, string` | `string` | Copy inputDir vào targetDir, trả về targetDir |
-| `unmap(tempDirPath)` | `string` | `void` | Xoá thư mục tạm (rmSync) |
-| `dispose()` | – | `void` | Gọi unmap(instanceTempDir) |
+- `map(sourceDir)` → `Promise<string>` (path đến temp dir).
+- `map(tempDir, destinationDir)` → `Promise<string>` (path đến destination).
+- `unmap(tempDir)` → void.
+- `dispose()` → void.
 
-#### Private Methods
+## Components
 
-```ts
-private ensureDir(dirPath: string): void
-private generateUniqueName(): string
-```
-
-### `map()` Flow
-
-| Bước | Code | Mô tả |
+| File | Vai trò | Dòng |
 |---|---|---|
-| 1 | `dest = targetDir ?? this.instanceTempDir` | Xác định đích |
-| 2 | `srcResolved = path.resolve(inputDir)` | Resolve path |
-| 3 | `this.ensureDir(srcResolved)` | Đảm bảo source tồn tại |
-| 4 | `this.ensureDir(path.dirname(destResolved))` | Tạo thư mục cha cho đích |
-| 5 | `fs.cpSync(srcResolved, destResolved, { recursive: true, force: true })` | Copy |
-| 6 | `return destResolved` | Trả về path đích |
-
-### `unmap()` Flow
-
-| Bước | Code | Mô tả |
-|---|---|---|
-| 1 | `if (!fs.existsSync(resolvedPath))` | Nếu không tồn tại -> warn, return |
-| 2 | `fs.rmSync(resolvedPath, { recursive: true, force: true })` | Xoá |
-
-### Options Interface (từ `src/types/profile.ts`)
-
-```ts
-export interface ProfileOptions {
-  loadProxy?: boolean;        // default: true
-  loadFingerprint?: boolean;  // default: true
-}
-```
-
-### Integration trong BrowserEngine
-
-```ts
-// useProfile -> map source -> temp
-this.saveProfileDirPath = dirPath;
-this.profileData = [this.dataManager.map(dirPath), options];
-
-// quit -> map temp -> destination
-const targetSavePath = saveDataPath ?? this.saveProfileDirPath;
-if (targetSavePath) {
-  this.dataManager.map(this.profileData[0], targetSavePath);
-}
-this.dataManager.unmap(BROWSER_RUNNING_DIR);
-```
-
----
+| `src/adapter/playwright/data.ts` | `AdapterDataManager` — map/unmap/dispose | 98 |
+| `src/adapter/playwright/chromium.ts` | `useProfile()` — gọi dataManager.map | 231 |
+| `src/types/profile.ts` | `ProfileOptions` type | 30 |
 
 ## Xử lý lỗi
 
 | Tình huống | Hành vi |
 |---|---|
-| Source profile không tồn tại | `ensureDir()` tạo source nếu chưa có |
-| `cpSync` thất bại | Throw `Error('[DataManager] Sao chép thất bại: ...')` |
-| `rmSync` thất bại | Throw `Error('[DataManager] Dọn dẹp thất bại: ...')` |
-| Temp dir không tồn tại khi unmap | `console.warn('Bỏ qua xoá: thư mục không tồn tại')` |
-
----
+| Source profile không tồn tại hoặc không đọc được | Throw `Error('Sao chép thất bại: ...')` với path chi tiết |
+| Không có quyền ghi temp dir | `fs.cpSync` throw — propagate lên caller |
+| `unmap()` — temp dir không tồn tại | `console.warn` — không throw |
+| `unmap()` — xoá thất bại (file locked) | Throw `Error('Dọn dẹp thất bại: ...')` |
 
 ## Kiểm tra
 
-- `map()` -> verify copy đúng nội dung.
-- `unmap()` -> verify xoá thành công.
-- `dispose()` -> verify xoá instance temp dir.
-- Error handling: `cpSync` fail, `rmSync` fail.
-
----
+- Happy path: profile → copy vào temp → browser chạy → quit → copy ngược → xoá temp.
+- Edge case: profile rỗng (folder mới tạo) → vẫn copy thành công.
+- Edge case: profile không tồn tại → throw error.
+- Edge case: `unmap()` gọi 2 lần → lần 2 warn, không throw.
+- Temp dir naming: `{timestamp}_{4hex}` — duy nhất.

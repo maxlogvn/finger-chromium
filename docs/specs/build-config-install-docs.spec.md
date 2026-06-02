@@ -1,58 +1,52 @@
 # Spec: Cấu hình build và tài liệu cài đặt (Build Config & Install Docs)
 
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
+
 ## Mô tả
 
-Cập nhật `package.json` và tài liệu hướng dẫn cài đặt để hỗ trợ cài package từ GitHub một cách mượt mà (tự động build), đồng thời sửa các lỗi tiếng Việt thiếu dấu trong tài liệu.
+Cập nhật `package.json` và tài liệu hướng dẫn cài đặt để hỗ trợ cài package từ GitHub mượt mà (tự động build), đồng thời sửa lỗi tương thích Windows và tiếng Việt.
 
 ## Yêu cầu
 
-1. Thêm `prepare` script vào `package.json` để npm tự động build khi cài từ GitHub.
-2. Sửa `clean` script để tương thích Windows (dùng tsup built-in clean).
-3. Cập nhật hướng dẫn cài đặt trong tất cả tài liệu liên quan.
-4. Fix tiếng Việt thiếu dấu trong tài liệu.
+- Thêm `prepare` script (`npm run build`) -- tự động build khi cài từ GitHub.
+- Sửa `clean` script từ `rm -rf dist` thành `tsup --clean` (Windows-compatible).
+- `build` script đơn giản hoá: `tsup` (tsup config đã có `clean: true`).
+- Cập nhật hướng dẫn cài đặt trong tất cả tài liệu liên quan.
 
 ## Thiết kế
 
-### package.json scripts
+Script changes trong `package.json`:
 
-| Script | Lệnh | Mô tả |
+| Script | Trước | Sau |
 |---|---|---|
-| `clean` | `tsup --clean` | Xoá thư mục dist |
-| `build` | `tsup` | Build ESM + CJS + DTS |
-| `prepare` | `npm run build` | Lifecycle hook sau npm install |
+| `clean` | `rm -rf dist` | `tsup --clean` |
+| `build` | `npm run clean && tsup` | `tsup` |
+| `prepare` | (không có) | `npm run build` |
 
-Luồng hoạt động:
+Xem [Design](../designs/build-config-install-docs.design.md).
+
+## API / Data flow
 
 ```
-User chạy: npm install github:maxlogvn/finger-chromium
-                                   |
-                                   v
-              npm chạy lifecycle hook: prepare
-                                   |
-                                   v
-              prepare -> npm run build -> tsup -> dist/
-                                   |
-                                   v
-              User import { Chromium } từ 'fingerprint-chromium-engine'
+npm install github:maxlogvn/finger-chromium
+  -> lifecycle hook: prepare
+    -> npm run build -> tsup -> dist/
 ```
 
-### Tài liệu cần cập nhật
+## Components
 
 | File | Thay đổi |
 |---|---|
-| `README.md` | Thêm ghi chú prepare script, hướng dẫn build thủ công nếu dùng --ignore-scripts |
-| `finger-chromium/products/project-infrastructure.product.md` | Sửa lệnh cài đặt từ npm registry sang GitHub URL, thêm prepare note |
-| `finger-chromium/designs/project-infrastructure.design.md` | Sửa lệnh cài đặt, xoá ghi chú pre-existing bug |
-| `finger-chromium/specs/project-infrastructure.spec.md` | Cập nhật bảng scripts, sửa ghi chú clean |
-| `finger-chromium/specs/debug-logging.spec.md` | Fix "Dang" -> "Đang", "tai" -> "tải" |
-| `finger-chromium/overviews/project-infrastructure.overview.md` | Sửa mục clean trên bảng sai lệch |
-| `finger-chromium/Welcome.md` | Cập nhật ghi chú npm run clean |
-| `finger-chromium/ROADMAP.md` | Thêm mục mới cho task này |
+| `package.json` | Sửa `clean`, `build`, thêm `prepare` |
+| `README.md` | Thêm prepare note, hướng dẫn build thủ công |
+| `docs/` (nhiều file) | Sửa lệnh cài đặt, fix rm note, fix tiếng Việt |
+
+## Xử lý lỗi
+
+- Nếu người dùng dùng `--ignore-scripts`, cần build thủ công bằng `npm run build`.
+- `tsup --clean` cross-platform, không lỗi trên Windows.
 
 ## Kiểm tra
 
 - `npm run lint` -- 0 errors.
 - `npm run build` -- tsup build thành công (ESM + CJS + DTS).
-
----
-

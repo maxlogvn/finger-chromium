@@ -1,74 +1,58 @@
-# Design: Viết lại toàn bộ tài liệu tính năng
+# Design: Viết lại toàn bộ tài liệu theo template chuẩn
 
-## Vấn đề cần giải quyết
+## Bối cảnh
 
-- 103 file tài liệu (design, spec, plan, product, overview) cho 20 features + 1 non-feature được generate một lần, không bám sát code thật.
-- Một số thông tin sai lệch, thiếu chi tiết, hoặc dùng thuật ngữ khó hiểu.
-- Developer khó dùng tài liệu để hiểu hoặc debug.
+Hiện tại dự án có 5 template tài liệu trong `docs/templates/` (design, spec, plan, product, overview). Tuy nhiên các tài liệu thực tế trong `docs/designs/`, `docs/specs/`, `docs/plans/`, `docs/products/`, `docs/overviews/` không tuân theo cấu trúc section của template. Cụ thể:
 
-## Các phương án đã cân nhắc
+- **design:** thiếu section "Câu hỏi làm rõ".
+- **spec:** thiếu section "Yêu cầu" và "Thiết kế".
+- **overview:** thiếu section "Tài liệu liên quan", kết quả trình bày dạng list thay vì bảng.
 
-1. **Sửa từng file theo hướng chỉnh sửa (edit):** nhanh nhưng có nguy cơ bỏ sót lỗi do cấu trúc cũ không nhất quán.
-2. **Viết lại từ code (reverse-engineer):** đọc code feature -> viết lại 5 file từ đầu. Tốn công hơn nhưng đảm bảo 100% khớp code.
+Ngoài ra, một số tài liệu không cập nhật theo code thật (ví dụ danh sách export, API, xử lý lỗi).
 
-**Chọn phương án 2** vì tính chính xác là ưu tiên số 1.
+Cần rewrite toàn bộ ~105 file tài liệu để đồng bộ với template và code thật.
 
-## Giải pháp chọn
+## Câu hỏi làm rõ
 
-Với mỗi feature (theo thứ tự roadmap từ trên xuống):
+- Có cần giữ lại nội dung cũ hay viết hoàn toàn mới từ code? → Viết mới từ code, đọc code thật trước khi viết.
+- Có cần lint/build cho file .md không? → Không, chỉ cần kiểm tra thủ công nội dung.
+- Thứ tự xử lý? → Theo thứ tự roadmap từ trên xuống dưới.
 
-1. Đọc toàn bộ code của feature
-2. Phân tích: API, luồng dữ liệu, xử lý lỗi, lifecycle, file cấu trúc
-3. Viết 5 file theo cấu trúc mới đã duyệt (design -> spec -> plan -> product -> overview)
-4. Chạy lint kiểm tra
+## Các phương án
 
-## Cấu trúc file cho từng loại tài liệu
+### Phương án 1: Giữ nguyên nội dung, sửa cấu trúc section
+Chỉ thêm/xoá/sắp xếp sections để khớp template, không đọc lại code.
 
-### design.md -- giải thích tại sao
-- Vấn đề cần giải quyết
-- Các phương án đã cân nhắc
-- Giải pháp chọn (và tại sao)
-- Luồng hoạt động
+- Ưu điểm: Nhanh.
+- Nhược điểm: Thông tin có thể sai lệch so với code thật.
 
-### spec.md -- mô tả kỹ thuật chi tiết
-- Mô tả
-- API / Interfaces chính
-- Luồng dữ liệu
-- File liên quan
-- Xử lý lỗi
-- Ghi chú kỹ thuật
+### Phương án 2: Đọc code rồi viết lại hoàn toàn (chọn)
+Với mỗi feature, đọc code thật -> viết 5 file tài liệu theo template.
 
-### plan.md -- ghi lại các bước đã thực hiện
-- Các bước thực hiện (từ code)
-- File liên quan
-- Kiểm tra
-- Ghi chú
+- Ưu điểm: 100% khớp code và template, nhất quán giữa các feature.
+- Nhược điểm: Tốn thời gian hơn, nhưng chất lượng cao nhất.
 
-### product.md -- hướng dẫn sử dụng (dễ đọc nhất)
-- Tổng quan
-- Cách dùng / Ví dụ code
-- API
-- Lifecycle
-- Xử lý lỗi
-- Môi trường (nếu có)
+### Phương án 3: Kết hợp
+Giữ nguyên design/overview, chỉ viết lại spec/product/plan.
 
-### overview.md -- báo cáo kết quả
-- Mục tiêu
-- Kết quả
-- Kiểm tra
-- Sai lệch so với kế hoạch
+- Ưu điểm: Tiết kiệm hơn phương án 2.
+- Nhược điểm: Không đồng bộ giữa 5 loại tài liệu.
 
-## Công cụ và quy tắc viết
+## Giải pháp được chọn
 
-- **Viết bằng tiếng Việt**, dùng từ ngữ thân thiện, dễ hiểu, như đang giải thích cho một developer đồng nghiệp mới vào dự án.
-- **Tránh lạm dụng thuật ngữ** khiến nội dung khó đọc. Nếu bắt buộc dùng thuật ngữ chuyên ngành (ví dụ `BrowserContext`, `launchPersistentContext`, `CDP`), giải thích ngắn gọn ngay kế bên.
-- **Không dùng câu phức tạp** -- ưu tiên rõ ràng, đi thẳng vào vấn đề.
-- **Giải thích "tại sao"** chứ không chỉ "làm gì" -- đặc biệt trong code comment và overview.
-- **Ví dụ code phải chạy được** (copy-paste là dùng được). Có đủ import và context.
-- **JSDoc/public API** phải có trong spec: ghi đúng tên method, tham số, kiểu trả về, giá trị mặc định.
-- **Mỗi section nên ở mức vừa phải**, không quá ngắn (thiếu thông tin) nhưng cũng không quá dài (khó đọc). Khoảng 5-15 dòng cho mỗi section nhỏ, 15-30 dòng cho section chính.
-- **Kết cấu nhất quán** giữa các feature: cùng loại tài liệu có cùng cấu trúc section, để developer biết chỗ nào tìm thông tin gì.
+- **Phương án AI đề xuất:** Phương án 2 (đọc code -> viết lại hoàn toàn).
+- **Phương án được chọn:** Phương án 2.
+- **Lý do:** Đảm bảo chất lượng và tính nhất quán cao nhất.
+- **Ràng buộc:** Không cần chạy lint/build cho file .md.
 
-## Thứ tự xử lý
+## Luồng hoạt động
 
-Theo roadmap: Project Infrastructure -> Type System -> Error Hierarchy -> RemoteEngine -> API Connector -> PCAP Server -> Browser Launcher -> Native Mutex -> FingerprintPlugin -> Playwright Bridge -> BrowserEngine -> Fingerprint Config -> Proxy Config -> Profile Management -> Viewport Management -> File Cleanup Daemon -> Hook Binding -> Common Scripts -> Playwright Module Loader -> Debug Logging -> Format và Comment Codebase (non-feature).
+Với mỗi feature (xử lý tuần tự theo roadmap):
+
+1. Đọc toàn bộ source code của feature.
+2. Viết `design.md` theo `design.template.md`.
+3. Viết `spec.md` theo `spec.template.md`.
+4. Viết `plan.md` theo `plan.template.md`.
+5. Viết `product.md` theo `product.template.md`.
+6. Viết `overview.md` theo `overview.template.md`.
+7. Kiểm tra nội dung (thủ công) và chuyển sang feature tiếp theo.

@@ -1,91 +1,58 @@
 # Product: API Connector
 
-## Tổng quan
+## Mô tả
 
-API Connector là lớp trung gian giữa FingerprintPlugin và RemoteEngine. Nó đảm bảo:
-- Chỉ một request được gửi đến engine tại một thời điểm.
-- Lỗi từ engine được chuyển thành `PluginError` / `MissingKeyError` dễ xử lý.
-- PCAP server tự động khởi động khi connector được load.
+API Connector là lớp trung gian singleton giữa `FingerprintPlugin` và `RemoteEngine`. Nó nhận lệnh từ `FingerprintPlugin._launch()` (ví dụ `api('setup', params)`), dùng `AsyncLock` để đồng bộ, gọi `RemoteEngine.runFunction()`, và chuẩn hoá lỗi đầu ra.
 
-Bạn không cần dùng API Connector trực tiếp -- nó chạy ngầm khi bạn gọi `Chromium.launch()`.
+Connector không tự khởi tạo engine — `RemoteEngine` được tạo một lần ở module level. PCAP server cũng tự động listen khi connector được import.
 
-## Cách dùng (nội bộ)
+Nói ngắn gọn: Connector là "tổng đài" đảm bảo request đến engine không bị chồng chéo và lỗi được map đúng class.
 
-Trong code của thư viện, các plugin gọi API Connector như sau:
+## Cách sử dụng
+
+Thông thường bạn không gọi connector trực tiếp. Nó được `FingerprintPlugin` gọi nội bộ:
 
 ```ts
-import { api } from '../connector';
-
-// Gọi setup engine với fingerprint, proxy, profile
+// FingerprintPlugin._launch() gọi:
 const result = await api('setup', {
-  fingerprint: { value: fingerprintData, options: { usePerfectCanvas: true } },
-  key: 'your-private-key',
-  pid: 12345,
-  profile: { value: './profiles/user', options: { loadProxy: true } },
-  proxy: { value: 'socks5://127.0.0.1:9050', options: { changeWebRTC: 'replace' } },
-  version: 'default',
+  key: 'your-key',
+  fingerprint: '...',
+  proxy: 'http://user:pass@host:8080',
+  profile: './profiles/user_01',
+  version: '130',
 });
 ```
 
-## API
+Dùng trực tiếp khi cần custom flow:
 
-### `api(name, params)`
+```ts
+import { api, cleanup, engine } from './plugin/connector';
 
-Gọi một hàm trên engine binary.
+const result = await api('setup', { key: process.env.BABLOSOFT_KEY });
 
-| Tham số | Kiểu | Mô tả |
-|---|---|---|
-| `name` | `string` | Tên hàm: `'setup'`, `'versions'`, `'get_bounds'`, `'get_defaults'` |
-| `params` | `object` | Tham số truyền cho engine |
-
-**Kết quả trả về:**
-- `response` object từ engine (nếu có).
-- Toàn bộ result nếu không có `response`.
-
-**Lỗi:**
-- `MissingKeyError` nếu engine báo thiếu key.
-- `PluginError` cho các lỗi khác.
-- `EngineTimeoutError` / `RequestTimeoutError` từ RemoteEngine.
-
-## Lifecycle
-
-```
-Import connector
-    │
-    ├── Tạo singleton RemoteEngine
-    ├── Start PCAP server (listen)
-    └── Export engine + api function
-                │
-                ▼
-FingerprintPlugin gọi api('setup', ...)
-    │
-    ├── Lock 'client' (chờ nếu có request khác)
-    ├── engine.runFunction('setup', ...)
-    ├── Parse result
-    └── Unlock
+// Kết thúc session
+await cleanup();
 ```
 
-## Xử lý lỗi
+Connector cũng export `engine` (RemoteEngine instance) để truy cập trực tiếp nếu cần.
 
-| Lỗi | Ý nghĩa |
-|---|---|
-| `MissingKeyError` | Chưa set `BABLOSOFT_KEY`. Engine từ chối phục vụ. |
-| `PluginError` | Lỗi không xác định từ engine. Kiểm tra message. |
-| `EngineTimeoutError` | Engine không start được. |
-| `RequestTimeoutError` | Engine không phản hồi. |
+## Hành vi chi tiết
 
-## Môi trường
+- `AsyncLock` với key `'client'` đảm bảo chỉ một request tại một thời điểm. Engine dùng file-based IPC — request chồng lên nhau làm lẫn request/response.
+- PCAP server tự động listen khi connector được import. Engine cần PCAP server để giao tiếp ID request.
+- `api()` kiểm tra response có `error` không. Nếu error chứa `'key is missing'`, tự động throw `MissingKeyError`. Các lỗi khác throw `PluginError`.
+- `perfectCanvasRequest` (trong `params.options`): set `requestTimeout = 0` (không timeout) vì perfect canvas request có thể mất nhiều thời gian hơn request thường.
+- `cleanup()` chỉ kill engine process và close PCAP server. Cleanup mutex, cleaner, và browser nằm ở `FingerprintPlugin.cleanup()`.
+- Engine events (`beforeDownload`, `beforeExtract`) được log ra console để user biết tiến trình.
 
-| Biến | Mô tả |
-|---|---|
-| `FINGERPRINT_CWD` | Thư mục làm việc của engine |
-| `FINGERPRINT_TIMEOUT` | Timeout (ms) cho cả engine và request |
+## Giới hạn và điều kiện
 
-## Lưu ý
+- `FINGERPRINT_CWD` và `FINGERPRINT_TIMEOUT` đọc từ env. Nếu không set, dùng giá trị mặc định của `RemoteEngine`.
+- Chỉ một request được xử lý tại một thời điểm (do async-lock).
+- Cần gọi `cleanup()` khi kết thúc session để kill engine process và close PCAP server.
 
-- **PCAP server tự động start** ở port có sẵn, không cần cấu hình thủ công.
-- **Khi thiếu key**, connector hiển thị thông báo upgrade và delay 20s trước khi cảnh báo timeout.
-- **Request PerfectCanvas** có thể không giới hạn thời gian (timeout = 0) nếu option `perfectCanvasRequest` được bật.
-- **Chỉ một request tại một thời điểm** -- async-lock xếp hàng các request còn lại.
+## Tài liệu kỹ thuật liên quan
 
----
+- Spec: `docs/specs/api-connector.spec.md`
+- Design: `docs/designs/api-connector.design.md`
+- Source: `src/plugin/connector/index.ts`

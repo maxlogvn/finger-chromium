@@ -55,7 +55,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
-- **Cập nhật:** 2026-06-02
+- **Cập nhật:** 2026-06-04
 - **Tài liệu:** [Design](designs/error-hierarchy.design.md) | [Spec](specs/error-hierarchy.spec.md) | [Plan](plans/error-hierarchy.plan.md) | [Product](products/error-hierarchy.product.md) | [Overview](overviews/error-hierarchy.overview.md) -- `src/plugin/errors.ts`
 - **Ghi chú:**
   - `PluginError` -- base class
@@ -63,6 +63,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - `InvalidEngineError` -- engine chưa tải/giải nén
   - `EngineTimeoutError` -- timeout khởi động engine
   - `RequestTimeoutError` -- timeout request
+  - **Docs correction (2026-06-04):** Da bo sung giai thich "tai sao" cho `dedent`, `captureStackTrace`, `Symbol.toStringTag`; them chi tiet message tung class vao spec/product; fix overview sai "3 dong".
 
 ---
 
@@ -346,9 +347,67 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:** [Design](designs/known-issues-separate.design.md) | [Spec](specs/known-issues-separate.spec.md) | [Plan](plans/known-issues-separate.plan.md)
+- **Tài liệu:** [Design](designs/known-issues-separate.design.md) | [Spec](specs/known-issues-separate.spec.md) | [Plan](plans/known-issues-separate.plan.md) | [Overview](overviews/known-issues-separate.overview.md)
 - **Ghi chú:**
   - Non-feature task (bảo trì tài liệu): chỉ cần overview, không cần product doc
   - Tách phần Known Issues từ Welcome.md sang KNOWN_ISSUES.md
   - Welcome.md giữ lại link tóm tắt đến KNOWN_ISSUES.md
   - Cập nhật cấu trúc thư mục docs trong Welcome.md và WORKFLOW.md
+
+---
+
+### Viết lại toàn bộ tài liệu theo template chuẩn
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/documentation-rewrite.design.md) | [Plan](plans/documentation-rewrite.plan.md) | [Overview](overviews/documentation-rewrite.overview.md)
+- **Ghi chú:**
+  - Rewrite 105 file tài liệu (design, spec, plan, product, overview) cho 21 features.
+  - Mỗi file viết theo template chuẩn trong `docs/templates/`.
+  - Hoàn thành 21/21 tasks (105 file) -- bao gồm Common Scripts, Playwright Module Loader, Debug Logging, và 4 Non-feature tasks (build-config-install-docs, format-comment-codebase, known-issues-separate, quit-handle-cleanup).
+
+---
+
+### Sửa tài liệu thiếu chi tiết (Documentation Detail Fix)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/documentation-detail-fix.design.md) (đơn giản) | [Plan](plans/documentation-detail-fix.plan.md) | [Overview](overviews/documentation-detail-fix.overview.md)
+- **Ghi chú:**
+  - Non-feature task: sửa 8 file tài liệu bị lệch template, thiếu section, thiếu file overview.
+  - Gồm hook-binding (spec/overview/product), mutex-path-resolution (design/overview/spec), documentation-rewrite (overview), ROADMD.md (links).
+  - Lý do: 2 feature là bug fix thêm sau chưa kịp đồng bộ template.
+
+---
+
+### Hiệu chỉnh tài liệu theo code thực tế (Documentation Correction)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (task tổng, các feature con xử lý riêng)
+- **Ghi chú:**
+  - Non-feature task: so sánh từng bộ tài liệu (design, spec, plan, product, overview) với code thực tế, sửa chỗ thiếu/sai.
+  - **Phiên 1 - Error Hierarchy:** Da sua 5 file docs cho khớp code (design, spec, plan, product, overview). Them giai thich "tai sao" (dedent, captureStackTrace, Symbol.toStringTag), chi tiet message tung class, fix overview sai "3 dong".
+  - **Phiên 2 - Type System:** Da sua 3 file docs (design, spec, plan, overview). Plan: sua "17 fields" -> "18 fields" cho ProxyOptions. Spec: bo sung union type cho `privateIPv4`, `privateIPv6` va chi tiet type object notation. Design: them giai thich "tai sao" cho `IPString = string & {}` (branded type) va `PWChromium` la interface. Overview: cap nhat bang sai lech va ghi chu "tai sao".
+  - **Phiên 3 - RemoteEngine:** Da sua 4 file docs (design, spec, product, overview). Design: fix timeout defaults (60s -> 300s cho request). Spec: bo sung `kill()`, events, `CLOSE_TIMEOUT`, `resolvePackageRoot()`, `ARCH`; thay `utils.ts` bang `index.ts` trong Components. Product: them `kill()`, events, `resolvePackageRoot()`. Overview: them ghi nhan sai lech timeout.
+  - **Phiên 4 - API Connector:** Da sua 3 file docs (spec, product, overview). Spec: bo sung `perfectCanvasRequest`, env vars (`FINGERPRINT_CWD`, `FINGERPRINT_TIMEOUT`), event handlers, `engine` export. Product: bo sung `cleanup()` trong vi du, `engine` export, event logs, `perfectCanvasRequest` ghi chu. Overview: them ghi nhan sai lech ve `perfectCanvasRequest` va events.
+  - **Phiên 5 - FingerprintPlugin:** Da sua 3 file docs (spec, product, overview). Spec: bo sung `setProxyFromArguments`, `setWorkingFolder`, timeout methods, `static create()`, `plugin` singleton, `configure()`; mo ta chi tiet 6 buoc `_launch()`. Product: bo sung vi du `plugin` singleton va `create()`, them 6 buoc lifecycle, method bo sung. Overview: them ghi nhan sai lech.
+  - **Ke hoach tong the:** Da hoan thanh 5/5 phien.
+
+---
+
+### Hiệu chỉnh tài liệu core theo code thực tế
+
+- **Trạng thái:** [/] Đang làm
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/core-documentation-correction.design.md) | [Spec](specs/core-documentation-correction.spec.md) | [Plan](plans/core-documentation-correction.plan.md)
+- **Ghi chú:**
+  - Non-feature task: viết lại tài liệu core để bám đúng code thực tế.
+  - Phạm vi vòng đầu: BrowserEngine, Playwright Bridge, FingerprintPlugin, API Connector, RemoteEngine.
+  - Mục tiêu: mô tả rõ luồng `Chromium -> PlaywrightFingerprintPlugin -> FingerprintPlugin -> API Connector -> RemoteEngine`, sửa API sai, thêm giải thích "tại sao".
+
+---

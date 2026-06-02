@@ -1,47 +1,39 @@
 # Product: Native Mutex
 
-## Tổng quan
+## Mô tả
 
-Native Mutex tạo Windows named mutex -- một cơ chế đồng bộ ở cấp độ kernel -- cho engine binary. Engine dùng mutex để đảm bảo chỉ một instance của nó chạy tại một thời điểm.
+Native Mutex cung cấp Windows named mutex thông qua C++ addon (`mutex.node`). Mutex này cần cho `worker.exe` (BAS process) để đồng bộ truy cập tài nguyên dùng chung giữa các process.
 
-Bạn không cần dùng Native Mutex trực tiếp. Nó được gọi tự động bởi FingerprintPlugin.
-
-## Cách hoạt động
-
-```
-mutex.create('BASProcess' + uuid)
-    │
-    └── Windows kernel tạo named mutex "BASProcess<uuid>"
-```
-
-Mỗi lần launch tạo mutex với UUID random (VD: `BASProcess550e8400-e29b-41d4-a716-446655440000`) -- cho phép nhiều instance chạy đồng thời.
-
-## API
-
-### `create(name)`
-
-| Tham số | Kiểu | Mô tả |
-|---|---|---|
-| `name` | `string` | Tên mutex (VD: `'BASProcess' + uuid`) |
+## Cách sử dụng
 
 ```ts
-import { create } from 'fingerprint-chromium-engine/plugin/mutex';
+import { create, release } from './plugin/mutex';
 
-create('BASProcess' + crypto.randomUUID());
-// Windows named mutex "BASProcess<uuid>" được tạo
+// Tạo mutex với tên unique
+create('BASProcess12345');
+
+// worker.exe dùng mutex này để đồng bộ
+// ...
+
+// Giải phóng mutex
+release('BASProcess12345');
 ```
 
-## Xử lý lỗi
+## Hành vi chi tiết
 
-| Lỗi | Nguyên nhân |
-|---|---|
-| `Unsupported OS architecture` | Kiến trúc Windows không phải ia32/x64 |
-| `Unsupported OS platform` | Hệ điều hành không phải Windows |
+- `create(name)` tạo kernel-level named mutex trên Windows. Mutex có tên duy nhất để tránh xung đột giữa các instance.
+- `release(name)` gọi native close handle. Nếu native chưa hỗ trợ close, `release()` là no-op.
+- Windows kernel tự động cleanup handle mutex khi process thoát — không lo memory leak nếu quên release.
+- Nếu architecture (32-bit/64-bit) không có file `mutex.node` tương ứng, throw error rõ ràng.
 
-## Lưu ý
+## Giới hạn và điều kiện
 
-- **Chạy trên Windows** -- đây là native Windows API, không chạy trên Linux/macOS.
-- **Cần file .node** -- mutex.node được compile sẵn cho win32-x64 và win32-ia32.
-- **Tự động load** -- module chọn đúng .node file dựa trên `process.arch`.
+- Chỉ chạy trên Windows (win32).
+- Cần file `mutex.node` phù hợp với architecture (32-bit hoặc 64-bit).
+- File `mutex.node` được resolve từ package root — cần đúng path sau khi tsup bundle (xem KNOWN_ISSUES.md #6).
 
----
+## Tài liệu kỹ thuật liên quan
+
+- Spec: `docs/specs/native-mutex.spec.md`
+- Design: `docs/designs/native-mutex.design.md`
+- Source: `src/plugin/mutex/index.ts`

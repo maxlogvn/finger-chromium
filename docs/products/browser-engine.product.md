@@ -1,104 +1,86 @@
 # Product: BrowserEngine
 
-## Tổng quan
+## Mô tả
 
-`Chromium` là singleton public API -- điểm vào duy nhất bạn cần để điều khiển fingerprint browser. Dùng fluent pattern, bạn gọi `.useXxx()` để cấu hình, `.launch()` để khởi động, `.newContext()` để lấy Playwright BrowserContext, và `.quit()` để dọn dẹp.
+`BrowserEngine` là API chính mà user dùng qua singleton `Chromium`. Nó gom các cấu hình thường dùng như fingerprint, proxy, profile, rồi tạo `BrowserContext` để user thao tác bằng Playwright.
 
-## Ví dụ đầy đủ
+Nói ngắn gọn: `BrowserEngine` là lớp "điều phối bên ngoài". Nó không tự inject fingerprint. Nó chuẩn bị cấu hình đúng thứ tự và chuyển việc launch thật cho `PlaywrightFingerprintPlugin`.
+
+## Cách sử dụng
+
+Key bảo mật được đọc từ biến môi trường `BABLOSOFT_KEY`.
 
 ```ts
 import { Chromium } from 'fingerprint-chromium-engine';
 
-// --- Cấu hình ---
-Chromium
-  .useFingerprint(fingerprintJson, {
-    usePerfectCanvas: true,
-    safeWebGL: true,
-    safeCanvas: true,
-  })
-  .useProxy('socks5://127.0.0.1:9050', {
-    changeWebRTC: 'replace',
-    enableTunneling: true,
-    dnsMode: 'custom-direct',
-  })
-  .useProfile('./profiles/my_profile', {
-    loadProxy: true,
-    loadFingerprint: true,
-  });
-
-// --- Launch ---
-await Chromium.launch({
-  headless: false,
-  args: ['--disable-web-security'],
+const fingerprintData = await Chromium.newFingerprint({
+  tags: ['Microsoft Windows', 'Chrome'],
 });
 
-// --- Lấy context ---
-const context = await Chromium.newContext();
+const context = await Chromium
+  .useFingerprint(fingerprintData, {
+    safeWebGL: true,
+    usePerfectCanvas: true,
+  })
+  .useProxy('http://user:pass@127.0.0.1:8080', {
+    changeTimezone: true,
+    changeGeolocation: true,
+    changeWebRTC: 'replace',
+  })
+  .useProfile('./profiles/user_01', {
+    loadProxy: true,
+    loadFingerprint: true,
+  })
+  .launch({
+    viewport: { width: 1280, height: 720 },
+  })
+  .newContext();
+
 const page = await context.newPage();
 await page.goto('https://example.com');
 
-// --- Dọn dẹp ---
 await Chromium.quit();
 ```
 
-## Lifecycle Rules
+## Hành vi chi tiết
 
-| Gọi method | Khi chưa launch | Sau launch | Sau quit |
-|---|---|---|---|---|
-| `launch()` | OK | Throw (1 lần) | OK |
-| `newContext()` | Throw | OK (1 lần) | Throw |
-| `quit()` | No-op | OK | No-op |
-| `useFingerprint()` | OK | OK | OK |
-| `useProxy()` | OK | OK | OK |
-| `useProfile()` | OK | OK | OK |
+`useFingerprint()`, `useProxy()` và `useProfile()` chỉ đăng ký cấu hình. Chúng chưa mở browser và chưa gọi engine.
 
-## Cleanup Chain
+`launch()` là bước khóa cấu hình. Method này:
 
-Khi gọi `quit()` (sau `newContext()`), các tài nguyên được dọn dẹp theo thứ tự:
+- hợp nhất options mặc định với options user truyền vào,
+- set service key từ `BABLOSOFT_KEY`,
+- set thư mục làm việc của engine,
+- truyền profile, proxy, fingerprint xuống `PlaywrightFingerprintPlugin`.
 
-```
-1. BrowserContext.close()          -- đóng context, giải phóng port
-2. browser.close()                 -- taskkill worker.exe
-3. engine.kill()                   -- kill FastExecuteScript.exe
-4. pcapServer.close()              -- close TCP mock server
-5. mutex.release()                 -- release BASProcess{pid}
-6. cleaner.stop()                  -- clearInterval + unlock files
-7. dataManager.unmap()             -- xoá thư mục tạm
-```
+`newContext()` mới là bước tạo `BrowserContext`. Bên trong, method này gọi `engine.launchPersistentContext()`. `launchPersistentContext` là API Playwright dùng thư mục profile cố định, nên phù hợp với profile bền vững.
 
-Tất cả các bước đều an toàn khi gọi nhiều lần (idempotent), dùng try/catch nội bộ.
+`quit()` đóng context, lưu profile nếu có, rồi gọi `engine.cleanup()`. Cần gọi cleanup vì đóng context chưa chắc dọn hết worker process, engine process, PCAP server, cleaner và mutex.
 
-## Profile Safety
+## Giới hạn và điều kiện
 
-Khi bạn gọi `useProfile('./profiles/user')`, dữ liệu được:
+- `Chromium` là singleton. Thiết kế này giúp tránh nhiều engine instance tranh chấp cùng thư mục runtime.
+- `launch()` chỉ gọi được một lần cho mỗi vòng đời. Muốn chạy phiên mới thì gọi `quit()` trước.
+- Mỗi vòng đời chỉ có một `BrowserContext`.
+- `useProfile()` không ghi trực tiếp vào thư mục profile gốc khi browser đang chạy. Profile được map sang thư mục tạm để giảm nguy cơ corrupt dữ liệu.
+- Code hiện tại không có method public để đổi key trên `BrowserEngine`. Nếu cần đổi key, dùng biến môi trường `BABLOSOFT_KEY` trước khi chạy process Node.js.
 
-1. **Copy** vào thư mục tạm `<BROWSER_RUNNING_DIR>/profile/<timestamp>_<random4hex>/`
-2. **Browser chạy trên bản copy** -- không corrupt dữ liệu gốc
-3. **Khi quit**: copy ngược lại thư mục gốc, xoá thư mục tạm
+## Khi nào dùng
 
-Nếu browser crash, profile gốc vẫn an toàn. Thư mục tạm được CleanupDaemon dọn sau.
+Dùng `Chromium` khi muốn flow đơn giản nhất:
 
-## Custom Launcher
-
-Bạn có thể thay thế Playwright launcher mặc định:
-
-```ts
-import { chromium } from 'playwright-extra';
-
-Chromium.repackChromium({
-  launch: (opts) => chromium.launch(opts),
-  launchPersistentContext: (dir, opts) => chromium.launchPersistentContext(dir, opts),
-});
+```txt
+cấu hình fingerprint/proxy/profile
+  -> launch
+  -> newContext
+  -> dùng Playwright
+  -> quit
 ```
 
-**Lưu ý:** `repackChromium()` không reset config -- fingerprint/proxy/profile đã cấu hình vẫn được áp dụng khi gọi `launch()`.
+Nếu cần can thiệp sâu vào launcher Playwright, dùng `repackChromium(launcher)`. Chỉ nên dùng khi hiểu rõ launcher custom, vì thay sai launcher có thể làm fingerprint không được setup đúng.
 
-## Môi trường
+## Tài liệu kỹ thuật liên quan
 
-| Biến | Mục đích | Mặc định |
-|---|---|---|
-| `BABLOSOFT_KEY` | Key bảo mật cho API engine | `''` |
-| `BROWSER_RUNNING_DIR` | Thư mục tạm cho browser đang chạy | `.tmp/browser/running` |
-| `ENGINE_WORKING_DIR` | Thư mục làm việc của engine | `.tmp/browser/engine` |
-
----
+- Spec: `docs/specs/browser-engine.spec.md`
+- Design: `docs/designs/browser-engine.design.md`
+- Source: `src/adapter/playwright/chromium.ts`

@@ -1,58 +1,40 @@
 # Design: Quản lý Viewport
 
-## Vấn đề
+## Bối cảnh
 
-Kích thước viewport là một phần của fingerprint. Khi spawn browser với viewport mặc định, cần resize về đúng kích thước fingerprint. Cần đồng bộ `availWidth`/`availHeight` vào file `.ini` của engine để engine biết kích thước màn hình thật.
+Khi browser automation với fingerprint, viewport cần được đặt đúng kích thước fingerprint thật. Nếu viewport sai lệch so với fingerprint (ví dụ fingerprint ghi nhận 1920x1080 nhưng viewport lại là 800x600), bot detection dễ dàng phát hiện.
 
-## Giải pháp: CDP-based resize + .ini sync
+Tuy nhiên, resize viewport qua CDP không phải lúc nào cũng chính xác ngay lần đầu -- có sai lệch do khung viền trình duyệt, thanh công cụ, DPI scaling. Cần cơ chế retry với delta correction.
 
-### CDP Resize
+## Câu hỏi làm rõ
 
-Dùng Chrome DevTools Protocol để resize window browser:
+- Ai chịu trách nhiệm resize viewport? → Plugin có hai implementation: `src/plugin/browser.ts` (dùng chrome-remote-interface) và `src/adapter/playwright/utils.ts` (dùng Playwright CDPSession).
+- Viewport có bị thay đổi sau khi set không? → Có thể, nếu người dùng gọi `setViewportSize` hoặc resize tay. Cần proxy `setViewportSize` để chặn.
+- Delta correction hoạt động thế nào? → Ban đầu trừ 16x88 (khung viền). Nếu sai lệch, tự động cộng dồn sai số vào delta cho lần thử sau.
 
-1. Kết nối CDP đến browser.
-2. Lấy `windowId` qua `Browser.getWindowForTarget()`.
-3. Set bounds qua `Browser.setWindowBounds()`.
-4. Verify kích thước qua `Runtime.evaluate` (in-browser script).
+## Các phương án
 
-Có 2 implementation:
-- **`plugin/browser.ts`**: connect trực tiếp CDP qua `chrome-remote-interface`, dùng cho standalone mode.
-- **`adapter/playwright/utils.ts`**: connect CDP qua `page.context().newCDPSession(page)`, dùng cho Playwright bridge mode.
+### Phương án 1: Chỉ set viewport một lần, không retry
+Đặt kích thước window bounds CDP, không kiểm tra lại.
 
-### Delta Correction Algorithm
+- Ưu điểm: Nhanh, đơn giản.
+- Nhược điểm: Thường bị sai lệch do DPI scaling và khung viền.
 
-```ts
-let delta = { width: 16, height: 88 };  // Window chrome: title bar + border
-for (let i = 0; i < 3; i++) {
-  await setWindowBounds({ width: desired + delta.width, height: desired + delta.height });
-  const actual = await getViewport();
-  if (match) break;
-  delta.width += desired.width - actual.width;   // Tự điều chỉnh cho lần sau
-  delta.height += desired.height - actual.height;
-}
-```
+### Phương án 2: Set viewport với retry + delta correction (chọn)
+Set viewport, kiểm tra lại. Nếu sai, tự điều chỉnh delta và thử lại (tối đa 3 lần).
 
-Lý do cần delta: window chrome (title bar, tab bar, bookmark bar, status bar) chiếm khoảng 16x88 pixels trên Windows. `Browser.setWindowBounds` set toàn bộ window, không phải viewport. Cần trừ phần chrome.
+- Ưu điểm: Chính xác đến từng pixel sau tối đa 3 lần thử.
+- Nhược điểm: Tốn thời gian hơn (tối đa 3 lần CDP call). Chấp nhận được vì chỉ gọi một lần khi khởi tạo.
 
-### Sync .ini (`plugin/config.ts`)
+### Phương án 3: Không set viewport, dùng mặc định
+Bỏ qua viewport, để browser tự chọn kích thước.
 
-`synchronize(id, pwd, bounds, action)`:
+- Ưu điểm: Không tốn thời gian.
+- Nhược điểm: Dễ bị phát hiện vì viewport không khớp fingerprint.
 
-1. Dùng `AsyncLock` để tránh race condition giữa các instance.
-2. **Phase 1 (reset)**: ghi `availWidth = BAS_NOT_SET`, `availHeight = BAS_NOT_SET` vào file `.ini`.
-3. Gọi `action()` -- thường là resize.
-4. **Phase 2**: ghi `availWidth` và `availHeight` thật.
-5. Mỗi phase có 2s delay.
+## Giải pháp được chọn
 
-`BAS_NOT_SET` (-170141183460469231731687303715884105727) là `int128` min value. Engine binary dùng giá trị này để biết "chưa được set" -- bỏ qua cached values và đọc giá trị thật từ system.
-
-### Configure (`plugin/config.ts`)
-
-`configure(cleanup, browser, bounds, sync)`:
-1. Đăng ký cleanup handler qua `browser.process.once('exit')`.
-2. Set `browser.configure()` để resize viewport.
-3. Gọi `browser.configure()` ngay.
-
----
-
-Xem thêm: [Spec](../specs/viewport-management.spec.md) | [Plan](../plans/viewport-management.plan.md)
+- Phương án AI đề xuất: Phương án 2 (retry + delta correction).
+- Phương án được chọn: Phương án 2.
+- Lý do: Đảm bảo viewport khớp chính xác với fingerprint, giảm nguy cơ bị phát hiện.
+- Ràng buộc: Yêu cầu CDP kết nối đến browser. Không ảnh hưởng đến performance đáng kể.

@@ -1,18 +1,48 @@
 # Spec: Hạ tầng dự án (Project Infrastructure)
 
+> Tuân thủ quy ước code tại [CONVENTIONS.md](../CONVENTIONS.md).
+
 ## Mô tả
 
-Hạ tầng dự án bao gồm: cấu trúc thư mục, build pipeline, linting, formatting, testing, và các file cấu hình. Đây là nền tảng để phát triển tất cả các tính năng khác.
+Hạ tầng dự án bao gồm cấu trúc thư mục, build pipeline (tsup), linting (ESLint), formatting (Prettier), testing (Mocha + tsx), và các file cấu hình. Đây là nền tảng để phát triển tất cả tính năng khác.
 
-## API / Interfaces chính
+`fingerprint-chromium-engine` là thư viện Node.js dạng ESM + CJS, chỉ hỗ trợ Windows (win32) 32-bit và 64-bit. Fingerprint được inject ở tầng C/C++ trước khi browser khởi động.
 
-### Export công khai từ `src/index.ts`
+## Yêu cầu
+
+- Build ra 2 định dạng: ESM (`dist/index.js`) và CJS (`dist/index.cjs`).
+- Kèm declaration file (`.d.ts`) nhưng không resolve type từ node_modules (`dts.resolve: false`).
+- Linting: `consistent-type-imports` (error) + `no-explicit-any` (warn).
+- Format: tabs, single quotes, 100 printWidth, trailingComma all.
+- Test chạy với browser thật (Playwright Chromium), không mock.
+- Chỉ hỗ trợ Windows (win32) — `os: ["win32"]`.
+- Node.js >= 18 (`engines.node: ">=18.0.0"`).
+- `playwright-core` là peer dependency (>= 1.60.0).
+- CJS (require) cần wrapper function vì ESM không có `require` native.
+
+## Thiết kế
+
+### Kiến trúc tổng quan
+
+```
+src/index.ts (entry point công khai)
+  → tsup bundle
+    → dist/index.js   (ESM)
+    → dist/index.cjs  (CJS)
+    → dist/index.d.ts (DTS, không resolve node_modules)
+
+Thư mục src/:
+  ├── types/          Định nghĩa TypeScript types (5 files)
+  ├── plugin/         Core engine + connector + launcher + cleaner + mutex
+  ├── adapter/playwright/  Playwright bridge + utils + loader + data
+  ├── common/         In-browser scripts
+  └── loader/         Generic module loader
+```
+
+### Export công khai
 
 ```ts
-// Interface chính -- public API của thư viện
 export { type PWChromium } from './types/PWChromium';
-
-// Singleton Chromium + các type helper
 export {
   Chromium,
   type FetchOptions,
@@ -24,178 +54,82 @@ export {
 } from './adapter/playwright/chromium';
 ```
 
-### `package.json` -- Cấu hình package
+Tham chiếu design doc: `docs/designs/project-infrastructure.design.md`.
 
-| Field | Giá trị | Ý nghĩa |
-|---|---|---|
-| `name` | `fingerprint-chromium-engine` | Tên package |
-| `version` | `0.2.0` | Phiên bản hiện tại |
-| `type` | `module` | Mặc định là ESM |
-| `main` | `./dist/index.cjs` | Entry cho CommonJS |
-| `module` | `./dist/index.js` | Entry cho ESM |
-| `types` | `./dist/index.d.ts` | Declaration file |
-| `engines.node` | `>=18.0.0` | Yêu cầu Node.js >= 18 |
-| `os` | `["win32"]` | Chỉ hỗ trợ Windows |
+## API / Data flow
 
-### Scripts
+### Build pipeline
+
+```
+tsup.config.ts
+  entry: src/index.ts
+  format: ['cjs', 'esm']
+  dts: resolve: false
+  clean: true
+  external: 13 packages (playwright-core, chrome-remote-interface, ...)
+
+npm run build → dist/ có 3 files
+```
+
+### Lint pipeline
+
+```
+eslint.config.ts
+  - typescript-eslint
+  - consistent-type-imports: error
+  - no-explicit-any: warn
+
+prettier (.prettierrc)
+  - tabs, single quotes, 100 printWidth, trailingComma all
+```
+
+### Test pipeline
+
+```
+.mocharc.yml
+  spec: tests/**/*.ts
+  loader: tsx (TypeScript execution)
+  timeout: 10s
+  exit: true
+```
+
+## Components
+
+| File/Thư mục | Vai trò |
+|---|---|
+| `package.json` | Thông tin package, scripts, dependencies. `"type": "module"`, `"os": ["win32"]`, peer dep `playwright-core >= 1.60.0` |
+| `tsconfig.json` | `target: ES2022`, `strict: true`, `moduleResolution: Bundler`, paths alias `@src/*` |
+| `tsup.config.ts` | Bundle ESM + CJS + DTS, 13 external packages |
+| `eslint.config.ts` | ESLint flat config với typescript-eslint |
+| `.prettierrc` | Format: tabs, single quotes, 100 printWidth, trailingComma all |
+| `.mocharc.yml` | Mocha config: tsx loader, 10s timeout, exit |
+| `src/index.ts` | Entry point — re-export Chromium + types |
+| `src/` | 5 nhánh: types, plugin, adapter/playwright, common, loader |
+| `dist/` | Build output (gitignored) |
+
+### Build scripts (package.json)
 
 | Script | Lệnh | Mô tả |
 |---|---|---|
-| `lint` | `eslint src/` | Kiểm tra ESLint |
-| `lint:fix` | `eslint src/ --fix` | Tự động sửa ESLint |
-| `format` | `prettier --write src/` | Format code bằng Prettier |
-| `test` | `mocha --exit` | Chạy Mocha tests |
-| `clean` | `tsup --clean` | Xoá thư mục dist (dùng tsup built-in clean) |
-| `build` | `tsup` | Build ESM + CJS + DTS |
-| `prepare` | `npm run build` | Tự động build khi cài từ GitHub |
-| `dev` | `tsup --watch` | Build và watch thay đổi |
-
-### Peer Dependencies
-
-| Package | Version | Bắt buộc |
-|---|---|---|
-| `playwright-core` | `>=1.60.0` | Có (bắt buộc) |
-
-### Các Dependencies chính
-
-| Package | Version | Mục đích |
-|---|---|---|
-| `async-lock` | `1.4.1` | Đồng bộ truy cập tài nguyên (profile, engine) |
-| `axios` | `1.15.2` | HTTP requests -- download engine, fetch fingerprint |
-| `chokidar` | `^5.0.0` | Watch file system -- phản hồi IPC từ engine |
-| `chrome-remote-interface` | `0.34.0` | Giao tiếp CDP với Chromium |
-| `compare-versions` | `6.1.1` | So sánh phiên bản Chromium |
-| `debug` | `4.4.3` | Debug logging theo namespace |
-| `extract-zip` | `2.0.1` | Giải nén engine zip |
-| `fast-glob` | `3.3.3` | File globbing |
-| `proper-lockfile` | `4.1.2` | Lock file ở hệ thống |
-
-## Cấu trúc thư mục
-
-### `src/` (source code)
-
-```
-src/
-├── index.ts                    # Public API entry point
-├── types/                      # TypeScript type definitions
-│   ├── PWChromium.ts           # Interface public API -- Chromium singleton
-│   ├── fingerprint.ts          # FingerprintOptions
-│   ├── proxy.ts                # ProxyOptions
-│   ├── profile.ts              # ProfileOptions
-│   └── fetch.ts                # FetchOptions, Tag, Time
-├── common/                     # In-browser scripts
-│   └── index.ts                # waitForResize, getViewport
-├── loader/                     # Module loader -- tìm playwright-core
-│   └── index.ts                # Loader class
-├── plugin/                     # Core logic
-│   ├── index.ts                # FingerprintPlugin orchestrator
-│   ├── errors.ts               # PluginError hierarchy
-│   ├── browser.ts              # Browser management
-│   ├── config.ts               # Configuration conversion
-│   ├── cleaner.ts              # File Cleanup Daemon
-│   ├── utils.ts                # Helper functions
-│   ├── connector/              # Engine communication
-│   │   ├── index.ts            # API Connector (singleton)
-│   │   ├── engine.ts           # RemoteEngine (download, extract, IPC)
-│   │   ├── utils.ts            # Connector helpers
-│   │   └── pcapServer/         # PCAP TCP server
-│   │       └── index.ts
-│   ├── launcher/               # Browser launcher
-│   │   └── index.ts            # Spawn Chromium, detect DevTools URL
-│   └── mutex/                  # Windows named mutex
-│       ├── index.ts            # Native addon wrapper
-│       ├── win32-ia32/mutex.node  # C++ addon 32-bit
-│       └── win32-x64/mutex.node   # C++ addon 64-bit
-└── adapter/                    # Playwright bridge
-    └── playwright/
-        ├── chromium.ts         # BrowserEngine (singleton, fluent API)
-        ├── engine.ts           # PlaywrightFingerprintPlugin (bridge)
-        ├── data.ts             # AdapterDataManager (profile mapping)
-        ├── loader.ts           # Playwright loader
-        └── utils.ts            # Hook binding, viewport management
-```
-
-### `docs/` (tài liệu)
-
-```
-docs/
-├── designs/        # Tài liệu thiết kế (22 files)
-├── specs/          # Đặc tả chi tiết (21 files)
-├── plans/          # Kế hoạch thực hiện (22 files)
-├── products/       # Tài liệu tính năng cho dev (20 files)
-├── overviews/      # Báo cáo kết quả (21 files)
-├── ROADMAP.md      # Theo dõi tiến độ
-├── CONVENTIONS.md  # Quy ước code
-├── STACK.md        # Công nghệ sử dụng
-├── Welcome.md      # Giới thiệu
-└── WORKFLOW.md     # Quy trình phát triển
-```
-
-## Luồng dữ liệu
-
-### Build flow
-
-```
-src/index.ts (entry)
-      │
-      ▼
-tsup bundle ──► dist/index.js (ESM)
-               ► dist/index.cjs (CJS)
-               ► dist/index.d.ts (DTS, resolve: false)
-      │
-      ▼
-Publish lên npm (npm publish)
-      │
-      ▼
-User install → import/require → dùng Chromium singleton
-```
-
-### Test flow
-
-```
-npm test (mocha --exit)
-      │
-      ▼
-mocha tìm tests/*.test.ts
-      │
-      ▼
-tsx transpile .ts → JavaScript
-      │
-      ▼
-Browser thật (Playwright Chrome) chạy test
-
-Không mock → fingerprint injection được verify end-to-end
-```
-
-## File liên quan
-
-| File | Vai trò |
-|---|---|
-| `package.json` | Thông tin package, dependencies, scripts |
-| `tsconfig.json` | TypeScript config (strict, ES2022, paths) |
-| `tsup.config.ts` | Build config (ESM, CJS, external, DTS) |
-| `eslint.config.ts` | ESLint config (typescript-eslint) |
-| `.prettierrc` | Prettier config (tabs, single quotes, 100 width) |
-| `.mocharc.yml` | Mocha config (tsx loader, 10s timeout) |
-| `project.xml` | Engine BAS config file (chứa EngineVersion) |
-| `src/index.ts` | Public API re-export |
+| `build` | `tsup` | Bundle ESM + CJS + DTS |
+| `lint` | `eslint src/ tests/` | ESLint toàn bộ source |
+| `format` | `prettier --write "src/**/*.ts"` | Format code |
+| `test` | `mocha` | Chạy Mocha tests |
+| `clean` | `tsup --clean` | Xoá dist (Windows-compatible) |
+| `prepare` | `npm run build` | Auto-build khi cài từ GitHub |
 
 ## Xử lý lỗi
 
-- **Build lỗi:** `tsup` sẽ báo lỗi TypeScript compile hoặc esbuild bundle. Cần kiểm tra lại cú pháp.
-- **Lint lỗi:** ESLint báo lỗi `consistent-type-imports` (error) và `no-explicit-any` (warn). Fix theo hướng dẫn.
-- **Test lỗi:** Mocha report lỗi kèm stack trace. Nếu test cần browser thật, đảm bảo playwright chromium đã được cài (`npx playwright install chromium`).
-- **Clean:** Dùng `tsup --clean` thay vì `rm -rf dist` để tương thích Windows.
+| Tình huống | Hành vi |
+|---|---|
+| Build lỗi (TypeScript compile fail) | tsup/esbuild báo lỗi — fix syntax |
+| Lint lỗi `consistent-type-imports` | ESLint error — dùng `import type { ... }` |
+| Lint lỗi `no-explicit-any` | ESLint warning — có thể bỏ qua nếu cần |
+| Test lỗi (browser không có) | Mocha report + stack trace. Cần `npx playwright install chromium` |
+| Windows clean script không có `rm -rf` | Dùng `tsup --clean` thay thế |
 
-## Ghi chú kỹ thuật
+## Kiểm tra
 
-- **`dts.resolve: false`** trong tsup.config.ts là bắt buộc. Nếu set `true`, tsup sẽ crash vì `rollup-plugin-dts` không parse được type từ playwright-core (các conditional types phức tạp).
-- **External list có 13 packages.** `dotenv` là devDependency nhưng vẫn trong list -- để phòng trường hợp code có dynamic import.
-- **`skipNodeModulesBundle: true`** phải đặt ở ROOT level của tsup config, không phải trong `dts.compilerOptions`. Sai vị trí sẽ không có tác dụng.
-- **Playwright Core** là peer dependency, không được bundle. Thư viện tự tìm playwright-core qua `createRequire` (xem `src/loader/index.ts`).
-- **Format script** (`npm run format`) chỉ chạy trên `src/`, không format `tests/` hay `docs/`.
-- **ESLint ignores** `dist/**` và `node_modules/**`.
-- **Mocha** dùng `--exit` flag để tự động thoát process sau khi test, tránh treo do browser process hoặc async handles còn mở.
-- `extract-zip` version `2.0.1` tương thích với API `extract()` dùng trong `src/plugin/connector/engine.ts`.
-
----
+- Happy path: `npm run lint` → 0 errors, `npm run build` → dist/ có 3 files.
+- Edge case: khi thiếu playwright-core → báo peer dependency warning khi npm install.
+- Edge case: `dts.resolve: true` → tsup crash với playwright-core types.

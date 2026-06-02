@@ -1,41 +1,27 @@
-# Design: Native Mutex
+# Design: Native Mutex -- Windows named mutex
 
-## Vấn đề cần giải quyết
+## Bối cảnh
 
-Engine binary (FastExecuteScript.exe) yêu cầu một Windows named mutex để đồng bộ truy cập tài nguyên (profile, port, ...). JavaScript không thể tạo named mutex -- cần native C++ code.
+BASProcess yêu cầu named mutex để đồng bộ truy cập tài nguyên. Dùng native C++ addon (`mutex.node`) cho hiệu năng và chính xác.
 
-Giải pháp: một C++ addon nhỏ (`mutex.node`) được compile riêng cho win32 32-bit và 64-bit.
+## Câu hỏi làm rõ
 
-## Giải pháp chọn
+- Dùng module JavaScript thuần hay native addon? → Native (mutex.node) vì cần kernel-level mutex.
+- Hỗ trợ architecture nào? → win32-ia32 (32-bit) + win32-x64 (64-bit).
 
-### Kiến trúc
+## Các phương án
 
-```
-mutex/index.ts
-    │
-    ├── Load mutex.node từ thư mục plugin/mutex/{platform}-{arch}/
-    │       ├── win32-x64/mutex.node
-    │       └── win32-ia32/mutex.node
-    │
-    └── Export create() function
-```
+### Phương án 1: proper-lockfile (file lock)
 
-### Tại sao dùng native addon?
+Không đáp ứng yêu cầu named mutex của BASProcess.
 
-`async-lock` và `proper-lockfile` không thể tạo Windows named mutex -- chúng chỉ lock ở cấp độ JavaScript hoặc file hệ thống. Engine yêu cầu Windows kernel mutex, chỉ có thể tạo qua native API (`CreateMutexW`).
+### Phương án 2: Native C++ addon (chọn)
 
-### Tại sao có 2 file .node?
+- Ưu điểm: Kernel-level named mutex, đúng yêu cầu worker.exe.
+- Nhược điểm: Cần maintain binary cho mỗi architecture.
 
-Windows có 2 kiến trúc: 32-bit (ia32) và 64-bit (x64). C++ addon phải được compile riêng cho từng kiến trúc vì binary format khác nhau.
+## Giải pháp được chọn
 
-### Tại sao dùng `createRequire`?
-
-`mutex/index.ts` là ESM (type: module). Để require một .node file, cần tạo `require` function từ ESM context bằng `createRequire(import.meta.url)`.
-
-### Xử lý lỗi
-
-Nếu không load được mutex.node:
-- Windows sai kiến trúc: throw `Error` với message kiến trúc không được hỗ trợ.
-- Platform không phải Windows: throw `Error` với message platform không được hỗ trợ.
-
----
+- **Phương án AI đề xuất:** Phương án 2 (native addon).
+- **Phương án được chọn:** Phương án 2.
+- **Cơ chế:** resolvePackageRoot -> load `mutex.node` từ `plugin/mutex/{platform}-{arch}/` -> export `create(name)` và `release(name)`.

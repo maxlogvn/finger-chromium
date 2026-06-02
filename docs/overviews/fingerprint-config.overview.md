@@ -1,43 +1,76 @@
 # Overview: Cấu hình Fingerprint
 
-## Mục tiêu
+## Tóm tắt
 
-Định nghĩa `FingerprintOptions` interface với 9 boolean flags kiểm soát các kỹ thuật giả lập fingerprint, tích hợp vào `FingerprintPlugin.useFingerprint()`.
+Đã triển khai `FingerprintOptions` type (9 fields), `useFingerprint()` method (Fluent API), `validateConfig()` cho data/options. Luồng: user config -> lưu vào `this.fingerprint` -> gửi lên engine native qua `api('setup')` khi launch.
 
-## Kết quả
+## Kiến trúc
 
-- `src/types/fingerprint.ts`: 91 dòng, interface `FingerprintOptions` với 9 fields.
-- Tích hợp vào `FingerprintPlugin` qua `useFingerprint(value, options)`.
-- Validate bằng `validateConfig()` trong `utils.ts`.
+```
+types/fingerprint.ts                -> FingerprintOptions interface (9 fields)
+plugin/index.ts (useFingerprint)    -> validateConfig -> this.fingerprint = { value, options }
+plugin/index.ts (_launch)           -> api('setup', { fingerprint: this.fingerprint })
+engine native (C/C++)               -> inject fingerprint ở tầng native
+```
 
-## Kiểm tra
+## Tham chiếu code
 
-- `npm run lint` -- 0 errors.
+| Component | File | Dòng |
+|---|---|---|
+| `FingerprintOptions` interface | `src/types/fingerprint.ts` | 18-91 |
+| `useFingerprint()` (FingerprintPlugin) | `src/plugin/index.ts` | 115-119 |
+| `validateConfig()` | `src/plugin/utils.ts` | 5-15 |
+| `useFingerprint()` (BrowserEngine) | `src/adapter/playwright/chromium.ts` | 101-105 |
+| Gửi config lên engine | `src/plugin/index.ts` | 239-249 |
 
-## Sai lệch so với kế hoạch
+## 9 fields trong FingerprintOptions
 
-Không có sai lệch.
+| Field | Default | Engine xử lý |
+|---|---|---|
+| `usePerfectCanvas` | `true` | Inject canvas data thật từ fingerprint |
+| `safeWebGL` | `true` | Override WebGLRenderingContext (GPU vendor, renderer) |
+| `safeAudio` | `true` | Override AudioContext methods (sample rate, channels) |
+| `safeCanvas` | `true` | Thêm noise vào Canvas2D |
+| `safeBattery` | `true` | Override Navigator.getBattery() |
+| `safeElementSize` | `false` | Override Element.getClientRects() / getBoundingClientRect() |
+| `emulateSensorAPI` | `true` | Override Sensor constructor |
+| `emulateDeviceScaleFactor` | `true` | Set devicePixelRatio |
+| `useFontPack` | `true` | Inject font list matching fingerprint |
 
-## Ghi chú kỹ thuật
+## Quyết định thiết kế
 
-### 8 default true, 1 default false
+- **`safeElementSize` mặc định false**: Chặn `getClientRects()` ảnh hưởng layout web app. User cần chủ động bật nếu cần che giấu element size.
+- **Các field còn lại mặc định true**: Fingerprint check kiểm tra đồng thời nhiều kỹ thuật. Tắt bất kỳ field nào làm tăng khả năng bị detect.
+- **`validateConfig()` dùng `Error` thay `PluginError`**: Lỗi đầu vào đơn giản, không liên quan engine. `PluginError` dành cho lỗi runtime engine.
+- **Fingerprint inject ở tầng C/C++**: Engine native inject trước khi Chromium khởi động -- không có dấu hiệu bị override trong JavaScript context.
 
-Tất cả field đều default `true`, ngoại trừ `safeElementSize` default `false` -- vì nó can thiệp vào `Element.getBoundingClientRect()` và `Element.prototype.clientWidth/Height`, có thể gây lỗi hiển thị website.
+## Flow data
 
-### Fingerprint không validate ở JS layer
+```
+BrowserEngine.useFingerprint(data, opts)
+  -> plugin.useFingerprint(data, opts)
+    -> validateConfig('fingerprint', data, opts)
+    -> this.fingerprint = { value: data, options: opts }
 
-`validateConfig()` chỉ kiểm tra value là string và options là object. Engine binary (C++) chịu trách nhiệm parse fingerprint JSON và áp dụng các option. Nếu JSON sai format, lỗi xuất hiện từ engine response dưới dạng raw string.
+launch()
+  -> engine._launch()
+    -> api('setup', { fingerprint: this.fingerprint })
+      -> IPC -> engine native
+        -> C/C++ inject WebGL, Audio, Canvas, Battery, Sensor, ...
+```
 
-### Fingerprint data JSON format
+## Lưu ý
 
-JSON string chứa: GPU model, WebGL vendor/renderer, canvas fingerprint hash, audio fingerprint, font list, screen resolution, deviceScaleFactor. Định dạng do bablosoft service quy định.
+- `usePerfectCanvas` yêu cầu fingerprint data chứa dữ liệu PerfectCanvas.
+- `useFontPack` cần cài FontPack riêng (wiki bablosoft).
+- Fingerprint data gửi qua `api('setup')` -- không có API update sau launch.
+- Engine inject ở tầng native -- không thể can thiệp ở JS layer.
 
-### `usePerfectCanvas` yêu cầu PerfectCanvas data trong fingerprint
+## Tài liệu liên quan
 
-Nếu fingerprint không có PerfectCanvas data, engine bỏ qua option này. Tương tự, `useFontPack` cần cài FontPack trước.
-
-### `emulateDeviceScaleFactor` và `emulateSensorAPI`
-
-Chỉ có tác dụng khi fingerprint tương ứng có dữ liệu cho các field này. `devicePixelRatio` luôn được thay thế đúng dù bật hay tắt option.
-
----
+- `docs/designs/fingerprint-config.design.md`
+- `docs/specs/fingerprint-config.spec.md`
+- `docs/plans/fingerprint-config.plan.md`
+- `docs/products/fingerprint-config.product.md`
+- `src/types/fingerprint.ts`
+- `src/plugin/index.ts`

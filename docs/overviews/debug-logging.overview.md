@@ -1,50 +1,81 @@
 # Overview: Debug Logging
 
-## Mục tiêu
+## Tóm tắt
 
-Thêm structured logging với `debug` package, 4 namespace theo module.
+Đã thêm structured logging với `debug` package, 4 namespace theo module. Mỗi module có logger riêng, dễ bật/tắt qua biến môi trường `DEBUG`.
 
-## Kết quả
-
-- 4 file sử dụng `debug`: `connector/index.ts`, `connector/engine.ts`, `connector/pcapServer/index.ts`, `plugin/cleaner.ts`.
-- Namespace convention: `browser-with-fingerprints:<module>`.
-
-## Kiểm tra
-
-- `npm run lint` -- 0 errors.
-
-## Sai lệch so với kế hoạch
-
-- Spec ghi pcapServer log count = 0 ("chỉ khai báo, chưa dùng"), nhưng code có 1 log (`log(error)` trong socket error handler). Đã fix spec.
-
-## Ghi chú kỹ thuật
-
-### `debug` output format
+## Kiến trúc
 
 ```
-namespace message +elapsed-time
+Connector module:
+  namespace: browser-with-fingerprints:connector
+  file: src/plugin/connector/index.ts
+  usage: log('-> api(%s)', name)
+
+RemoteEngine module:
+  namespace: browser-with-fingerprints:connector:engine
+  file: src/plugin/connector/engine.ts
+  usage: log('startProcess: download from %s', url)
+
+PcapServer module:
+  namespace: browser-with-fingerprints:connector:pcapServer
+  file: src/plugin/connector/pcapServer/index.ts
+  usage: log('listen port %d', port)
+
+Cleaner module:
+  namespace: browser-with-fingerprints:cleaner
+  file: src/plugin/cleaner.ts
+  usage: logError('cleaner: lỗi xoá file %s', filePath)
 ```
 
-Elapsed time là milliseconds từ process start (Date.now() - process startup). Không phải timestamp tuyệt đối.
+## Tham chiếu code
 
-### Output ra stderr
+| Component | File | Dòng |
+|---|---|---|
+| `debug` import + log | `src/plugin/connector/index.ts` | 18-22 |
+| `debug` import | `src/plugin/connector/engine.ts` | 20 |
+| `debug` import | `src/plugin/connector/pcapServer/index.ts` | 12 |
+| `debug` import | `src/plugin/cleaner.ts` | 12 |
 
-`debug` package ghi ra `process.stderr`, không phải stdout. Redirect: `node script.js 2> debug.log`.
+## 4 namespaces
 
-### Tắt màu
+| Namespace | File | Số log statements |
+|---|---|---|
+| `browser-with-fingerprints:connector` | connector/index.ts | 1 |
+| `browser-with-fingerprints:connector:engine` | connector/engine.ts | 12 |
+| `browser-with-fingerprints:connector:pcapServer` | pcapServer/index.ts | 1 |
+| `browser-with-fingerprints:cleaner` | cleaner.ts | 1 |
 
-`DEBUG_COLORS=no` hoặc `NO_COLOR=1`.
+## Bật log
 
-### Wildcard pattern
+```powershell
+$env:DEBUG = 'browser-with-fingerprints:connector:*'   # connector sub-modules
+$env:DEBUG = 'browser-with-fingerprints:*'             # tất cả module
+$env:DEBUG = '*'                                        # tất cả (kể cả third-party)
+```
 
-`DEBUG=browser-with-fingerprints:connector,browser-with-fingerprints:cleaner` hoặc `DEBUG=browser-with-fingerprints:*`. Wildcard `*` match mọi namespace bắt đầu với `browser-with-fingerprints:`.
+## Quyết định thiết kế
 
-### Trên Windows
+- **Namespace theo module hierarchy**: `connector:engine`, `connector:pcapServer` -- bật `connector:*` log tất cả connector sub-modules. Dễ debug connector mà không bị spam từ cleaner.
+- **`debug` thay `console.log`**: Zero overhead khi `DEBUG` không set (function là no-op). User kiểm soát log level qua env, không log production.
+- **`logError` tái sử dụng namespace**: `debug()` tự thêm prefix `ERROR` khi gọi `.error()`. Không cần namespace riêng cho error.
+- **Output ra `process.stderr`**: Không ảnh hưởng stdout (có thể redirect riêng).
 
-Dùng `set DEBUG=browser-with-fingerprints:*` (cmd) hoặc `$env:DEBUG='browser-with-fingerprints:*'` (PowerShell). `export` không hoạt động trên Windows.
+## Lưu ý
 
-### Performance
+- `debug` output ra `process.stderr`. Redirect: `node script.js 2> debug.log`.
+- Mỗi namespace được tô màu khác nhau trong terminal.
+- Zero overhead khi `DEBUG` không set -- function là no-op.
+- Wildcard `DEBUG=browser-with-fingerprints:*` match mọi namespace trong dự án.
+- Không log secrets (key, IP proxy).
 
-Nếu `DEBUG` env không match namespace, function trả về no-op. Zero overhead ở runtime -- không có string formatting hay I/O.
+## Tài liệu liên quan
 
----
+- `docs/designs/debug-logging.design.md`
+- `docs/specs/debug-logging.spec.md`
+- `docs/plans/debug-logging.plan.md`
+- `docs/products/debug-logging.product.md`
+- `src/plugin/connector/index.ts`
+- `src/plugin/connector/engine.ts`
+- `src/plugin/connector/pcapServer/index.ts`
+- `src/plugin/cleaner.ts`
