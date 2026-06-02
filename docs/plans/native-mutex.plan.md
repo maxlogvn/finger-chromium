@@ -16,8 +16,8 @@
 | File | Vai trò |
 |---|---|
 | `src/plugin/mutex/index.ts` | Native addon loader |
-| `src/plugin/mutex/win32-x64/mutex.node` | Binary 64-bit |
-| `src/plugin/mutex/win32-ia32/mutex.node` | Binary 32-bit |
+| `plugin/mutex/win32-x64/mutex.node` | Binary 64-bit (runtime) |
+| `plugin/mutex/win32-ia32/mutex.node` | Binary 32-bit (runtime) |
 
 ## Kiểm tra
 

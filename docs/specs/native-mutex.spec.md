@@ -15,6 +15,8 @@ export const create = mutex.create;
 
 Tạo Windows named mutex với tên `name`.
 
+Trong thực tế, tên mutex là `BASProcess<uuid>` (VD: `BASProcess550e8400-e29b-41d4-a716-446655440000`) với UUID random mỗi lần launch -- cho phép nhiều instance chạy đồng thời.
+
 ### `mutex` (default export)
 
 ```ts
@@ -45,8 +47,8 @@ FingerprintPlugin gọi create('BASProcess')
 | File | Vai trò |
 |---|---|
 | `src/plugin/mutex/index.ts` | Loader cho mutex.node (48 dòng) |
-| `src/plugin/mutex/win32-x64/mutex.node` | C++ addon 64-bit (binary) |
-| `src/plugin/mutex/win32-ia32/mutex.node` | C++ addon 32-bit (binary) |
+| `plugin/mutex/win32-x64/mutex.node` | C++ addon 64-bit (binary, runtime) |
+| `plugin/mutex/win32-ia32/mutex.node` | C++ addon 32-bit (binary, runtime) |
 
 ## Xử lý lỗi
 

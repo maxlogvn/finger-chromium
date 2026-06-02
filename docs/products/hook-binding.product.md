@@ -53,7 +53,7 @@ await page.setViewportSize({ width: 800, height: 600 });
 
 ## Lưu ý
 
-- Hook chỉ áp dụng cho Pages mới, không resize page đã tồn tại.
+- Hook áp dụng cho Pages mới. Ngoài ra, `configure()` trong `engine.ts` cũng resize page đầu tiên (nếu có) ngay sau khi bind hooks.
 - `resetOptions()` force `viewport: null` để Playwright không resize trước.
 - `patchPage` proxy `setViewportSize` in warning, không throw -- để không crash code.
 

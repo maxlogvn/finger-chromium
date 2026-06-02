@@ -105,9 +105,9 @@ export type Launcher = Pick<BrowserType, 'launch' | 'launchPersistentContext'>;
 
 | Tình huống | Hành vi |
 |---|---|
-| Gọi `launch()` 2 lần | Throw `Error('[BrowserEngine] launch() chỉ được gọi một lần.')` |
-| Gọi `newContext()` trước `launch()` | Throw `Error('[BrowserEngine] Phải gọi launch() trước...')` |
-| Gọi `newContext()` khi đã có context | Throw `Error('[BrowserEngine] Context đã được tạo...')` |
+| Gọi `launch()` 2 lần | Throw `Error('[BrowserEngine] Phuong thuc launch() chi duoc goi mot lan.')` |
+| Gọi `newContext()` trước `launch()` | Throw `Error('[BrowserEngine] Phai goi launch() truoc khi tao context.')` |
+| Gọi `newContext()` khi đã có context | Throw `Error('[BrowserEngine] Context da duoc tao. Vui long goi quit() truoc khi tao moi.')` |
 | Gọi `quit()` khi chưa launch | No-op (kiểm tra `isLaunched`) |
 
 ---

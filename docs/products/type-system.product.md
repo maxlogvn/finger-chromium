@@ -137,14 +137,19 @@ Dùng để tìm fingerprint phù hợp từ service.
 
 ```ts
 interface FetchOptions {
-  tags?: Tag[];              // Lọc theo tag (Desktop, Chrome...)
-  timeLimit?: Time;          // Lọc theo ngày thu thập
-  minWidth?: number;         // Độ phân giải tối thiểu
-  maxWidth?: number;         // Độ phân giải tối đa
+  tags?: Tag[];                             // Lọc theo tag (Desktop, Chrome...)
+  timeLimit?: Time;                         // Lọc theo ngày thu thập
+  minWidth?: number;                        // Độ phân giải tối thiểu
+  maxWidth?: number;                        // Độ phân giải tối đa
   minHeight?: number;
   maxHeight?: number;
   minBrowserVersion?: number | 'current';  // 'current' = Chrome hiện tại
   maxBrowserVersion?: number | 'current';
+  perfectCanvasLogs?: boolean;             // @default false
+  perfectCanvasRequest?: string;            // URL để request PerfectCanvas
+  enableCustomServer?: boolean;             // @default false
+  dynamicPerfectCanvas?: boolean;           // @default true
+  enablePrecomputedFingerprints?: boolean;  // @default true
 }
 ```
 

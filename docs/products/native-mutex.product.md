@@ -9,13 +9,12 @@ Bạn không cần dùng Native Mutex trực tiếp. Nó được gọi tự đ�
 ## Cách hoạt động
 
 ```
-mutex.create('BASProcess')
+mutex.create('BASProcess' + uuid)
     │
-    └── Windows kernel tạo named mutex "BASProcess"
-        │
-        ├── Nếu chưa có → tạo mới
-        └── Nếu đã có → engine dùng mutex hiện tại
+    └── Windows kernel tạo named mutex "BASProcess<uuid>"
 ```
+
+Mỗi lần launch tạo mutex với UUID random (VD: `BASProcess550e8400-e29b-41d4-a716-446655440000`) -- cho phép nhiều instance chạy đồng thời.
 
 ## API
 
@@ -23,13 +22,13 @@ mutex.create('BASProcess')
 
 | Tham số | Kiểu | Mô tả |
 |---|---|---|
-| `name` | `string` | Tên mutex (VD: `'BASProcess'`) |
+| `name` | `string` | Tên mutex (VD: `'BASProcess' + uuid`) |
 
 ```ts
 import { create } from 'fingerprint-chromium-engine/plugin/mutex';
 
-create('BASProcess');
-// Windows named mutex "BASProcess" được tạo
+create('BASProcess' + crypto.randomUUID());
+// Windows named mutex "BASProcess<uuid>" được tạo
 ```
 
 ## Xử lý lỗi

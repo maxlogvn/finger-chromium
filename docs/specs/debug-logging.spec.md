@@ -44,7 +44,7 @@ Trong đó `elapsed-time` là ms từ process start. Màu sắc tự động n�
 |---|---|---|
 | `connector/index.ts` | 1 | PCAP server listening |
 | `connector/engine.ts` | 12 | IPC request/response, download, extract, spawn, metadata |
-| `connector/pcapServer/index.ts` | 0 | (chỉ khai báo, chưa dùng) |
+| `connector/pcapServer/index.ts` | 1 | Socket error handler |
 | `plugin/cleaner.ts` | 1 | Lock compromised warning |
 
 ---

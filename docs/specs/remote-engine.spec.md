@@ -122,7 +122,7 @@ Kiểm tra engineDir (có chứa zip không)
 | File | Vai trò |
 |---|---|
 | `src/plugin/connector/engine.ts` | RemoteEngine class (373 dòng) |
-| `src/plugin/connector/utils.ts` | Hàm helper (notify) |
+| `src/plugin/connector/utils.ts` | Hàm helper (notify, thuộc API Connector, không dùng trong RemoteEngine) |
 | `src/plugin/connector/index.ts` | API Connector (singleton + wrapper) |
 | `project.xml` | File cấu hình engine BAS (chứa EngineVersion) |
 
@@ -133,8 +133,8 @@ Kiểm tra engineDir (có chứa zip không)
 | `EngineTimeoutError` | `#startProcess(timeout)` khi Promise.race timeout | Download/extract/spawn quá lâu |
 | `InvalidEngineError` | `execFile` callback lỗi | Engine binary không chạy được |
 | `RequestTimeoutError` | `runFunction` khi setTimeout reject | Engine không phản hồi kịp |
-| Error('Không tìm thấy package root') | `resolvePackageRoot` | package.json không có name đúng |
-| Error('Không thể đọc phiên bản Engine') | `#updateMeta` | project.xml không có EngineVersion |
+| Error('[RemoteEngine] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.') | `resolvePackageRoot` | package.json không có name đúng |
+| Error('Không thể đọc phiên bản Engine từ project.xml') | `#updateMeta` | project.xml không có EngineVersion |
 
 ## Ghi chú kỹ thuật
 

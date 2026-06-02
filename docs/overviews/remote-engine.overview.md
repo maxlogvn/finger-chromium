@@ -8,7 +8,7 @@ Xây dựng module quản lý vòng đời của engine binary FastExecuteScript
 
 - `src/plugin/connector/engine.ts`: 373 dòng, class `RemoteEngine extends EventEmitter`.
 - `src/plugin/connector/index.ts`: 90 dòng, singleton connector với async-lock.
-- `src/plugin/connector/utils.ts`: 40 dòng, notification helper.
+- `src/plugin/connector/engine.ts` không dùng `utils.ts` -- `utils.ts` thuộc về API Connector.
 - File-based IPC hoạt động ổn định: ghi JSON request, chokidar watch response.
 - Checksum SHA1 được verify trước khi dùng engine.
 

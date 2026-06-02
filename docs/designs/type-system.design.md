@@ -22,7 +22,7 @@ Tách riêng 5 file type trong `src/types/`, mỗi file phụ trách một nhóm
 
 ### 1. `PWChromium.ts` -- Interface Public API
 
-Đây là interface mà người dùng chính thức tương tác. Nó định nghĩa tất cả method có sẵn trên singleton `Chromium`: `useFingerprint`, `useProxy`, `useProfile`, `usePrivateKey`, `launch`, `newContext`, `newFingerprint`, `quit`, `repackChromium`.
+Đây là interface mà người dùng chính thức tương tác. Nó định nghĩa tất cả method có sẵn trên singleton `Chromium`: `useFingerprint`, `useProxy`, `useProfile`, `launch`, `newContext`, `newFingerprint`, `quit`, `repackChromium`. (Private key được set qua constructor hoặc biến môi trường `BABLOSOFT_KEY`, không phải method riêng.)
 
 **Tại sao dùng interface thay vì class?** Interface cho phép nhiều implementation khác nhau (VD: một bản mock cho test, một bản production). Nó cũng dễ dùng hơn khi publish dưới dạng `.d.ts`.
 

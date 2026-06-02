@@ -11,9 +11,9 @@ Tạo nền tảng dự án vững chắc cho việc phát triển thư viện f
 
 ## Kết quả
 
-- `package.json` đã cấu hình đầy đủ: 11 dependencies, 15 devDependencies, peerDependencies playwright-core >=1.60.0, 11 scripts.
+- `package.json` đã cấu hình đầy đủ: 11 dependencies, 17 devDependencies, peerDependencies playwright-core >=1.60.0, 8 scripts.
 - `tsconfig.json` strict mode, paths alias `@src/*`.
-- `tsup.config.ts` với `dts.resolve: false` (quan trọng: tránh crash với playwright-core types), 14 external packages.
+- `tsup.config.ts` với `dts.resolve: false` (quan trọng: tránh crash với playwright-core types), 13 external packages.
 - `eslint.config.ts` dùng typescript-eslint, `consistent-type-imports: error`.
 - `.prettierrc` tabs, single quotes, 100 printWidth.
 - `.mocharc.yml` tsx loader, 10s timeout, `--exit`.
@@ -38,7 +38,7 @@ Tạo nền tảng dự án vững chắc cho việc phát triển thư viện f
 ## Ghi chú kỹ thuật
 
 - **`dts.resolve: false` là bắt buộc.** Nếu set `true`, tsup crash vì `rollup-plugin-dts` không handle được complex types từ playwright-core (conditional types với key remapping). Đây là lỗi đã biết của rollup-plugin-dts, fix bằng cách set resolve: false.
-- **External list có 14 packages.** Thiếu một package sẽ làm esbuild bundle package đó vào dist, gây tăng kích thước và conflict version. Cần kiểm tra list này mỗi khi thêm dependency mới.
+- **External list có 13 packages.** Thiếu một package sẽ làm esbuild bundle package đó vào dist, gây tăng kích thước và conflict version. Cần kiểm tra list này mỗi khi thêm dependency mới.
 - **`skipNodeModulesBundle: true` phải ở ROOT level** của tsup config. Nếu đặt trong `dts.compilerOptions`, nó không có tác dụng.
 - **`createRequire(import.meta.url)`** trong `src/loader/index.ts` cho phép dùng `require()` từ ESM context. `import.meta.url` trỏ tới file hiện tại, dùng làm base path.
 - Tất cả file source code đã được format và comment theo CONVENTIONS.md (header, section divider, JSDoc, step comments, WHY).

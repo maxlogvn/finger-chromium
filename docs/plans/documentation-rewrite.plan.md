@@ -42,7 +42,7 @@
 - [ ] **Bước 1: Đọc và phân tích code**
   - Đọc `package.json`: lưu ý `peerDependencies` có `playwright-core >=1.60.0`, `dependencies` có 11 packages, `devDependencies` có ESLint, Mocha, tsup, Prettier, TypeScript ~5.8.
   - Đọc `tsconfig.json`: strict mode, `moduleResolution: "Bundler"`, paths `@src/*`, exclude `tests/`.
-  - Đọc `tsup.config.ts`: entry `src/index.ts`, format `['cjs','esm']`, external 14 packages, `dts.resolve: false`, `skipNodeModulesBundle: true`, `minify: true`, `treeshake: true`.
+  - Đọc `tsup.config.ts`: entry `src/index.ts`, format `['cjs','esm']`, external 13 packages, `dts.resolve: false`, `skipNodeModulesBundle: true`, `minify: true`, `treeshake: true`.
   - Đọc `eslint.config.ts`: dùng `typescript-eslint`, `consistent-type-imports`, `no-explicit-any` là warn.
   - Đọc `.prettierrc`: `@cheshire-caat/prettier-config`, tabs, single quotes, trailingComma all.
   - Đọc `.mocharc.yml`: spec `tests/**/*.ts`, tsx loader.
@@ -56,7 +56,7 @@
 - [ ] **Bước 3: Viết spec.md**
   - Cấu trúc: Mô tả -> API / Interfaces chính -> Luồng dữ liệu -> File liên quan -> Xử lý lỗi -> Ghi chú kỹ thuật
   - Nội dung chính: liệt kê đầy đủ cấu trúc thư mục src/ (5 nhánh), build pipeline (tsup config), linting/formatting (ESLint + Prettier), testing (mocha + tsx + browser thật).
-  - Ghi chú kỹ thuật: external list gồm 14 packages (kể cả dotenv), format script chỉ chạy `src/`, ESLint ignores dist/node_modules, `npm run clean` dùng `rm -rf` không chạy trên Windows.
+  - Ghi chú kỹ thuật: external list gồm 13 packages (kể cả dotenv), format script chỉ chạy `src/`, ESLint ignores dist/node_modules, `npm run clean` dùng `rm -rf` không chạy trên Windows.
 
 - [ ] **Bước 4: Viết plan.md**
   - Cấu trúc: Các bước thực hiện -> File liên quan -> Kiểm tra -> Ghi chú

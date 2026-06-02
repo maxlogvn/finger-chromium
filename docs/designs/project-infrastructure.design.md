@@ -79,7 +79,7 @@ tsup được cấu hình để:
 
 ### External dependencies
 
-14 packages được khai báo là `external` để esbuild không bundle chúng:
+13 packages được khai báo là `external` để esbuild không bundle chúng:
 
 ```
 playwright-core, async-lock, axios, chokidar, chrome-remote-interface,

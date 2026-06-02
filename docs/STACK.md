@@ -27,6 +27,8 @@
 | chokidar | ^5.0.0 | Watch file system |
 | fast-glob | 3.3.3 | File globbing |
 | compare-versions | 6.1.1 | So sánh phiên bản Chromium |
+| dedent | 1.7.2 | Template string xử lý thụt lề |
+| once | 1.4.0 | Call một lần (dùng trong connector/utils.ts) |
 
 ## Testing & Linting
 

@@ -65,7 +65,7 @@ export {
 | `chrome-remote-interface` | `0.34.0` | Giao tiếp CDP với Chromium |
 | `compare-versions` | `6.1.1` | So sánh phiên bản Chromium |
 | `debug` | `4.4.3` | Debug logging theo namespace |
-| `extract-zip` | `2025.0.1` (trong code: `2.0.1` trong package.json) | Giải nén engine zip |
+| `extract-zip` | `2.0.1` | Giải nén engine zip |
 | `fast-glob` | `3.3.3` | File globbing |
 | `proper-lockfile` | `4.1.2` | Lock file ở hệ thống |
 
@@ -118,9 +118,9 @@ src/
 
 ```
 docs/
-├── designs/        # Tài liệu thiết kế (21 files)
+├── designs/        # Tài liệu thiết kế (22 files)
 ├── specs/          # Đặc tả chi tiết (21 files)
-├── plans/          # Kế hoạch thực hiện (21 files)
+├── plans/          # Kế hoạch thực hiện (22 files)
 ├── products/       # Tài liệu tính năng cho dev (20 files)
 ├── overviews/      # Báo cáo kết quả (21 files)
 ├── ROADMAP.md      # Theo dõi tiến độ
@@ -189,12 +189,12 @@ Không mock → fingerprint injection được verify end-to-end
 ## Ghi chú kỹ thuật
 
 - **`dts.resolve: false`** trong tsup.config.ts là bắt buộc. Nếu set `true`, tsup sẽ crash vì `rollup-plugin-dts` không parse được type từ playwright-core (các conditional types phức tạp).
-- **External list có 14 packages.** `dotenv` là devDependency nhưng vẫn trong list -- để phòng trường hợp code có dynamic import.
+- **External list có 13 packages.** `dotenv` là devDependency nhưng vẫn trong list -- để phòng trường hợp code có dynamic import.
 - **`skipNodeModulesBundle: true`** phải đặt ở ROOT level của tsup config, không phải trong `dts.compilerOptions`. Sai vị trí sẽ không có tác dụng.
 - **Playwright Core** là peer dependency, không được bundle. Thư viện tự tìm playwright-core qua `createRequire` (xem `src/loader/index.ts`).
 - **Format script** (`npm run format`) chỉ chạy trên `src/`, không format `tests/` hay `docs/`.
 - **ESLint ignores** `dist/**` và `node_modules/**`.
 - **Mocha** dùng `--exit` flag để tự động thoát process sau khi test, tránh treo do browser process hoặc async handles còn mở.
-- Trong `package.json`, `extract-zip` version là `2.0.1` theo dependencies. Tuy nhiên trong code `src/plugin/connector/engine.ts` import `extract-zip` và dùng `extract()` function -- version 2.x API vẫn tương thích.
+- `extract-zip` version `2.0.1` tương thích với API `extract()` dùng trong `src/plugin/connector/engine.ts`.
 
 ---

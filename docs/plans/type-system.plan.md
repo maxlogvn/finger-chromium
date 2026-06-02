@@ -3,7 +3,7 @@
 ## Các bước thực hiện
 
 - [x] **Bước 1: Tạo `src/types/PWChromium.ts`**
-  - Định nghĩa interface `PWChromium` với các method: `repackChromium`, `useFingerprint`, `useProxy`, `useProfile`, `usePrivateKey`, `launch`, `newContext`, `newFingerprint`, `quit`.
+  - Định nghĩa interface `PWChromium` với các method: `repackChromium`, `useFingerprint`, `useProxy`, `useProfile`, `launch`, `newContext`, `newFingerprint`, `quit`. (Private key set qua env `BABLOSOFT_KEY` hoặc constructor, không phải method riêng.)
   - Mỗi method có JSDoc đầy đủ: mô tả, @param, @returns, @throws, @example.
   - Import `BrowserContext` từ `playwright-core` và `PluginLaunchOptions` từ `../adapter/playwright/chromium`.
   - `engine` property type là `object` (tránh circular dependency).
@@ -28,8 +28,8 @@
 
 - [x] **Bước 5: Tạo `src/types/fetch.ts`**
   - Định nghĩa type `Time`: `'*' | '15 days' | '30 days' | '60 days'`.
-  - Định nghĩa type `Tag`: 14 giá trị union.
-  - Định nghĩa interface `FetchOptions` với 11 fields: tags, timeLimit, screen size, browser version, PerfectCanvas, custom server.
+  - Định nghĩa type `Tag`: 17 giá trị union.
+  - Định nghĩa interface `FetchOptions` với 13 fields: tags, timeLimit, screen size, browser version, PerfectCanvas, custom server, dynamic PerfectCanvas, precomputed fingerprints.
 
 - [x] **Bước 6: Export từ `src/index.ts`**
   - Thêm dòng `export { type PWChromium } from './types/PWChromium';`

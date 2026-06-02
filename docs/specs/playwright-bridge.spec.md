@@ -67,7 +67,7 @@ async launchPersistentContext(
 | 1 | `#validateOptions(options)` |
 | 2 | Filter `--user-data-dir` khỏi `options.args` |
 | 3 | Tạo custom launcher: `launch(opts) => pwLauncher.launchPersistentContext(userDataDir, {...opts, args: filteredArgs})` |
-| 4 | Xử lý `ignoreDefaultArgs`: array thì concat `IGNORED_ARGUMENTS`, boolean/undefined thì dùng `IGNORED_ARGUMENTS` |
+| 4 | Xử lý `ignoreDefaultArgs`: array thì concat `IGNORED_ARGUMENTS`, `true` thì giữ nguyên `true`, `false`/`undefined` thì dùng `IGNORED_ARGUMENTS` |
 | 5 | Gọi `this._launch(false, { ...options, userDataDir, viewport: null, launcher })` |
 | 6 | Return `BrowserContext` |
 

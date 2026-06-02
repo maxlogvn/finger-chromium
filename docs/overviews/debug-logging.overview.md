@@ -15,7 +15,7 @@ Thêm structured logging với `debug` package, 4 namespace theo module.
 
 ## Sai lệch so với kế hoạch
 
-Không có sai lệch.
+- Spec ghi pcapServer log count = 0 ("chỉ khai báo, chưa dùng"), nhưng code có 1 log (`log(error)` trong socket error handler). Đã fix spec.
 
 ## Ghi chú kỹ thuật
 
