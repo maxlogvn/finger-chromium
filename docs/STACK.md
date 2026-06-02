@@ -38,7 +38,7 @@
 
 ## Công cụ phát triển
 
-- ESLint + Prettier (format: tabs, single quotes, 100 printWidth, no trailingComma)
+- ESLint + Prettier (format: tabs, single quotes, 100 printWidth, trailingComma all)
 - tsx (TypeScript execution)
 - dotenv (biến môi trường)
 - jiti (TypeScript runtime)

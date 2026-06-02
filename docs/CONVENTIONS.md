@@ -176,7 +176,7 @@ Các lỗi có sẵn:
 ## Debug logging
 
 - Dùng thư viện `debug` để log theo namespace
-- Namespace theo module: `fingerprint:adapter`, `fingerprint:plugin`, `fingerprint:connector`
+- Namespace theo module: `browser-with-fingerprints:connector`, `browser-with-fingerprints:connector:engine`, `browser-with-fingerprints:connector:pcapServer`, `browser-with-fingerprints:cleaner`
 - Bật/tắt log qua biến môi trường `DEBUG`
 
 ---

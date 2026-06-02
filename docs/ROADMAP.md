@@ -28,7 +28,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Ghi chú:**
   - TypeScript strict mode, target ES2022
   - tsup bundle (ESM + CJS)
-  - ESLint + Prettier (tabs, single quotes, 100 printWidth, no trailingComma)
+  - ESLint + Prettier (tabs, single quotes, 100 printWidth, trailingComma all)
   - Mocha test runner + tsx loader
   - dotenv, jiti cho dev
   - package.json đầy đủ scripts (lint, test, build, dev, format)

@@ -27,7 +27,7 @@
 - `tsconfig.json` -- strict mode, target ES2022, paths alias `@src/*`
 - `tsup.config.ts` -- ESM + CJS, dts.resolve: false, external list, skipNodeModulesBundle
 - `eslint.config.ts` -- typescript-eslint, consistent-type-imports
-- `.prettierrc` -- tabs, single quotes, 100 printWidth, no trailingComma
+- `.prettierrc` -- tabs, single quotes, 100 printWidth, trailingComma all
 - `.mocharc.yml` -- tsx loader, tests/**/*.ts, timeout 10s
 - `src/index.ts` -- public exports
 - `project.xml` -- file cấu hình engine
