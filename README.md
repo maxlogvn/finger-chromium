@@ -46,7 +46,7 @@
 ## Cài đặt
 
 ```bash
-npm install fingerprint-chromium-engine
+npm install https://github.com/maxlogvn/finger-chromium
 ```
 
 Đảm bảo bạn đã cài `playwright-core` và tải Chromium:
