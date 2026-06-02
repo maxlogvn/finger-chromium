@@ -1,3 +1,13 @@
+// ─── File: connector/engine.ts ─────────────────────────────────────────────
+// RemoteEngine -- tải, giải nén, và IPC với engine binary (FastExecuteScript.exe).
+// File-based IPC: viết JSON request, chokidar watch phản hồi.
+//
+//   1. Khởi tạo -- setCwd, setArgs, setTimeout
+//   2. runFunction() -- start process, tạo request file, watch response
+//   3. startProcess() -- verify checksum, download, extract, spawn
+//   4. updateMeta() -- đọc project.xml, fetch metadata từ bablosoft
+// ─────────────────────────────────────────────────────────────────────────────
+
 import path from 'path';
 import * as fs from 'fs/promises';
 import { kill } from 'node:process';
@@ -20,19 +30,19 @@ const require = createRequire(import.meta.url);
 
 const debug = debugFactory('browser-with-fingerprints:connector:engine');
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 export const CLOSE_TIMEOUT = 60_000;
 export const DEFAULT_TIMEOUT = 300_000;
 export const ARCH = process.arch.includes('32') ? '32' : '64';
 export const CWD = path.join(process.cwd(), 'data');
 
-// ─── Package Root Resolution ────────────────────────────────────────────────
+// ─── Package Root Resolution ─────────────────────────────────────────────────
 
 /**
- * Tìm thư mục gốc của package bằng cách đi ngược lên từ __dirname
- * cho đến khi tìm thấy package.json có name là 'fingerprint-chromium-engine'.
- *
- * Cách này đảm bảo PROJECT_PATH luôn trỏ đúng vào package,
- * bất kể cấu trúc dist/ hay số cấp thư mục thay đổi sau khi build.
+ * Tìm thư mục gốc của package bằng cách đi ngược từ __dirname cho đến khi
+ * tìm thấy package.json có name là 'fingerprint-chromium-engine'.
+ * Đảm bảo PROJECT_PATH luôn đúng bất kể cấu trúc dist/ thay đổi.
  */
 function resolvePackageRoot(startDir: string): string {
   let current = startDir;
@@ -42,7 +52,7 @@ function resolvePackageRoot(startDir: string): string {
       const pkg = require(path.join(current, 'package.json'));
       if (pkg.name === 'fingerprint-chromium-engine') return current;
     } catch {
-      // Chưa tìm thấy package.json hợp lệ, tiếp tục đi lên
+      // Chưa tìm thấy -- tiếp tục đi lên
     }
 
     const parent = path.dirname(current);
@@ -56,57 +66,49 @@ function resolvePackageRoot(startDir: string): string {
 const PACKAGE_ROOT = resolvePackageRoot(__dirname);
 export const PROJECT_PATH = path.join(PACKAGE_ROOT, 'project.xml');
 
-// ─── Interface ─────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
- * Tùy chọn khởi tạo RemoteEngine.
+ * Tuỳ chọn khởi tạo RemoteEngine.
  */
 export interface EngineOptions {
-  /** Thư mục làm việc của engine. Mặc định dùng `CWD` từ config. */
+  /** Thư mục làm việc. Mặc định dùng CWD. */
   cwd?: string;
-  /** Danh sách tham số truyền vào tiến trình engine khi khởi chạy. */
+  /** Tham số truyền vào tiến trình engine. */
   args?: string[];
-  /** Thời gian tối đa chờ engine khởi động (ms). */
+  /** Timeout khởi động engine (ms). */
   engineTimeout?: string | number;
-  /** Thời gian tối đa chờ phản hồi từ một lần gọi hàm (ms). */
+  /** Timeout chờ phản hồi (ms). */
   requestTimeout?: string | number;
 }
 
 /**
- * Tùy chọn timeout cho một lần gọi `runFunction`.
- * Ghi đè giá trị mặc định được thiết lập trong constructor.
+ * Ghi đè timeout cho một lần gọi runFunction.
  */
 export interface RunFunctionOptions {
-  /** Ghi đè `engineTimeout` cho lần gọi này. */
   engineTimeout?: number;
-  /** Ghi đè `requestTimeout` cho lần gọi này. */
   requestTimeout?: number;
 }
 
 /**
- * Metadata của engine tải về từ bablosoft.
+ * Metadata engine từ bablosoft.
  */
 export interface EngineMeta {
-  /** Phiên bản engine, đọc từ `project.xml`. */
   version: string;
-  /** SHA1 checksum dùng để kiểm tra tính toàn vẹn của file zip. */
   checksum: string;
-  /** URL tải file zip của engine. */
   url: string;
 }
 
 /**
- * Kết quả trả về từ engine sau khi thực thi một hàm.
+ * Kết quả từ engine sau khi thực thi hàm.
  */
 export interface FunctionResult {
-  /** Thông báo lỗi nếu engine thực thi thất bại. */
   error?: string;
-  /** Dữ liệu trả về khi thực thi thành công. */
   response?: unknown;
   [key: string]: unknown;
 }
 
-// ─── Helper Functions ───────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function exists(filePath: string): Promise<boolean> {
   try {
@@ -130,8 +132,13 @@ async function download(url: string, filePath: string): Promise<void> {
   await pipeline(response.data, writer);
 }
 
-// ─── Class Definition ───────────────────────────────────────────────────────
+// ─── RemoteEngine ─────────────────────────────────────────────────────────────
 
+/**
+ * Engine từ xa -- quản lý vòng đời của FastExecuteScript.exe.
+ * Giao tiếp qua file-based IPC: ghi JSON request, chokidar watch response.
+ * Tự động tải, verify checksum, giải nén engine khi cần.
+ */
 export default class RemoteEngine extends EventEmitter {
   #meta: EngineMeta | null = null;
   #cwd: string | null = null;
@@ -169,6 +176,10 @@ export default class RemoteEngine extends EventEmitter {
     this.#requestTimeout = timeout >= 0 ? timeout : DEFAULT_TIMEOUT;
   }
 
+  /**
+   * Gọi hàm trên engine -- tạo request file, chokidar watch response.
+   * Dọn dẹp request file cũ không còn process sở hữu trước khi tạo mới.
+   */
   async runFunction(
     name: string,
     params: unknown,
@@ -182,7 +193,7 @@ export default class RemoteEngine extends EventEmitter {
     const requestDir = path.join(path.dirname(engineProcess.spawnfile), 'r');
     await fs.mkdir(requestDir, { recursive: true });
 
-    // Dọn dẹp file request cũ không còn tiến trình cha
+    // --- Bước 1: Dọn dẹp file request cũ không còn process cha
     for (const requestName of await fs.readdir(requestDir)) {
       try {
         const pid = Number(requestName.split('_')[0]);
@@ -197,10 +208,12 @@ export default class RemoteEngine extends EventEmitter {
       }
     }
 
+    // --- Bước 2: Tạo file request JSON
     const requestPath = path.join(requestDir, `${engineProcess.pid}_${randomUUID()}.json`);
     debug(`Tạo file request mới cho hàm "${name}" - ${requestPath}`);
     await fs.writeFile(requestPath, JSON.stringify({ name, params }));
 
+    // --- Bước 3: Watch phản hồi từ engine (file change)
     const requestWatcher = chokidar.watch(requestPath, { awaitWriteFinish: true });
     let responseStr: string | undefined;
 
@@ -240,6 +253,7 @@ export default class RemoteEngine extends EventEmitter {
       await requestWatcher.close();
     }
 
+    // --- Bước 4: Parse kết quả JSON
     if (!responseStr) return { error: 'Engine process closed unexpectedly' };
     try {
       return JSON.parse(responseStr) as FunctionResult;
@@ -248,11 +262,16 @@ export default class RemoteEngine extends EventEmitter {
     }
   }
 
+  /**
+   * Khởi tạo tiến trình engine -- download + extract + spawn.
+   * Kiểm tra checksum, xoá engine cũ nếu checksum không khớp.
+   */
   async #startProcessInternal(): Promise<ChildProcess> {
     const scriptDir = path.join(this.#cwd!, 'script', this.#meta!.version);
     const engineDir = path.join(this.#cwd!, 'engine', this.#meta!.version);
     const zipPath = path.join(engineDir, `FastExecuteScript.x${ARCH}.zip`);
 
+    // --- Bước 1: Kiểm tra checksum -- xoá engine cũ nếu sai
     if (this.#meta && (await exists(zipPath))) {
       if (this.#meta.checksum !== (await checksum(zipPath))) {
         await fs.rm(engineDir, { recursive: true, force: true });
@@ -260,6 +279,7 @@ export default class RemoteEngine extends EventEmitter {
       }
     }
 
+    // --- Bước 2: Download engine nếu chưa có
     if (!(await exists(engineDir))) {
       this.emit('beforeDownload');
       await fs.mkdir(engineDir, { recursive: true });
@@ -267,6 +287,7 @@ export default class RemoteEngine extends EventEmitter {
       debug('Engine tải xuống thành công');
     }
 
+    // --- Bước 3: Giải nén engine nếu chưa có
     if (!(await exists(scriptDir))) {
       this.emit('beforeExtract');
       await fs.mkdir(scriptDir, { recursive: true });
@@ -274,12 +295,14 @@ export default class RemoteEngine extends EventEmitter {
       debug('Engine giải nén thành công');
     }
 
+    // --- Bước 4: Copy project.xml + tạo file cấu hình
     await fs.copyFile(PROJECT_PATH, path.join(scriptDir, 'project.xml'));
     await fs.writeFile(path.join(scriptDir, 'worker_command_line.txt'), '--mock-connector');
     await fs.writeFile(path.join(scriptDir, 'settings.ini'), 'RunProfileRemoverImmediately=true');
 
     debug(`Đang khởi chạy tiến trình engine (cwd: ${scriptDir})`);
 
+    // --- Bước 5: Spawn FastExecuteScript.exe
     return new Promise<ChildProcess>((resolve, reject) => {
       const proc = execFile(
         path.join(scriptDir, 'FastExecuteScript.exe'),
@@ -295,6 +318,9 @@ export default class RemoteEngine extends EventEmitter {
     });
   }
 
+  /**
+   * startProcess với timeout -- throw EngineTimeoutError nếu quá thời gian.
+   */
   async #startProcess(timeout?: number): Promise<ChildProcess> {
     if (!timeout) return await this.#startProcessInternal();
 
@@ -313,6 +339,10 @@ export default class RemoteEngine extends EventEmitter {
     return engineProcess;
   }
 
+  /**
+   * Đọc metadata engine -- từ cache hoặc fetch từ bablosoft.
+   * Cache theo version_ARCH.json để tránh request mỗi lần.
+   */
   async #updateMeta(): Promise<void> {
     const project = await fs.readFile(PROJECT_PATH, 'utf8');
     const versionMatch = project.match(/<EngineVersion>(\d+\.\d+\.\d+)<\/EngineVersion>/);

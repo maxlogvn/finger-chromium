@@ -287,6 +287,22 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 
 
+### Format và Comment lại toàn bộ codebase
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-02
+- **Cập nhật:** 2026-06-02
+- **Tài liệu:** [Design](designs/format-comment-codebase.design.md) | [Spec](specs/format-comment-codebase.spec.md) | [Plan](plans/format-comment-codebase.plan.md) | [Overview](overviews/format-comment-codebase.overview.md)
+- **Ghi chú:**
+  - Non-feature task: chỉ cần overview, không cần product
+  - 25/25 files đã được format (header, divider, JSDoc, step comments, WHY)
+  - Phát hiện plan thiếu file `src/adapter/playwright/loader.ts` -- đã thêm bổ sung
+  - 3 lỗi `@typescript-eslint/consistent-type-imports` được fix (engine.ts, plugin/index.ts, PWChromium.ts)
+  - Pre-existing: `npm run clean` dùng `rm` không tương thích Windows (cần sửa riêng)
+  - Lint: 0 errors, 16 warnings (all pre-existing `no-explicit-any`)
+
+---
+
 ### Tài liệu tính năng (design, spec, plan, product, overview)
 
 - **Trạng thái:** [ ] Backlog

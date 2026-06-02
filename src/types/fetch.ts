@@ -1,1 +1,137 @@
-/** * Khoảng thời gian lọc fingerprint theo ngày thu thập. * Dùng `*` để không giới hạn thời gian. */export type Time = '*' | '15 days' | '30 days' | '60 days';/** * Tag lọc fingerprint theo thiết bị, hệ điều hành hoặc trình duyệt. * Dùng `*` để không lọc theo tag. */export type Tag =  | '*'  | 'Desktop'  | 'Mobile'  | 'Microsoft Windows'  | 'Apple Mac'  | 'Android'  | 'Linux'  | 'iPad'  | 'iPhone'  | 'Edge'  | 'Chrome'  | 'Safari'  | 'Firefox'  | 'YaBrowser'  | 'Windows 7'  | 'Windows 8'  | 'Windows 10';/** * Tùy chọn lọc và lấy fingerprint từ service. * * @example * ```ts * const fingerprint = await fetchFingerprint({ *   tags: ['Chrome', 'Desktop', 'Windows 10'], *   timeLimit: '30 days', *   minBrowserVersion: 'current', *   maxBrowserVersion: 'current', *   minWidth: 1280, *   minHeight: 720, * }); * ``` */export interface FetchOptions {  /**   * Lọc fingerprint theo tag thiết bị, hệ điều hành hoặc trình duyệt.   * Không truyền để lấy fingerprint bất kỳ.   */  tags?: Tag[];  /**   * Lọc fingerprint theo ngày thu thập.   * Không truyền để không giới hạn thời gian.   */  timeLimit?: Time;  /**   * Chiều rộng màn hình tối thiểu của fingerprint (px).   */  minWidth?: number;  /**   * Chiều rộng màn hình tối đa của fingerprint (px).   */  maxWidth?: number;  /**   * Chiều cao màn hình tối thiểu của fingerprint (px).   */  minHeight?: number;  /**   * Chiều cao màn hình tối đa của fingerprint (px).   */  maxHeight?: number;  /**   * Phiên bản trình duyệt tối thiểu của fingerprint.   * Dùng `current` để tự động khớp với phiên bản trình duyệt đang cài.   * Nên dùng kết hợp với tag trình duyệt cụ thể (ví dụ `Chrome`).   */  minBrowserVersion?: number | 'current';  /**   * Phiên bản trình duyệt tối đa của fingerprint.   * Dùng `current` để tự động khớp với phiên bản trình duyệt đang cài.   * Đặt bằng `minBrowserVersion` để lọc đúng một phiên bản cụ thể.   */  maxBrowserVersion?: number | 'current';  /**   * Bật logging khi lấy fingerprint có dữ liệu PerfectCanvas.   *   * @default false   */  perfectCanvasLogs?: boolean;  /**   * Dữ liệu PerfectCanvas request dùng để render canvas chính xác theo fingerprint.   * Lấy request bằng ứng dụng CanvasInspector — xem hướng dẫn tại wiki của bablosoft.   * Chỉ cần lấy một lần cho mỗi site, không cần lấy lại cho từng fingerprint.   */  perfectCanvasRequest?: string;  /**   * Chỉ lấy fingerprint từ custom server (yêu cầu tài khoản đã bật tính năng này).   * Tương thích với PerfectCanvas.   *   * @default false   */  enableCustomServer?: boolean;  /**   * Cho phép render PerfectCanvas động từ các máy đang kết nối   * khi fingerprint chưa có trong database tĩnh.   * Tắt nếu muốn bỏ qua dynamic rendering để tiết kiệm thời gian.   * Không có hiệu lực nếu không truyền `perfectCanvasRequest`.   *   * @default true   */  dynamicPerfectCanvas?: boolean;  /**   * Cho phép truy vấn database tĩnh trước khi dùng dynamic rendering.   * Tắt nếu muốn bỏ qua database tĩnh và dùng dynamic rendering ngay lập tức.   * Không có hiệu lực nếu không truyền `perfectCanvasRequest` hoặc đang dùng custom server.   *   * @default true   */  enablePrecomputedFingerprints?: boolean;}
+// ─── File: types/fetch.ts ──────────────────────────────────────────────────
+// Bộ lọc fingerprint -- tags, timeLimit, screen resolution, browser version,
+// PerfectCanvas request, custom server.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Khoảng thời gian lọc fingerprint theo ngày thu thập.
+ * Dùng `*` để không giới hạn thời gian.
+ */
+export type Time = '*' | '15 days' | '30 days' | '60 days';
+
+/**
+ * Tag lọc fingerprint theo thiết bị, hệ điều hành hoặc trình duyệt.
+ * Dùng `*` để không lọc theo tag.
+ */
+export type Tag =
+  | '*'
+  | 'Desktop'
+  | 'Mobile'
+  | 'Microsoft Windows'
+  | 'Apple Mac'
+  | 'Android'
+  | 'Linux'
+  | 'iPad'
+  | 'iPhone'
+  | 'Edge'
+  | 'Chrome'
+  | 'Safari'
+  | 'Firefox'
+  | 'YaBrowser'
+  | 'Windows 7'
+  | 'Windows 8'
+  | 'Windows 10';
+
+/**
+ * Tùy chọn lọc và lấy fingerprint từ service.
+ *
+ * @example
+ * ```ts
+ * const fingerprint = await fetchFingerprint({
+ *   tags: ['Chrome', 'Desktop', 'Windows 10'],
+ *   timeLimit: '30 days',
+ *   minBrowserVersion: 'current',
+ *   maxBrowserVersion: 'current',
+ *   minWidth: 1280,
+ *   minHeight: 720,
+ * });
+ * ```
+ */
+export interface FetchOptions {
+  /**
+   * Lọc fingerprint theo tag thiết bị, hệ điều hành hoặc trình duyệt.
+   * Không truyền để lấy fingerprint bất kỳ.
+   */
+  tags?: Tag[];
+
+  /**
+   * Lọc fingerprint theo ngày thu thập.
+   * Không truyền để không giới hạn thời gian.
+   */
+  timeLimit?: Time;
+
+  /**
+   * Chiều rộng màn hình tối thiểu của fingerprint (px).
+   */
+  minWidth?: number;
+
+  /**
+   * Chiều rộng màn hình tối đa của fingerprint (px).
+   */
+  maxWidth?: number;
+
+  /**
+   * Chiều cao màn hình tối thiểu của fingerprint (px).
+   */
+  minHeight?: number;
+
+  /**
+   * Chiều cao màn hình tối đa của fingerprint (px).
+   */
+  maxHeight?: number;
+
+  /**
+   * Phiên bản trình duyệt tối thiểu của fingerprint.
+   * Dùng `current` để tự động khớp với phiên bản trình duyệt đang cài.
+   * Nên dùng kết hợp với tag trình duyệt cụ thể (ví dụ `Chrome`).
+   */
+  minBrowserVersion?: number | 'current';
+
+  /**
+   * Phiên bản trình duyệt tối đa của fingerprint.
+   * Dùng `current` để tự động khớp với phiên bản trình duyệt đang cài.
+   * Đặt bằng `minBrowserVersion` để lọc đúng một phiên bản cụ thể.
+   */
+  maxBrowserVersion?: number | 'current';
+
+  /**
+   * Bật logging khi lấy fingerprint có dữ liệu PerfectCanvas.
+   *
+   * @default false
+   */
+  perfectCanvasLogs?: boolean;
+
+  /**
+   * Dữ liệu PerfectCanvas request dùng để render canvas chính xác theo fingerprint.
+   * Lấy request bằng ứng dụng CanvasInspector — xem hướng dẫn tại wiki của bablosoft.
+   * Chỉ cần lấy một lần cho mỗi site, không cần lấy lại cho từng fingerprint.
+   */
+  perfectCanvasRequest?: string;
+
+  /**
+   * Chỉ lấy fingerprint từ custom server (yêu cầu tài khoản đã bật tính năng này).
+   * Tương thích với PerfectCanvas.
+   *
+   * @default false
+   */
+  enableCustomServer?: boolean;
+
+  /**
+   * Cho phép render PerfectCanvas động từ các máy đang kết nối
+   * khi fingerprint chưa có trong database tĩnh.
+   * Tắt nếu muốn bỏ qua dynamic rendering để tiết kiệm thời gian.
+   * Không có hiệu lực nếu không truyền `perfectCanvasRequest`.
+   *
+   * @default true
+   */
+  dynamicPerfectCanvas?: boolean;
+
+  /**
+   * Cho phép truy vấn database tĩnh trước khi dùng dynamic rendering.
+   * Tắt nếu muốn bỏ qua database tĩnh và dùng dynamic rendering ngay lập tức.
+   * Không có hiệu lực nếu không truyền `perfectCanvasRequest` hoặc đang dùng custom server.
+   *
+   * @default true
+   */
+  enablePrecomputedFingerprints?: boolean;
+}

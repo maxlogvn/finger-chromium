@@ -1,1 +1,91 @@
-/** * Tùy chọn kiểm soát các kỹ thuật giả lập fingerprint trên trình duyệt. * * @example * ```ts * browser.useFingerprint(data, { *   usePerfectCanvas: true, *   safeWebGL: true, *   safeAudio: true, * }); * ``` */export interface FingerprintOptions {  /**   * Giả lập màn hình mật độ pixel cao (HiDPI/Retina) theo fingerprint.   * Trình duyệt sẽ render ở độ phân giải cao hơn, tốn thêm tài nguyên hệ thống.   * Các giá trị JS liên quan như `devicePixelRatio` luôn được thay thế đúng dù bật hay tắt.   *   * @default true   */  emulateDeviceScaleFactor?: boolean;  /**   * Giả lập Sensor API (gia tốc kế, con quay hồi chuyển...) theo fingerprint.   * Nên bật khi giả lập fingerprint thiết bị di động.   *   * @default true   */  emulateSensorAPI?: boolean;  /**   * Bật chế độ PerfectCanvas để thay thế dữ liệu Canvas chính xác theo fingerprint.   * Yêu cầu fingerprint phải chứa dữ liệu PerfectCanvas.   *   * @default true   */  usePerfectCanvas?: boolean;  /**   * Cho phép dùng bộ FontPack (nếu đã cài) để đồng bộ font với fingerprint.   * Tránh sai lệch khi fingerprint mục tiêu có nhiều font hơn hệ thống hiện tại.   *   * Tải FontPack tại: https://wiki.bablosoft.com/doku.php?id=fontpack   *   * @default true   */  useFontPack?: boolean;  /**   * Che giấu tọa độ thực của DOM element, chống lại kỹ thuật ClientRects fingerprinting.   *   * @default false   */  safeElementSize?: boolean;  /**   * Giả lập Battery API với giá trị khác nhau cho mỗi phiên.   * Nếu thiết bị gốc không có Battery API, luôn trả về 100%.   *   * @default true   */  safeBattery?: boolean;  /**   * Thêm nhiễu vào dữ liệu Canvas 2D để chống canvas fingerprinting.   *   * @default true   */  safeCanvas?: boolean;  /**   * Thêm nhiễu vào Web Audio API, che giấu thông tin phần cứng âm thanh   * như sample rate và số kênh âm thanh.   *   * @default true   */  safeAudio?: boolean;  /**   * Thêm nhiễu vào WebGL, che giấu thông tin GPU   * như tên nhà sản xuất và renderer của card đồ họa.   *   * @default true   */  safeWebGL?: boolean;}
+// ─── File: types/fingerprint.ts ────────────────────────────────────────────
+// Tuỳ chọn fingerprint -- kiểm soát các kỹ thuật giả lập thiết bị:
+// PerfectCanvas, WebGL, Audio, Canvas, Battery, Sensor, HiDPI, FontPack, ElementSize.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Tùy chọn kiểm soát các kỹ thuật giả lập fingerprint trên trình duyệt.
+ *
+ * @example
+ * ```ts
+ * browser.useFingerprint(data, {
+ *   usePerfectCanvas: true,
+ *   safeWebGL: true,
+ *   safeAudio: true,
+ * });
+ * ```
+ */
+export interface FingerprintOptions {
+  /**
+   * Giả lập màn hình mật độ pixel cao (HiDPI/Retina) theo fingerprint.
+   * Trình duyệt sẽ render ở độ phân giải cao hơn, tốn thêm tài nguyên hệ thống.
+   * Các giá trị JS liên quan như `devicePixelRatio` luôn được thay thế đúng dù bật hay tắt.
+   *
+   * @default true
+   */
+  emulateDeviceScaleFactor?: boolean;
+
+  /**
+   * Giả lập Sensor API (gia tốc kế, con quay hồi chuyển...) theo fingerprint.
+   * Nên bật khi giả lập fingerprint thiết bị di động.
+   *
+   * @default true
+   */
+  emulateSensorAPI?: boolean;
+
+  /**
+   * Bật chế độ PerfectCanvas để thay thế dữ liệu Canvas chính xác theo fingerprint.
+   * Yêu cầu fingerprint phải chứa dữ liệu PerfectCanvas.
+   *
+   * @default true
+   */
+  usePerfectCanvas?: boolean;
+
+  /**
+   * Cho phép dùng bộ FontPack (nếu đã cài) để đồng bộ font với fingerprint.
+   * Tránh sai lệch khi fingerprint mục tiêu có nhiều font hơn hệ thống hiện tại.
+   *
+   * Tải FontPack tại: https://wiki.bablosoft.com/doku.php?id=fontpack
+   *
+   * @default true
+   */
+  useFontPack?: boolean;
+
+  /**
+   * Che giấu tọa độ thực của DOM element, chống lại kỹ thuật ClientRects fingerprinting.
+   *
+   * @default false
+   */
+  safeElementSize?: boolean;
+
+  /**
+   * Giả lập Battery API với giá trị khác nhau cho mỗi phiên.
+   * Nếu thiết bị gốc không có Battery API, luôn trả về 100%.
+   *
+   * @default true
+   */
+  safeBattery?: boolean;
+
+  /**
+   * Thêm nhiễu vào dữ liệu Canvas 2D để chống canvas fingerprinting.
+   *
+   * @default true
+   */
+  safeCanvas?: boolean;
+
+  /**
+   * Thêm nhiễu vào Web Audio API, che giấu thông tin phần cứng âm thanh
+   * như sample rate và số kênh âm thanh.
+   *
+   * @default true
+   */
+  safeAudio?: boolean;
+
+  /**
+   * Thêm nhiễu vào WebGL, che giấu thông tin GPU
+   * như tên nhà sản xuất và renderer của card đồ họa.
+   *
+   * @default true
+   */
+  safeWebGL?: boolean;
+}

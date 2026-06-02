@@ -1,11 +1,15 @@
+// ─── File: types/PWChromium.ts ─────────────────────────────────────────────
+// Interface public API của BrowserEngine -- Fluent API cho fingerprint,
+// proxy, profile, launch, context management.
+//
+//   1. Cấu hình: useFingerprint, useProxy, useProfile, repackChromium
+//   2. Khởi động: launch
+//   3. Runtime: newContext, newFingerprint
+//   4. Dọn dẹp: quit
+// ─────────────────────────────────────────────────────────────────────────────
+
 import type { BrowserContext } from 'playwright-core';
-import {
-  FetchOptions,
-  FingerprintOptions,
-  PluginLaunchOptions,
-  ProfileOptions,
-  ProxyOptions,
-} from '../adapter/playwright/chromium';
+import type { FetchOptions, PluginLaunchOptions } from '../adapter/playwright/chromium';
 
 /**
  * Interface điều khiển trình duyệt Chromium với hỗ trợ fingerprint, proxy và profile.

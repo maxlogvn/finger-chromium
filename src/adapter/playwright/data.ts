@@ -1,15 +1,36 @@
+// ─── File: adapter/playwright/data.ts ──────────────────────────────────────
+// Quản lý profile data -- map profile từ thư mục gốc sang thư mục tạm,
+// tránh corrupt dữ liệu khi browser đang chạy.
+//
+//   1. Tạo instance temp dir khi khởi tạo
+//   2. map() -- sao chép profile vào temp dir
+//   3. unmap() -- xoá temp dir khi quit
+//   4. dispose() -- dọn dẹp toàn bộ
+// ─────────────────────────────────────────────────────────────────────────────
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { BROWSER_RUNNING_DIR } from './chromium';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export interface AdaDataManagerOptions {
   tempRootDir?: string;
 }
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+
+/**
+ * Quản lý ánh xạ profile -- sao chép từ thư mục gốc sang thư mục tạm
+ * để tránh ghi trực tiếp vào profile gốc trong lúc browser đang chạy.
+ * Dùng map() để copy, unmap() để xoá thư mục tạm.
+ */
 export class AdapterDataManager {
   private readonly tempRootDir: string;
   private readonly instanceTempDir: string;
+
   constructor(options: AdaDataManagerOptions = {}) {
-    this.tempRootDir = options.tempRootDir ?? path.join(BROWSER_RUNNING_DIR, "profile");
+    this.tempRootDir = options.tempRootDir ?? path.join(BROWSER_RUNNING_DIR, 'profile');
     this.instanceTempDir = path.join(this.tempRootDir, this.generateUniqueName());
   }
 
@@ -17,9 +38,12 @@ export class AdapterDataManager {
 
   map(tempProfileDir: string, destinationDir: string): string;
 
+  /**
+   * Sao chép profile -- từ source sang temp (bỏ targetDir) hoặc từ temp sang destination.
+   * Nếu không có targetDir, tạo temp dir mới.
+   */
   map(inputDir: string, targetDir?: string): string {
     const dest = targetDir ?? this.instanceTempDir;
-    console.log(dest)
     const srcResolved = path.resolve(inputDir);
     const destResolved = path.resolve(dest);
     this.ensureDir(srcResolved);
@@ -34,6 +58,9 @@ export class AdapterDataManager {
     return destResolved;
   }
 
+  /**
+   * Xoá thư mục tạm -- gọi khi kết thúc session.
+   */
   unmap(tempDirPath: string): void {
     const resolvedPath = path.resolve(tempDirPath);
     if (!fs.existsSync(resolvedPath)) {
@@ -47,6 +74,9 @@ export class AdapterDataManager {
     }
   }
 
+  /**
+   * Dọn dẹp toàn bộ -- xoá instance temp dir.
+   */
   dispose(): void {
     this.unmap(this.instanceTempDir);
   }
@@ -55,6 +85,10 @@ export class AdapterDataManager {
     fs.mkdirSync(dirPath, { recursive: true });
   }
 
+  /**
+   * Tạo tên duy nhất cho temp dir -- timestamp + random hex.
+   * Dùng Math.random thay vì crypto để tránh blocking.
+   */
   private generateUniqueName(): string {
     const hex = Math.floor(Math.random() * 0xffff)
       .toString(16)

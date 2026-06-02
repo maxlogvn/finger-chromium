@@ -1,27 +1,51 @@
+// ─── File: plugin/browser.ts ───────────────────────────────────────────────
+// CDP-based viewport resize cho Chromium -- dùng chrome-remote-interface.
+//
+//   1. Kết nối CDP đến browser
+//   2. Lấy windowId từ Browser.getWindowForTarget
+//   3. Retry resize với delta correction
+//   4. Ngắt kết nối CDP
+// ─────────────────────────────────────────────────────────────────────────────
+
 import type { Client } from 'chrome-remote-interface';
 import connect from 'chrome-remote-interface';
 import { scripts } from '../common';
 import type { Browser } from './launcher';
 
-export const MAX_RESIZE_RETRIES = 3;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface ViewportBounds {
   width: number;
   height: number;
 }
+
 interface ViewportDiff {
   width: number;
   height: number;
 }
+
 interface SetViewportOptions {
   diff?: ViewportDiff;
   width: number;
   height: number;
 }
+
 interface RuntimeEvaluateResult<T = unknown> {
   result: {
     value: T;
   };
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+export const MAX_RESIZE_RETRIES = 3;
+
+// ─── Runtime ──────────────────────────────────────────────────────────────────
+
+/**
+ * Resize viewport browser qua CDP -- thử tối đa MAX_RESIZE_RETRIES lần.
+ * delta ban đầu 16x88 (khung viền), tự điều chỉnh nếu sai lệch.
+ */
 export const setViewport = async (browser: Browser, { diff, width, height }: SetViewportOptions): Promise<void> => {
   const cdp = await connect(browser);
   const { windowId } = await cdp.Browser.getWindowForTarget();
@@ -43,6 +67,10 @@ export const setViewport = async (browser: Browser, { diff, width, height }: Set
   }
   await cdp.close();
 };
+
+/**
+ * Lấy kích thước viewport hiện tại qua CDP Runtime.evaluate.
+ */
 export const getViewport = async (cdp: Client): Promise<ViewportBounds> => {
   const { result } = (await cdp.Runtime.evaluate({
     expression: `(${scripts.getViewport})()`,
@@ -50,6 +78,7 @@ export const getViewport = async (cdp: Client): Promise<ViewportBounds> => {
   })) as RuntimeEvaluateResult<ViewportBounds>;
   return result.value;
 };
+
 const waitForResize = async (cdp: Client): Promise<void> => {
   await cdp.Runtime.evaluate({
     expression: `(${scripts.waitForResize})()`,

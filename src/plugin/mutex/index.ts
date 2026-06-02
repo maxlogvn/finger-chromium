@@ -1,26 +1,34 @@
+// ─── File: mutex/index.ts ──────────────────────────────────────────────────
+// Windows named mutex -- native C++ addon (mutex.node) cho win32 32/64-bit.
+//
+//   1. Load mutex.node từ plugin/mutex/{platform}-{arch}/
+//   2. create() -- tạo named mutex cho BASProcess
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const requireNative = createRequire(import.meta.url);
 
-// Tự resolve đường dẫn gốc của package, tránh circular dependency với index.ts
+// ─── Package Root ─────────────────────────────────────────────────────────────
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Điều chỉnh số lần ".." tùy theo vị trí thực tế của file này trong project
 const PACKAGE_PATH = path.resolve(__dirname, '../../../');
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface MutexModule {
   create: (name: string) => void;
   [key: string]: unknown;
 }
 
+// ─── Native Module ────────────────────────────────────────────────────────────
+
 const mutex: MutexModule = (() => {
   try {
     const modulePath = path.join(PACKAGE_PATH, `plugin/mutex/${process.platform}-${process.arch}/mutex.node`);
-    console.log(modulePath);
     return requireNative(modulePath) as MutexModule;
   } catch (error: unknown) {
     const nodeErr = error as NodeJS.ErrnoException;
