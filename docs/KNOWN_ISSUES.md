@@ -40,3 +40,11 @@
 - **File:** `package.json`
 - **Vấn đề cũ:** Dùng `rm -rf` không chạy được trên Windows.
 - **Fix:** Chuyển sang `tsup --clean` (built-in, cross-platform).
+
+---
+
+**#6 — Mutex path resolution sai sau khi tsup bundle**
+- **File:** `src/plugin/mutex/index.ts`
+- **Vấn đề cũ:** Hardcoded `../../../` trong path resolve bị sai sau khi tsup bundle.
+- **Fix:** Walk-up algorithm tìm package root (`resolvePackageRoot`).
+- **Tài liệu:** [Design](designs/mutex-path-resolution.design.md) | [Spec](specs/mutex-path-resolution.spec.md) | [Plan](plans/mutex-path-resolution.plan.md) | [Overview](overviews/mutex-path-resolution.overview.md)

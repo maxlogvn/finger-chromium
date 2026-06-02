@@ -124,7 +124,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:** [Design](designs/native-mutex.design.md) | [Spec](specs/native-mutex.spec.md) | [Plan](plans/native-mutex.plan.md) | [Product](products/native-mutex.product.md) | [Overview](overviews/native-mutex.overview.md) | [Bug fix design](designs/mutex-path-resolution.design.md) | [Bug fix spec](specs/mutex-path-resolution.spec.md) | [Bug fix plan](plans/mutex-path-resolution.plan.md) | [Bug fix overview](overviews/mutex-path-resolution.overview.md) -- `src/plugin/mutex/index.ts`
+- **Tài liệu:** [Design](designs/native-mutex.design.md) | [Spec](specs/native-mutex.spec.md) | [Plan](plans/native-mutex.plan.md) | [Product](products/native-mutex.product.md) | [Overview](overviews/native-mutex.overview.md) -- `src/plugin/mutex/index.ts`
 - **Ghi chú:**
   - Native C++ addon (`mutex.node`)
   - Hỗ trợ win32 32-bit + 64-bit
