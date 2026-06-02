@@ -17,7 +17,7 @@ Thư viện này chạy **chỉ trên Windows** (32-bit hoặc 64-bit), vì engi
 ## Cài đặt
 
 ```bash
-npm install maxlogvn/finger-chromium
+npm install github:maxlogvn/finger-chromium
 ```
 
 Sau khi cài, npm tự động chạy `prepare` script để build thư viện ra thư mục `dist/`. Nếu build không tự động chạy (do `--ignore-scripts`), hãy chạy thủ công:

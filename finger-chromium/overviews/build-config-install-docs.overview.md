@@ -40,7 +40,7 @@ Không có sai lệch. Task được thực hiện đúng như thiết kế đã
 
 - **`prepare` script** là lifecycle hook của npm, tự động chạy sau `npm install` khi cài từ Git. Nếu người dùng dùng `--ignore-scripts`, cần build thủ công bằng `npm run build`.
 - **`tsup --clean`** sử dụng cơ chế clean có sẵn của tsup (xoá thư mục output trước khi build), tương thích cross-platform.
-- **Lệnh cài đặt chính thức:** `npm install maxlogvn/finger-chromium` (không phải `npm install fingerprint-chromium-engine` vì chưa publish lên npm registry).
+- **Lệnh cài đặt chính thức:** `npm install github:maxlogvn/finger-chromium` (không phải `npm install fingerprint-chromium-engine` vì chưa publish lên npm registry).
 
 ---
 

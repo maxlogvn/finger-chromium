@@ -122,7 +122,7 @@ proper-lockfile, dotenv
 Khi người dùng cài đặt và chạy thư viện:
 
 ```
-npm install maxlogvn/finger-chromium (prepare script tự động build dist/)
+npm install github:maxlogvn/finger-chromium (prepare script tự động build dist/)
        |
        v
 Import { Chromium } từ 'fingerprint-chromium-engine'
