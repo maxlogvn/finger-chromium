@@ -1,25 +1,43 @@
 # Spec: Cấu hình Proxy
 
-## Mô tả
+## Options chi tiết
 
-Cấu hình proxy khi gọi `useProxy(data, options)`.
+```ts
+interface ProxyOptions {
+  changeBrowserLanguage?: boolean;                    // default: true
+  changeGeolocation?: boolean;                        // default: false
+  changeTimezone?: boolean;                           // default: true
+  changeWebRTC?: 'enable' | 'disable' | 'replace';   // default: 'replace'
 
-## Options chính
+  publicIPv4?: IPString | 'disable' | 'auto';         // default: 'auto'
+  publicIPv6?: IPString | 'disable' | 'auto';         // default: 'auto'
+  privateIPv4?: IPString | 'disable' | 'local';       // default: 'local'
+  privateIPv6?: IPString | 'disable' | 'local';       // default: 'local'
 
-| Option | Type | Default | Mô tả |
-|---|---|---|---|
-| `changeBrowserLanguage` | boolean | true | Ngôn ngữ theo proxy |
-| `changeGeolocation` | boolean | false | Vị trí địa lý |
-| `changeTimezone` | boolean | true | Múi giờ |
-| `changeWebRTC` | enum | 'replace' | WebRTC |
-| `enableTunneling` | boolean | true | Tunneling |
-| `enableQUIC` | boolean | false | QUIC |
-| `dnsMode` | enum | 'system-proxy' | DNS |
+  ipExtractionMethod?: 'raw' | 'xpath' | 'regexp' | 'jsonpath' | { v4, v6 };
+  ipExtractionParam?: string | { v4, v6 };
+  ipExtractionURL?: string | { v4, v6 };
 
-## Hỗ trợ giao thức
+  detectExternalIP?: boolean | { v4, v6 };            // default: true
+  ipInfoMethod?: 'database' | 'ip-api.com';           // default: 'database'
+  ipInfoKey?: string;                                  // default: ''
 
-HTTP, HTTPS, SOCKS4, SOCKS5.
+  enableTunneling?: boolean;                          // default: true
+  enableQUIC?: boolean;                               // default: false
+  dnsMode?: 'system-proxy' | 'custom-proxy' | 'custom-direct';  // default: 'system-proxy'
+  dnsIP?: string;                                     // default: '1.1.1.1'
+}
+```
 
----
+## IPv4/IPv6 dual stack
 
-Xem thêm: [Design](../designs/proxy-config.design.md) | [Plan](../plans/proxy-config.plan.md)
+Nhiều option hỗ trợ cấu hình riêng cho IPv4 và IPv6 qua object `{ v4, v6 }`. Ví dụ:
+```ts
+detectExternalIP: { v4: true, v6: false }
+ipExtractionMethod: { v4: 'jsonpath', v6: 'raw' }
+```
+
+## Validation
+
+- `validateConfig('proxy', value, options)` kiểm tra value là string (URL), options là object
+- `setProxyFromArguments(args)` parse `--proxy-server=<url>` từ mảng args nếu proxy chưa set

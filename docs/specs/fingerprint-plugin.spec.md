@@ -1,37 +1,53 @@
 # Spec: FingerprintPlugin
 
-## Mô tả
+## Class: FingerprintPlugin (282 dòng)
 
-Plugin core điều phối engine: config methods + API calls + spawn lifecycle.
+### Properties
 
-## API
+```ts
+protected launcher: { launch: (opts) => Promise<Browser> };
+protected version: string | null;           // default 'default'
+protected fingerprint?: PluginConfig;
+protected profile?: PluginConfig;
+protected proxy?: PluginConfig;
+```
 
-### Config methods
+### Config methods (Fluent API)
+
+| Method | Tham số | Mô tả |
+|---|---|---|
+| `useFingerprint(value, options?)` | string + object | Lưu fingerprint config |
+| `useProfile(value, options?)` | string + object | Lưu profile path + options |
+| `useProxy(value, options?)` | string + object | Lưu proxy URL + options |
+| `useBrowserVersion(version)` | string | Version browser, mặc định 'default' |
+| `setProxyFromArguments(args)` | string[] | Parse --proxy-server từ args |
+| `setServiceKey(key)` | string | Lưu vào module-level serviceKey |
+
+### Runtime methods
 
 | Method | Mô tả |
 |---|---|
-| `useFingerprint(value, options)` | Gắn fingerprint |
-| `useProxy(value, options)` | Định tuyến proxy |
-| `useProfile(value, options)` | Liên kết profile |
-| `useBrowserVersion(version)` | Chọn version |
-| `setServiceKey(key)` | Gán private key |
-| `setWorkingFolder(folder)` | Thư mục làm việc |
-| `setRequestTimeout(timeout)` | Timeout request |
-| `setEngineTimeout(timeout)` | Timeout engine |
+| `fetch(options)` | Gọi api('fetch') -- lấy fingerprint |
+| `versions(format)` | Gọi api('versions') -- danh sách version |
+| `spawn(options)` | Gọi _launch(true, options) |
+| `configure(cleanup, browser, bounds, sync)` | Gọi configure từ config.ts |
 
-### API methods
+### _launch() flow chi tiết
 
-| Method | Mô tả |
-|---|---|
-| `fetch(options)` | Lấy fingerprint |
-| `versions(format)` | Danh sách version |
-
-### Lifecycle
-
-1. `spawn()` → `_launch(true, options)`
-2. API `setup` → cleaner watch → mutex create
-3. Spawn worker.exe → configure + synchronize
-
----
-
-Xem thêm: [Design](../designs/fingerprint-plugin.design.md) | [Plan](../plans/fingerprint-plugin.plan.md)
+```
+1. setProxyFromArguments(options.args)
+2. api('setup', { key, pid, fingerprint, proxy, profile, version })
+   → response: { id, pid, pwd, path, bounds }
+3. cleaner.watch(pwd).ignore(pwd, pid, id)
+4. mutex.create('BASProcess' + pid)
+5. Chọn launcher:
+   - useDefaultLauncher=true → plugin launcher (spawn worker.exe)
+   - useDefaultLauncher=false → options.launcher ?? this.launcher
+6. Spawn với:
+   - headless: false (force)
+   - userDataDir: undefined
+   - executablePath: path/worker.exe
+   - args: --parent-process-id=pid, --unique-process-id=id
+7. configure() → resize + sync .ini
+8. Return browser/BrowserContext
+```

@@ -2,22 +2,47 @@
 
 ## Vấn đề
 
-Cần logging có tổ chức, dễ bật/tắt theo module để debug.
+Cần logging theo module để debug từng layer: connector (IPC với engine), plugin (lifecycle orchestration), adapter (Playwright bridge). Dễ bật/tắt không ảnh hưởng production.
 
-## Giải pháp
+## Giải pháp: `debug` package
 
-Dùng thư viện `debug` với namespace:
-- `fingerprint:connector` — IPC với engine
-- `fingerprint:plugin` — FingerprintPlugin
-- `fingerprint:adapter` — Playwright adapter
+Namespace convention: `fingerprint:<module>`
 
-Bật qua env: `DEBUG=fingerprint:*`
+```ts
+import debug from 'debug';
 
-## Tại sao chọn `debug`?
+const logConnector = debug('fingerprint:connector');
+const logPlugin = debug('fingerprint:plugin');
+const logAdapter = debug('fingerprint:adapter');
+```
 
-- Nhẹ, zero dependency
-- Namespace có wildcard
-- Dễ dùng, quen thuộc với Node.js dev
+### Namespace map
+
+| Namespace | File | Mục đích |
+|---|---|---|
+| `fingerprint:connector` | `connector/engine.ts`, `connector/index.ts` | Engine IPC, download, extract, setup |
+| `fingerprint:plugin` | `plugin/index.ts` | Lifecycle, config methods |
+| `fingerprint:adapter` | `adapter/*.ts` | Playwright bridge, hooks, viewport |
+
+### Cách bật
+
+```bash
+# Tất cả
+set DEBUG=fingerprint:* & node app.js
+
+# Một module
+set DEBUG=fingerprint:connector & node app.js
+
+# Nhiều module
+set DEBUG=fingerprint:connector,fingerprint:plugin & node app.js
+```
+
+### Tại sao chọn `debug`?
+
+- Zero dependency (nhẹ)
+- Namespace với wildcard support
+- Output có màu (terminal), format `namespace message`
+- Không ảnh hưởng performance khi tắt (vì property getter bypass)
 
 ---
 

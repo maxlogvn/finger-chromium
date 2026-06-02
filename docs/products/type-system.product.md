@@ -2,22 +2,41 @@
 
 ## Tổng quan
 
-Type definitions cho fingerprint, proxy, profile, fetch options.
+Type definitions cho tất cả options của fingerprint-chromium-engine.
 
-## Các kiểu chính
+## Interface chính
+
+### PWChromium
+
+9 methods: `repackChromium`, `useFingerprint`, `useProxy`, `useProfile`, `newFingerprint`, `launch`, `newContext`, `quit`.
 
 ### FingerprintOptions
 
-PerfectCanvas, WebGL, Audio, Canvas, Battery, Sensor, HiDPI, FontPack, ElementSize.
+```ts
+interface FingerprintOptions {
+  emulateDeviceScaleFactor?: boolean; // HiDPI/Retina
+  emulateSensorAPI?: boolean;         // Cảm biến (gia tốc, con quay)
+  usePerfectCanvas?: boolean;         // Canvas chính xác
+  useFontPack?: boolean;              // Đồng bộ font
+  safeElementSize?: boolean;          // Che ClientRects (mặc định false)
+  safeBattery?: boolean;              // Nhiễu Battery API
+  safeCanvas?: boolean;               // Nhiễu Canvas 2D
+  safeAudio?: boolean;                // Nhiễu Web Audio
+  safeWebGL?: boolean;                // Nhiễu WebGL
+}
+```
 
-### ProxyOptions
+### FetchOptions
 
-Giao thức, timezone, geolocation, language, WebRTC, DNS, tunneling, QUIC, IP detection.
+Dùng để lọc fingerprint từ service:
 
-### ProfileOptions
-
-loadProxy, loadFingerprint — nạp lại config từ profile cũ.
-
-### FetchOptions + Tag + Time
-
-Bộ lọc fingerprint theo tags và thời gian.
+```ts
+interface FetchOptions {
+  tags?: Tag[];           // ['Desktop', 'Chrome', 'Windows 10']
+  timeLimit?: Time;       // '30 days'
+  minWidth?: number;
+  maxWidth?: number;
+  minBrowserVersion?: number | 'current';
+  maxBrowserVersion?: number | 'current';
+}
+```

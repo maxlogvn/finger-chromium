@@ -1,5 +1,10 @@
 # Overview: Cấu hình Proxy
 
-Hoàn thành. Proxy config có nhiều option nhất (19 field), coverage đầy đủ.
+## Lưu ý kỹ thuật
 
-Không có sai lệch.
+- `changeGeolocation` default `false` -- vì geolocation cần user permission ở browser, có thể gây popup.
+- `ipExtractionMethod` hỗ trợ `'jsonpath'`, `'xpath'`, `'regexp'`, `'raw'` -- engine binary dùng method này để parse IP từ response của `ipExtractionURL`.
+- `ipInfoMethod` có 2 giá trị: `'database'` (tra cứu local database) và `'ip-api.com'` (gọi API).
+- `IPString = string & {}` là branded type -- chỉ có ý nghĩa lúc compile. Runtime không có check.
+- `enableQUIC` default `false` -- QUIC protocol có thể bypass proxy. Bật lên khi proxy support QUIC.
+- `changeWebRTC: 'replace'` -- cơ chế: engine binary override IP trong SDP offer/answer, IP thật không bao giờ lộ.

@@ -1,25 +1,51 @@
 # Spec: Playwright Bridge
 
-## Mô tả
+## Module: src/adapter/playwright/engine.ts
 
-Bridge giữa FingerprintPlugin và Playwright BrowserType.
+### Constants
 
-## Methods
+| Tên | Giá trị | Mô tả |
+|---|---|---|
+| `IGNORED_ARGUMENTS` | `['--disable-extensions']` | Loại bỏ khỏi args |
+| `UNSUPPORTED_OPTIONS` | `['proxy', 'channel', 'firefoxUserPrefs']` | Throw nếu có |
+| `LAUNCH_FALLBACK_WARNING` | `string` | Warning khi dùng launch() thay vì launchPersistentContext() |
 
-| Method | Mô tả |
-|---|---|
-| `launch(options)` | Fallback → launchPersistentContext |
-| `launchPersistentContext(userDataDir, options)` | Inject fingerprint |
-| `configure(cleanup, browser, bounds, sync)` | Resize + bind hooks |
+### Class PlaywrightFingerprintPlugin
 
-## Validation
+```ts
+class PlaywrightFingerprintPlugin extends FingerprintPlugin {
+  protected pwLauncher: Launcher;
 
-Các options không hỗ trợ: `proxy`, `channel`, `firefoxUserPrefs`. Throw error nếu có.
+  constructor(launcher: Launcher = defaultLauncher);
+  
+  async launch(options: PluginLaunchOptions = {}): Promise<BrowserContext>;
+  async launchPersistentContext(userDataDir: string, options: PluginLaunchOptions = {}): Promise<BrowserContext>;
+  async configure(cleanup, browser, bounds, sync): Promise<void>;
+}
+```
 
-## Ignored arguments
+### launchPersistentContext flow
 
-`--disable-extensions` luôn được thêm vào `ignoreDefaultArgs`.
+```
+1. #validateOptions(options) → throw nếu có proxy/channel/firefoxUserPrefs
+2. Filter --user-data-dir khỏi options.args
+3. Tạo custom launcher:
+   launcher.launch = (opts) => pwLauncher.launchPersistentContext(userDataDir, opts)
+4. Gọi this._launch(false, {
+     ...options,
+     viewport: null,
+     ignoreDefaultArgs: [...IGNORED_ARGUMENTS],
+     launcher,
+   })
+5. Return BrowserContext
+```
 
----
+### configure() flow
 
-Xem thêm: [Design](../designs/playwright-bridge.design.md) | [Plan](../plans/playwright-bridge.plan.md)
+```
+1. onClose(context, () => cleanup(context))
+2. Nếu có bounds:
+   a. Tạo resize function
+   b. bindHooks(context, { onPageCreated: resize })
+   c. Nếu page đầu tiên có sẵn → resize ngay
+```

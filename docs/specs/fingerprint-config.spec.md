@@ -1,23 +1,47 @@
 # Spec: Cấu hình Fingerprint
 
-## Mô tả
+## Options chi tiết
 
-Tuỳ chọn fingerprint khi gọi `useFingerprint(data, options)`.
+```ts
+interface FingerprintOptions {
+  usePerfectCanvas?: boolean;           // default: true
+  safeWebGL?: boolean;                  // default: true
+  safeAudio?: boolean;                  // default: true
+  safeCanvas?: boolean;                 // default: true
+  safeBattery?: boolean;               // default: true
+  safeElementSize?: boolean;           // default: false
+  emulateDeviceScaleFactor?: boolean;  // default: true
+  emulateSensorAPI?: boolean;          // default: true
+  useFontPack?: boolean;               // default: true
+}
+```
 
-## Options
+## PluginConfig
 
-| Option | Type | Default | Mô tả |
-|---|---|---|---|
-| `usePerfectCanvas` | boolean | true | Canvas chính xác |
-| `safeWebGL` | boolean | true | WebGL noise |
-| `safeAudio` | boolean | true | Audio noise |
-| `safeCanvas` | boolean | true | Canvas noise |
-| `safeBattery` | boolean | true | Battery API |
-| `safeElementSize` | boolean | false | ClientRects |
-| `emulateDeviceScaleFactor` | boolean | true | HiDPI |
-| `emulateSensorAPI` | boolean | true | Sensor API |
-| `useFontPack` | boolean | true | FontPack |
+```ts
+interface PluginConfig {
+  value: string;     // JSON fingerprint string
+  options: object;   // FingerprintOptions
+}
+```
 
----
+## Validation (trong plugin/utils.ts)
 
-Xem thêm: [Design](../designs/fingerprint-config.design.md) | [Plan](../plans/fingerprint-config.plan.md)
+`validateConfig(type, value, options)`:
+- `value` phải là string (JSON fingerprint)
+- `options` phải là object (không null)
+- Nếu không hợp lệ → throw PluginError
+
+## Integration trong _launch()
+
+```ts
+const setupParams = {
+  key: serviceKey,
+  pid: uuid,
+  fingerprint: this.fingerprint,  // { value, options }
+  // ...
+};
+const response = await api('setup', setupParams);
+```
+
+Không có validation riêng từng option -- engine binary chịu trách nhiệm parse và áp dụng.

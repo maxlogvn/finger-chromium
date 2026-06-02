@@ -2,47 +2,40 @@
 
 ## Tổng quan
 
-Dự án fingerprint-chromium-engine sử dụng bộ công nghệ phát triển hiện đại để đảm bảo chất lượng code và trải nghiệm dev tốt.
+Thư viện `fingerprint-chromium-engine` cung cấp API fluent để điều khiển Chromium với fingerprint thật.
 
-## Công nghệ
-
-| Thành phần | Công nghệ |
-|---|---|
-| Ngôn ngữ | TypeScript 5.8, strict mode, target ES2022 |
-| Bundle | tsup 8.5 (esbuild) -- xuất ESM + CJS + DTS |
-| Linting | ESLint 10 + `@typescript-eslint` |
-| Format | Prettier 3.8 (tabs, single quotes, 100 printWidth) |
-| Test | Mocha 11 + tsx loader |
-| Dev | dotenv, tsx |
-
-## Các lệnh cơ bản
+## Cài đặt
 
 ```bash
-npm run dev        # Chạy TypeScript trực tiếp (tsx)
-npm run build      # Bundle ESM + CJS + DTS (tsup)
-npm run lint       # ESLint
-npm run format     # Prettier format
-npm test           # Chạy test (Mocha)
+npm install fingerprint-chromium-engine
 ```
 
-## Cấu trúc thư mục sau khi build
+Yêu cầu Node.js >= 18, Windows (win32).
 
+## Sử dụng cơ bản
+
+```ts
+import { Chromium } from 'fingerprint-chromium-engine';
+
+const context = await Chromium
+  .usePrivateKey('your-key')
+  .useFingerprint('{...fingerprint JSON...}')
+  .useProxy('http://user:pass@proxy:8080')
+  .useProfile('./profile')
+  .launch()
+  .newContext();
+
+const page = await context.newPage();
+// Sử dụng page như bình thường
+
+await Chromium.quit();
 ```
-dist/
-├── index.js       # ESM
-├── index.cjs      # CommonJS
-├── index.d.ts     # Type definitions (ESM)
-└── index.d.cts    # Type definitions (CJS)
+
+## Các lệnh phát triển
+
+```bash
+npm run build    # Build ESM + CJS + DTS
+npm test         # Chạy mocha tests
+npm run lint     # ESLint
+npm run format   # Prettier
 ```
-
-## Yêu cầu hệ thống
-
-- Node.js >= 18
-- Windows (win32) -- dự án chỉ hỗ trợ Windows
-- Playwright Core >= 1.60 (peer dependency)
-
-## Lưu ý
-
-- `npm run clean` hiện dùng `rm` (Unix) -- không tương thích Windows. Cần chạy `npx tsup` trực tiếp để build.
-- Luôn chạy `npm run lint` trước khi commit.
-- File `.env` chứa biến môi trường (BABLOSOFT_KEY, ...) đã được gitignore.

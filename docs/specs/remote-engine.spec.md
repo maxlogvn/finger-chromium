@@ -1,32 +1,56 @@
 # Spec: RemoteEngine
 
-## Mô tả
+## Class: RemoteEngine extends EventEmitter
 
-Quản lý vòng đời engine binary: download, verify, extract, spawn, IPC.
+### Private fields
 
-## API
+| Field | Type | Mô tả |
+|---|---|---|
+| `#meta` | `EngineMeta?` | Metadata từ project.xml + bablosoft API |
+| `#cwd` | `string` | Thư mục làm việc (default `CWD` = `data/`) |
+| `#args` | `string[]` | Args cho engine binary |
+| `#engineTimeout` | `number` | Timeout start (~300s default) |
+| `#requestTimeout` | `number` | Timeout request (~300s default) |
 
-| Method | Mô tả |
-|---|---|
-| `setCwd(value)` | Thư mục làm việc |
-| `setArgs(value)` | Args cho process |
-| `setEngineTimeout(value)` | Timeout khởi động |
-| `setRequestTimeout(value)` | Timeout request |
-| `runFunction(name, params)` | Gọi hàm qua IPC |
+### EngineMeta type
 
-## IPC Flow
+```ts
+interface EngineMeta {
+  version: string;   // Từ project.xml <EngineVersion>
+  checksum: string;  // SHA1 từ metadata JSON
+  url: string;       // Download URL từ metadata JSON
+}
+```
 
-1. Tạo file JSON request trong thư mục `r/`
-2. Chokidar watch file change
-3. Engine ghi response vào cùng file
-4. Parse JSON, trả kết quả
+### Hằng số
 
-## Xử lý lỗi
+| Tên | Giá trị | Mô tả |
+|---|---|---|
+| `CLOSE_TIMEOUT` | `60000` | Thời gian chờ engine đóng |
+| `DEFAULT_TIMEOUT` | `300000` | 5 phút |
+| `ARCH` | `'32'` hoặc `'64'` | Từ process.arch |
+| `CWD` | `'data/'` | Thư mục mặc định |
+| `PROJECT_PATH` | `'...'` | Từ resolvePackageRoot |
 
-- Timeout: `RequestTimeoutError` / `EngineTimeoutError`
-- Engine die: `InvalidEngineError`
-- Sai checksum: tự động xoá và tải lại
+### runFunction(name, params)
 
----
+1. Update metadata nếu chưa có
+2. Start process nếu chưa chạy
+3. Tạo request file `r/<pid>_<uuid>.json`
+4. Cleanup request cũ (theo PID)
+5. Watch file bằng chokidar
+6. Đợi response (timeout + close event)
+7. Parse JSON response, trả `{ error?, response? }`
 
-Xem thêm: [Design](../designs/remote-engine.design.md) | [Plan](../plans/remote-engine.plan.md)
+## File structure của engine
+
+```
+data/
+├── s/                  # Settings files (*.ini)
+├── t/                  # Temp files
+├── r/                  # Request files (*.json)
+└── <version>/          # Engine version directory
+    ├── FastExecuteScript.exe
+    ├── project.xml
+    └── worker_command_line.txt  # Nội dung: --mock-connector
+```

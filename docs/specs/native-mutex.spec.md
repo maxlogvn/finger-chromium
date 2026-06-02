@@ -1,25 +1,42 @@
 # Spec: Native Mutex
 
-## Mô tả
+## Module: src/plugin/mutex/index.ts (48 dòng)
 
-Windows named mutex qua native C++ addon.
+### Implementation
 
-## API
+```ts
+import { createRequire } from 'node:module';
 
-| Method | Mô tả |
+const require = createRequire(__filename);
+
+const nativePath = path.join(__dirname, 'mutex', `win32-${process.arch}`, 'mutex.node');
+const mutex = require(nativePath) as MutexModule;
+
+export default mutex;
+export const create = mutex.create;
+```
+
+### Architecture detection
+
+| process.arch | Path |
 |---|---|
-| `create(name)` | Tạo named mutex, return handle |
-| `close(name)` | Đóng handle |
+| `x64` | `mutex/win32-x64/mutex.node` |
+| `ia32` | `mutex/win32-ia32/mutex.node` |
 
-## Naming convention
+### Mutex naming
 
-`Global\{uuid}` — unique mỗi instance.
+```
+BASProcess${pid}
+```
 
-## Build
+Ví dụ: `BASProcess12345`
 
-Prebuilt binary cho win32 ia32 + x64.
-Source: `src/plugin/mutex/mutex.cpp`
+### Interface
 
----
+```ts
+interface MutexModule {
+  create: (name: string) => void;
+}
+```
 
-Xem thêm: [Design](../designs/native-mutex.design.md) | [Plan](../plans/native-mutex.plan.md)
+Không có `close()` -- mutex tự động release khi process kết thúc (Windows kernel-managed).

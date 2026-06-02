@@ -1,6 +1,7 @@
 # Plan: Debug Logging
 
-- [x] Bước 1: Viết product doc
-- [x] Bước 2: Viết overview doc
-- [x] Bước 3: Kiểm tra
-- [x] Bước 4: Cập nhật roadmap
+- [x] Bước 1: Cài đặt debug package
+- [x] Bước 2: Tạo logger instances với namespace fingerprint:connector
+- [x] Bước 3: Tạo logger instances với namespace fingerprint:plugin
+- [x] Bước 4: Tạo logger instances với namespace fingerprint:adapter
+- [x] Bước 5: Thêm log statements vào các file tương ứng

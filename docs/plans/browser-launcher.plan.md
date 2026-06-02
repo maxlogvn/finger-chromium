@@ -1,6 +1,6 @@
 # Plan: Browser Launcher
 
-- [x] Bước 1: Viết product doc
-- [x] Bước 2: Viết overview doc
-- [x] Bước 3: Kiểm tra
-- [x] Bước 4: Cập nhật roadmap
+- [x] Bước 1: Định nghĩa Browser interface + LaunchOptions
+- [x] Bước 2: Implement launch() -- spawn + readline + regex
+- [x] Bước 3: Implement close() -- taskkill + fallback
+- [x] Bước 4: Tích hợp configure() -- override bởi config.ts

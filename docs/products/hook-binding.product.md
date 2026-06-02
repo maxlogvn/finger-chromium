@@ -2,19 +2,24 @@
 
 ## Tổng quan
 
-Hook Binding intercept các Playwright methods để đảm bảo viewport luôn đúng fingerprint.
+Hook Binding intercept Playwright methods để tự động resize viewport mỗi khi tạo page mới. Viewport không thể thay đổi sau khi set -- tránh phá vỡ fingerprint.
 
 ## Cách hoạt động
 
-- `bindHooks()` proxy `newContext` và `newPage` để tự động resize
-- `onClose()` đăng ký cleanup handler (disconnected cho Browser, close cho BrowserContext)
-- `setViewportSize` bị chặn và in warning -- kích thước đã bị fingerprint lock
+Khi bạn gọi `context.newPage()`:
+
+1. Hook binding intercept lời gọi
+2. `onPageCreated` hook được gọi
+3. CDP resize viewport về kích thước fingerprint
+4. `setViewportSize()` bị chặn -- in warning
 
 ```ts
-// Tự động resize mỗi khi tạo page mới
-bindHooks(context, {
-  onPageCreated: async (page) => {
-    await setViewport(page, { width: 1920, height: 1080 });
-  }
-});
+// setViewportSize sẽ không hoạt động
+await page.setViewportSize({ width: 800, height: 600 });
+// Warning: "Khong the thay doi viewport: kich thuoc da bi khoa boi fingerprint"
 ```
+
+## Lưu ý
+
+- Hook chỉ ảnh hưởng pages mới, không resize page đã tồn tại
+- Page đầu tiên được resize ngay trong `configure()` của PlaywrightBridge

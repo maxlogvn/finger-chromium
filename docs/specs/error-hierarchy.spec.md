@@ -1,38 +1,49 @@
-# Spec: Hệ thống lỗi (Error Hierarchy)
+# Spec: Hệ thống lỗi
 
-## Mô tả
+## Class hierarchy
 
-Phân cấp lỗi cho toàn bộ engine. Base class `PluginError` kế thừa `Error`, tự động set `name`.
+```
+PluginError extends Error
+├── this.name = constructor.name
+├── Error.captureStackTrace(this, this.constructor)
+├── Symbol.toStringTag -> constructor.name
 
-## Các class
+MissingKeyError extends PluginError  -- "Key bi thieu hoac khong hop le!"
+InvalidEngineError extends PluginError -- "Engine chua duoc tai hoac giai nen"
+EngineTimeoutError extends PluginError -- "Engine khoi dong qua thoi gian"
+RequestTimeoutError extends PluginError -- "Request qua thoi gian"
+```
 
-| Class | Kế thừa | Khi nào dùng |
-|---|---|---|
-| `PluginError` | `Error` | Base, lỗi chung |
-| `MissingKeyError` | `PluginError` | Thiếu key |
-| `InvalidEngineError` | `PluginError` | Engine lỗi/chưa tải |
-| `EngineTimeoutError` | `PluginError` | Timeout khởi động |
-| `RequestTimeoutError` | `PluginError` | Timeout request |
-
-## Thiết kế
+## Code pattern
 
 ```ts
 class PluginError extends Error {
   constructor(message: string) {
     super(message);
     this.name = this.constructor.name;
-    Error.captureStackTrace(this, this.constructor);
+    Error.captureStackTrace(this, this.constructor as abstract new (...args: unknown[]) => unknown);
+  }
+
+  get [Symbol.toStringTag](): string {
+    return this.constructor.name;
   }
 }
 ```
 
-Mỗi subclass thêm hướng dẫn khắc phục vào message qua `dedent`.
+## Cách dùng
 
-## Kiểm tra
+```ts
+// Trong connector/index.ts
+if (error?.includes?.('key is missing')) {
+  throw new MissingKeyError('[MissingKeyError] Key bi thieu hoac khong hop le!');
+}
 
-- `npm run lint` -- không lỗi
-- `npm run build` -- build thành công
+// Trong engine.ts timeout
+reject(new RequestTimeoutError(`[RequestTimeoutError] Request "${name}" qua thoi gian ${timeout}ms`));
+```
 
----
+## Xử lý ngoại lệ
 
-Xem thêm: [Design](../designs/error-hierarchy.design.md) | [Plan](../plans/error-hierarchy.plan.md)
+Không để lỗi raw bubble lên. Trong connector, luôn có try/catch:
+- `api()` dùng `async-lock` + try/catch trong `runFunction`
+- Timeout race (`Promise.race`) ném `EngineTimeoutError`

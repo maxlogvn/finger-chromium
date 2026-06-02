@@ -2,20 +2,14 @@
 
 ## Tổng quan
 
-Native Windows named mutex đảm bảo chỉ một instance browser dùng một profile tại một thời điểm.
+Windows named mutex đảm bảo chỉ một instance browser dùng một profile tại một thời điểm. Cross-process safety.
 
-## Cách dùng
+## Cách hoạt động
 
-```ts
-import { create, close } from './mutex';
+Khi `_launch()` được gọi, mutex `BASProcess${pid}` được tạo. Nếu một process khác cố gắng launch với cùng profile, mutex sẽ block.
 
-const mutex = create('Global\\profile-abc-123');
-// Browser chạy...
-close(mutex); // Giải phóng
-```
+Mutex tự động release khi process kết thúc (Windows kernel quản lý).
 
-## Tại sao cần?
+## Tại sao không dùng async-lock?
 
-- Chống corrupt profile khi nhiều browser cùng ghi
-- Cross-process (khác với async-lock trong process)
-- Chạy trên Windows, dùng native Win32 API
+`async-lock` đồng bộ trong cùng process. Native mutex hoạt động cross-process -- cần thiết vì engine binary chạy trong child process riêng.

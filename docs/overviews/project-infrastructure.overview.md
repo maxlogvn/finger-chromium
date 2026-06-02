@@ -1,24 +1,7 @@
-# Overview: Hạ tầng dự án (Project Infrastructure)
+# Overview: Hạ tầng dự án
 
-## Kết quả
+Thực tế triển khai đúng spec. Một số điểm cần lưu ý:
 
-Đã thiết lập đầy đủ hạ tầng phát triển cho dự án fingerprint-chromium-engine. Tất cả config và tooling đã hoạt động ổn định.
-
-## So sánh Plan vs Thực tế
-
-| Bước | Nội dung | Trạng thái |
-|---|---|---|
-| 1 | Viết product doc | Hoàn thành |
-| 2 | Viết overview doc | Hoàn thành |
-| 3 | Kiểm tra tính nhất quán | Hoàn thành |
-| 4 | Cập nhật roadmap | Hoàn thành |
-
-## Sai lệch
-
-- Plan dự kiến 4 bước, thực tế làm đúng 4 bước. Không sai lệch.
-
-## Bài học kinh nghiệm
-
-- `npm run clean` dùng `rm -rf dist` không tương thích Windows. Cần sửa script thành `rimraf` hoặc dùng PowerShell `Remove-Item` khi có thời gian.
-- Tsup bundle rất nhanh (< 200ms), phù hợp cho CI/CD.
-- ESLint với `consistent-type-imports` giúp giảm kích thước bundle đáng kể.
+- `tsup` `dts.resolve: false` là bắt buộc vì nếu để `true` hoặc bỏ qua, `rollup-plugin-dts` (dùng nội bộ trong tsup) sẽ crash khi parse type từ `playwright-core` -- dẫn đến lỗi build không rõ nguyên nhân.
+- External list phải khai báo đầy đủ để esbuild không bundle dependencies. Thiếu một package trong external sẽ làm tăng kích thước bundle và gây conflict version.
+- `npm run clean` không chạy trên Windows -- pre-existing bug chưa sửa.

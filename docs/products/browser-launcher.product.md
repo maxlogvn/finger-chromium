@@ -2,22 +2,17 @@
 
 ## Tổng quan
 
-Browser Launcher spawn Chromium từ engine binary và phát hiện DevTools URL.
+Launch Chromium từ engine binary và phát hiện CDP URL tự động.
 
-## Cách dùng
+## Cách hoạt động
 
-```ts
-const browser = launcher.spawn('./chrome.exe', [
-  '--remote-debugging-port=0',
-]);
-// Tự động parse DevTools URL từ stdout
-console.log(browser.wsEndpoints);
-// ['ws://127.0.0.1:12345/devtools/browser/xxx']
-```
+1. Spawn `worker.exe` với `--remote-debugging-port=0` (port random)
+2. Parse `DevTools listening on ws://...` từ stderr
+3. Trả về Browser object với close() dùng taskkill để dọn process tree
 
-## Tính năng
+## Close safety
 
-- Phát hiện CDP endpoint tự động từ stdout/stderr
-- Hỗ trợ nhiều target (multi-tab)
-- Timeout configurable
-- Clean kill với `close()`
+Dùng `taskkill /pid <pid> /T /F` thay vì `process.kill()`:
+- `/T`: kill toàn bộ process tree (worker.exe + chromium con)
+- `/F`: force kill
+- Fallback: `process.kill()` nếu taskkill fail

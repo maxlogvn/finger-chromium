@@ -1,26 +1,31 @@
 # Spec: Hệ thống kiểu
 
-## Mô tả
-
-TypeScript type definitions cho toàn bộ project.
-
 ## File structure
 
-| File | Export chính |
-|---|---|
-| `PWChromium.ts` | `PWChromium` interface |
-| `fingerprint.ts` | `FingerprintOptions` |
-| `proxy.ts` | `ProxyOptions` |
-| `profile.ts` | `ProfileOptions` |
-| `fetch.ts` | `FetchOptions`, `Tag`, `Time` |
-| `plugin-options.ts` | `PluginOptions` |
-| `config.ts` | `EngineConfig` |
+| File | Dòng | Export chính |
+|---|---|---|
+| `src/types/PWChromium.ts` | 164 | `PWChromium` interface -- 9 methods |
+| `src/types/fingerprint.ts` | 91 | `FingerprintOptions` -- 9 booleans |
+| `src/types/proxy.ts` | 210 | `ProxyOptions` -- 19 fields |
+| `src/types/profile.ts` | 30 | `ProfileOptions` -- 2 booleans |
+| `src/types/fetch.ts` | 137 | `FetchOptions`, `Time`, `Tag` |
+| `src/types/plugin-options.ts` | -- | `PluginOptions` |
+| `src/types/config.ts` | -- | `EngineConfig` |
 
-## Strict mode
+## Chi tiết options
 
-Toàn bộ codebase dùng TypeScript strict mode.
-Không dùng `any` (ngoại trừ 16 pre-existing warnings).
+### FingerprintOptions
 
----
+9 field, tất cả optional boolean. Chỉ `safeElementSize` default `false`, còn lại default `true`.
 
-Xem thêm: [Design](../designs/type-system.design.md) | [Plan](../plans/type-system.plan.md)
+### ProxyOptions
+
+IPString là branded type `string & {}` -- chỉ để compile-time check. 19 field với cấu trúc:
+- Scalar hoặc `{ v4, v6 }` object (cho IPv4/IPv6 riêng)
+- Enum dạng string literal union
+
+### FetchOptions
+
+- `Time`: union của 4 string literals
+- `Tag`: union của 16 string literals (thiết bị + OS + browser)
+- `minBrowserVersion`/`maxBrowserVersion`: number hoặc `'current'`

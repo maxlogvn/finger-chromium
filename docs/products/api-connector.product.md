@@ -2,18 +2,24 @@
 
 ## Tổng quan
 
-API Connector là wrapper đồng bộ cho RemoteEngine, đảm bảo an toàn khi nhiều instance gọi cùng lúc.
+API Connector là lớp giao tiếp đồng bộ với engine binary, đảm bảo chỉ một request tại một thời điểm và chuẩn hoá lỗi.
 
 ## Cách dùng
 
 ```ts
-import { api, engine } from './connector';
+import { api } from './connector';
 
-const result = await api('fetch', { key: '...', options: { tags: ['Chrome'] } });
+// Gọi API setup
+const result = await api('setup', {
+  key: 'your-key',
+  fingerprint: { value: '{...}', options: {} },
+  proxy: { value: 'http://proxy:8080', options: {} },
+});
 ```
 
 ## Tính năng
 
-- Đồng bộ hoá request bằng `async-lock`
-- Tự động phân loại lỗi (MissingKeyError, PluginError)
-- PCAP server tự động khởi động khi import
+- **async-lock**: Chỉ một request tại một thời điểm, tránh race condition
+- **Error normalization**: Lỗi engine được chuyển thành `PluginError` hoặc `MissingKeyError`
+- **Notifications**: Khi không có key, tự động nhắc user nâng cấp
+- **PCAP server**: Auto-start mock TCP server cho engine kết nối

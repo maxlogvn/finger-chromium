@@ -2,12 +2,12 @@
 
 ## Tổng quan
 
-Tuỳ chọn fingerprint giúp trình duyệt giả lập thiết bị thật, tránh bot detection.
+Fingerprint được inject ở cấp C/C++ -- không để lại vết override trong JavaScript. Chống bot detection hiệu quả hơn JS-based fingerprint.
 
 ## Cách dùng
 
 ```ts
-Chromium.useFingerprint(fingerprintData, {
+Chromium.useFingerprint(fingerprintJson, {
   usePerfectCanvas: true,
   safeWebGL: true,
   safeAudio: true,
@@ -19,11 +19,9 @@ Chromium.useFingerprint(fingerprintData, {
 });
 ```
 
-## Giải thích options
+## Chi tiết từng option
 
-- **PerfectCanvas**: thay thế dữ liệu Canvas bằng dữ liệu từ fingerprint thật
-- **safeWebGL**: thêm nhiễu vào WebGL, che GPU thật
-- **safeAudio**: thêm nhiễu vào Web Audio API
-- **safeCanvas**: thêm nhiễu vào Canvas 2D
-- **safeBattery**: giả lập Battery API, mỗi phiên giá trị khác nhau
-- **FontPack**: đồng bộ font chữ với fingerprint mục tiêu
+- **usePerfectCanvas**: Dùng dữ liệu canvas từ fingerprint thật, không phải tự sinh
+- **safeWebGL**: Thêm nhiễu vào WebGL -- che GPU thật, tránh WebGL fingerprinting
+- **safeBattery**: Mỗi phiên giá trị pin khác nhau -- tránh bị track theo battery pattern
+- **safeElementSize** (mặc định false): Che giấu kích thước thật của DOM element -- có thể ảnh hưởng UX

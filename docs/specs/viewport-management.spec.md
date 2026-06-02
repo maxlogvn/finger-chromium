@@ -1,25 +1,61 @@
 # Spec: Quản lý Viewport
 
-## Mô tả
+## CDP-based setViewport (`plugin/browser.ts`)
 
-Resize viewport browser và đồng bộ thông số vào engine config.
+### Function: setViewport
 
-## CDP Resize
+```ts
+export async function setViewport(browser: Browser, bounds: {
+  width: number;
+  height: number;
+  diff?: { width: number; height: number };
+}): Promise<void>
+```
 
-Method `setViewport(browser, {width, height})`:
-- Kết nối CDP qua `chrome-remote-interface`
-- `Browser.getWindowForTarget` → lấy windowId
-- `Browser.setWindowBounds` → resize
-- Retry tối đa 3 lần, delta correction
+Params:
+- `browser`: Browser instance (từ launcher)
+- `bounds.width/height`: Viewport mong muốn
+- `bounds.diff`: Delta offset (mặc định 16x88)
 
-## Sync .ini
+Flow:
+```
+1. const cdp = await CDP({ host: '127.0.0.1', port: browser.port })
+2. const { windowId } = await cdp.Browser.getWindowForTarget()
+3. Loop MAX_RESIZE_RETRIES (3):
+   a. bounds = { width: desiredW + deltaW, height: desiredH + deltaH }
+   b. await Promise.all([
+        cdp.Browser.setWindowBounds({ windowId, bounds }),
+        waitForResize(cdp)   // Runtime.evaluate scripts.waitForResize
+      ])
+   c. actual = await getViewport(cdp)  // Runtime.evaluate scripts.getViewport
+   d. If match → break
+   e. Else: delta += desired - actual (auto-correction)
+4. cdp.close()
+```
 
-`synchronize(id, pwd, bounds, action)`:
-- Đọc file `.ini` của engine
-- Reset `availWidth/availHeight` → `BAS_NOT_SET`
-- Chạy action (resize)
-- Set giá trị thật → `.ini`
+### Function: synchronize (`plugin/config.ts`)
 
----
+```ts
+export async function synchronize(
+  id: string,
+  pwd: string,
+  bounds: { width: number; height: number },
+  action: () => Promise<void>
+): Promise<void>
+```
 
-Xem thêm: [Design](../designs/viewport-management.design.md) | [Plan](../plans/viewport-management.plan.md)
+Flow:
+```
+1. const lock = new AsyncLock()
+2. lock.acquire(id, async () => {
+3.   // Phase 1: reset
+     write ini: availWidth = -170141183460469231731687303715884105727 (BAS_NOT_SET)
+     write ini: availHeight = BAS_NOT_SET
+     await delay(2000)
+     // Phase 2: set real values after action
+     await action()
+     write ini: availWidth = bounds.width
+     write ini: availHeight = bounds.height
+     await delay(2000)
+   })
+```

@@ -1,23 +1,51 @@
 # Spec: File Cleanup Daemon
 
-## Mô tả
+## Module: src/plugin/cleaner.ts (97 dòng)
 
-Daemon dọn file tạm, chạy timer 15s.
+### Class SettingsCleaner
 
-## Config
+```ts
+class SettingsCleaner {
+  #timer: NodeJS.Timeout | null;
+  #folders: Set<string>;
 
-| Option | Default | Mô tả |
-|---|---|---|
-| `interval` | 15000 | Timer interval (ms) |
-| `cleanDir` | `BROWSER_RUNNING_DIR` | Thư mục dọn |
-| `ignorePatterns` | `[]` | Pattern bỏ qua |
-| `includePatterns` | `[]` | Pattern bao gồm |
+  watch(folder: string): this;
+  ignore(folder: string, pid: string, id: string): Promise<void>;
+  include(folder: string, pid: string, id: string): Promise<void>;
+}
+```
 
-## Lock check
+### Public methods
 
-Dùng `proper-lockfile.check(path)` trước khi delete.
-File đang lock → bỏ qua.
+| Method | Mô tả |
+|---|---|
+| `watch(folder)` | Đăng ký folder để cleanup. Start timer 15s nếu chưa chạy |
+| `ignore(folder, pid, id)` | Lock file `t/${pid}`, `s/${id}.ini`, `s/${id}1.ini` |
+| `include(folder, pid, id)` | Unlock các files trên |
 
----
+### Private methods
 
-Xem thêm: [Design](../designs/file-cleanup-daemon.design.md) | [Plan](../plans/file-cleanup-daemon.plan.md)
+```ts
+#toggleLock(shouldLock: boolean, folder: string, pid: string, id: string): Promise<void>
+```
+
+Lock hoặc unlock các paths:
+```
+${folder}/t/${pid}
+${folder}/s/${id}.ini
+${folder}/s/${id}1.ini
+```
+
+Bắt `ENOENT` silent -- nếu file chưa tồn tại, không throw.
+
+### Lock mapping
+
+`.txt → .ini`: Khi gặp file `s/*.txt` trong cleanup, kiểm tra lock trên `s/*.ini` (cùng prefix). Vì engine tạo `.ini` lock files.
+
+### Cleanup interval
+
+```ts
+this.#timer = setInterval(() => this.#cleanup(), 15000).unref();
+```
+
+`.unref()`: timer không ngăn process exit.

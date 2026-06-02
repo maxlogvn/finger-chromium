@@ -2,21 +2,20 @@
 
 ## Tổng quan
 
-Daemon tự động dọn thư mục tạm, ngăn tích tụ file rác.
+Daemon tự động dọn file rác trong thư mục làm việc của engine. An toàn -- không xoá file đang dùng.
 
 ## Cách hoạt động
 
-1. Timer mỗi 15s quét thư mục dọn
-2. Kiểm tra lockfile (`proper-lockfile`) trước khi delete
-3. File đang dùng bởi process khác → skip
-4. Hỗ trợ ignore/include pattern
+1. Khi browser launch, `cleaner.ignore()` lock các file của process
+2. Khi browser đóng, `cleaner.include()` unlock
+3. Timer 15s quét thư mục, xoá file không locked
 
-## Config
+## File lock mechanism
 
-```ts
-new CleanupDaemon({
-  interval: 30000,       // 30s
-  cleanDir: './temp',
-  ignorePatterns: ['*.log'],
-});
-```
+Dùng `proper-lockfile` để kiểm tra file có đang dùng không. File đang lock bởi process khác → skip.
+
+## An toàn
+
+- Timer `.unref()` -- không giữ process alive
+- `ENOENT` bắt silent -- nếu file đã bị xoá trước đó
+- File modified trong 15s gần nhất được skip -- tránh xoá file vừa tạo

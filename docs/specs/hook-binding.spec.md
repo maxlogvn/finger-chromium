@@ -1,26 +1,49 @@
 # Spec: Hook Binding
 
-## Mô tả
+## Module: src/adapter/playwright/utils.ts (124 dòng)
 
-Proxy Playwright methods để intercept page creation và viewport.
+### Functions
 
-## Components
+| Function | Input | Output | Mô tả |
+|---|---|---|---|
+| `onClose` | Browser or BrowserContext + listener | void | Đăng ký cleanup |
+| `bindHooks` | Browser or BrowserContext + Hooks | void | Proxy methods |
+| `setViewport` | Page + ViewportBounds | Promise<void> | CDP resize |
+| `getViewport` | Page | Promise<{width, height}> | Lấy viewport |
 
-| Function | Mô tả |
-|---|---|
-| `onClose(target, listener)` | Đăng ký cleanup (disconnected/close event) |
-| `bindHooks(target, hooks)` | Proxy newContext/newPage/setViewportSize |
-| `setViewport(page, options)` | CDP resize |
-| `getViewport(page)` | Lấy kích thước |
+### Constants
 
-## Proxy chain
-
-```
-Browser.newContext() → patchContext()
-  → BrowserContext.newPage() → onPageCreated hook
-    → Page.setViewportSize() → blocked (warning)
+```ts
+export const MAX_RESIZE_RETRIES = 3;
 ```
 
----
+### Type guard
 
-Xem thêm: [Design](../designs/hook-binding.design.md) | [Plan](../plans/hook-binding.plan.md)
+```ts
+const isBrowser = (target: unknown): target is Browser => {
+  return typeof (target as any)?.version === 'function';
+};
+```
+
+### Proxy chain
+
+```
+Browser.newContext()
+  → resetOptions (force viewport: null)
+  → patchContext()
+    → ctx.newPage()
+      → proxy: hooks.onPageCreated(page)
+      → patchPage()
+        → page.setViewportSize()
+          → proxy: warning + no-op
+```
+
+### setViewport (adapter version)
+
+```ts
+export async function setViewport(page: Page, bounds: { width: number; height: number; diff?: { width: number; height: number } }): Promise<void>
+```
+
+- Dùng `page.context().newCDPSession(page)` thay vì `chrome-remote-interface`
+- Cùng delta correction algorithm như plugin/browser.ts
+- Cùng MAX_RESIZE_RETRIES = 3

@@ -2,21 +2,27 @@
 
 ## Tổng quan
 
-Logging theo module dùng `debug` package.
+Structured logging với `debug` package, namespace theo module.
 
-## Cách dùng
+## Bật logging
 
 ```bash
-set DEBUG=fingerprint:* && node app.js
+set DEBUG=fingerprint:* & node app.js
 ```
 
-Namespaces:
-- `fingerprint:connector` — IPC request/response
-- `fingerprint:plugin` — lifecycle events
-- `fingerprint:adapter` — Playwright operations
+## Namespaces
 
-## Tính năng
+| Namespace | Log gì |
+|---|---|
+| `fingerprint:connector` | Download engine, extract, IPC request/response, setup |
+| `fingerprint:plugin` | Lifecycle: launch, configure, cleanup |
+| `fingerprint:adapter` | BrowserEngine methods, viewport resize, hook binding |
 
-- Bật/tắt theo module
-- Wildcard (dấu `*`)
-- Không ảnh hưởng performance khi tắt
+## Ví dụ output
+
+```
+fingerprint:connector Dang tai browser... +0ms
+fingerprint:connector Dang cai dat browser... +5s
+fingerprint:plugin _launch: setup response OK +10s
+fingerprint:adapter setViewport: resize 1920x1080 +11s
+```

@@ -2,18 +2,35 @@
 
 ## Vấn đề
 
-Các tuỳ chọn fingerprint, proxy, profile cần kiểu dữ liệu rõ ràng để TypeScript kiểm tra ở compile time.
+Fingerprint, proxy, profile đều có cấu trúc phức tạp với nhiều option enum và boolean. Cần TypeScript type để kiểm tra compile-time.
 
-## Giải pháp
+## Các kiểu chính
 
-5 file type trong `src/types/`:
-- `PWChromium.ts` — interface public của BrowserEngine
-- `fingerprint.ts` — `FingerprintOptions`
-- `proxy.ts` — `ProxyOptions`
-- `profile.ts` — `ProfileOptions`
-- `fetch.ts` — `FetchOptions`, `Tag`, `Time`
+### `PWChromium` interface (164 dòng)
 
-Ngoài ra `plugin-options.ts` và `config.ts` cho internal types.
+Interface fluent API với 9 methods, mỗi method có JSDoc giải thích lifecycle. Dùng generic `object` cho option params -- linh hoạt nhưng vẫn type-safe.
+
+### `FetchOptions` (137 dòng)
+
+Có các string literal union type:
+- `Time = '*' | '15 days' | '30 days' | '60 days'` -- lọc fingerprint theo thời gian thu thập
+- `Tag = '*' | 'Desktop' | 'Mobile' | 'Microsoft Windows' | ...` -- lọc theo thiết bị
+
+Dùng `'current'` làm magic value cho `minBrowserVersion`/`maxBrowserVersion` -- engine sẽ tự match với version trình duyệt đang cài.
+
+### `ProxyOptions` (210 dòng)
+
+Option phức tạp nhất với 19 field. Nhiều field chấp nhận cả scalar lẫn object `{ v4: ..., v6: ... }` -- ví dụ `ipExtractionMethod`, `ipExtractionParam`.
+
+Dùng kỹ thuật branded type `IPString = string & {}` để phân biệt IP string với string thường -- giúp type-checking tốt hơn mà không ảnh hưởng runtime.
+
+### IPString brand trick
+
+```ts
+type IPString = string & {};
+```
+
+Đây là kỹ thuật nominal typing trong TypeScript structural type system. Brand prop `{}` không tồn tại ở runtime, chỉ dùng để TypeScript phân biệt kiểu. Thực tế `IPString` vẫn là `string`, chỉ có ý nghĩa lúc compile.
 
 ---
 

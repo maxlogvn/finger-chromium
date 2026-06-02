@@ -1,27 +1,30 @@
 # Spec: Debug Logging
 
-## Mô tả
+## Module: debug package
 
-Logging dùng `debug` package, namespace theo module.
+### Namespaces
 
-## Namespaces
-
-| Namespace | File |
+| Namespace | Nơi dùng |
 |---|---|
-| `fingerprint:connector` | `connector/*` |
-| `fingerprint:plugin` | `plugin/*` |
-| `fingerprint:adapter` | `adapter/*` |
+| `fingerprint:connector` | `connector/engine.ts`, `connector/index.ts` |
+| `fingerprint:plugin` | `plugin/index.ts` |
+| `fingerprint:adapter` | `adapter/playwright/chromium.ts`, `engine.ts`, `utils.ts` |
 
-## Usage
+### Usage
 
-```bash
-# Bật tất cả
-DEBUG=fingerprint:* npm start
-
-# Bật một module
-DEBUG=fingerprint:connector npm start
+```ts
+import debug from 'debug';
+const log = debug('fingerprint:adapter');
+log('[BrowserEngine] Launching...');
+// Output: fingerprint:adapter [BrowserEngine] Launching...
 ```
 
----
+### Environment
 
-Xem thêm: [Design](../designs/debug-logging.design.md) | [Plan](../plans/debug-logging.plan.md)
+```bash
+set DEBUG=fingerprint:* && node dist/index.js
+```
+
+### Performance
+
+`debug()` trả về function no-op nếu namespace không match `DEBUG` env. Zero overhead khi tắt.
