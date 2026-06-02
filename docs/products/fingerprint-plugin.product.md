@@ -2,28 +2,60 @@
 
 ## Tổng quan
 
-FingerprintPlugin là orchestrator trung tâm quản lý toàn bộ vòng đời fingerprint browser.
+FingerprintPlugin là orchestrator trung tâm. Nó quản lý cấu hình (fingerprint, proxy, profile), gọi API setup tới engine binary, spawn worker.exe, và dọn dẹp sau khi browser đóng.
 
-## Cách dùng
+## Vòng đời đầy đủ
+
+```
+        useFingerprint() → useProxy() → useProfile()
+                 ↓
+           _launch(options)
+                 ↓
+      ┌─ api('setup') ─ gửi config
+      ├─ cleaner.watch + mutex.create
+      ├─ spawn worker.exe
+      ├─ configure() → resize viewport
+      └─ return Browser / BrowserContext
+                 ↓
+           user dùng page
+                 ↓
+           cleanup: close + include + unlock
+```
+
+## Cách dùng trực tiếp
 
 ```ts
 const plugin = new FingerprintPlugin();
 
 plugin
-  .useFingerprint('{...fingerprint JSON...}')
-  .useProxy('http://user:pass@proxy:8080')
-  .useProfile('C:/profiles/user_01');
+  .useFingerprint(fingerprintString, {
+    usePerfectCanvas: true,
+    safeWebGL: true,
+  })
+  .useProxy('http://proxy:8080', {
+    changeWebRTC: 'replace',
+  })
+  .useBrowserVersion('default');
 
-const context = await plugin.launchPersistentContext('', {
-  key: process.env.BABLOSOFT_KEY,
-  viewport: null,
+// Fetch fingerprint từ service
+const fp = await plugin.fetch({
+  tags: ['Desktop', 'Chrome'],
+  timeLimit: '30 days',
 });
+
+// Lấy danh sách version có sẵn
+const versions = await plugin.versions('default');
 ```
 
-## Vòng đời
+## 2 đường dẫn launch
 
-1. **Config**: set fingerprint, proxy, profile qua fluent API
-2. **Setup**: gọi API engine để khởi tạo browser config
-3. **Spawn**: launch worker.exe với các arg đặc biệt
-4. **Configure**: resize viewport, sync .ini
-5. **Cleanup**: dọn file tạm, release mutex
+Plugin hỗ trợ 2 chế độ:
+
+1. **Direct spawn** (`useDefaultLauncher=true`): spawn `worker.exe` trực tiếp, dùng khi không có Playwright
+2. **Playwright bridge** (`useDefaultLauncher=false`): dùng `pwLauncher.launchPersistentContext()`, trả về `BrowserContext`
+
+Chế độ 2 được dùng bởi `PlaywrightFingerprintPlugin` (trong `engine.ts`).
+
+## Key module-level
+
+`setServiceKey()` lưu key ở module level -- tất cả instance đều dùng chung. Key có thể set 1 lần, dùng cho mọi lần launch sau.

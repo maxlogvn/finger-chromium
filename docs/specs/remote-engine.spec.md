@@ -32,25 +32,54 @@ interface EngineMeta {
 | `CWD` | `'data/'` | Thư mục mặc định |
 | `PROJECT_PATH` | `'...'` | Từ resolvePackageRoot |
 
-### runFunction(name, params)
+### runFunction(name, params) -- Flow chi tiết
 
-1. Update metadata nếu chưa có
-2. Start process nếu chưa chạy
-3. Tạo request file `r/<pid>_<uuid>.json`
-4. Cleanup request cũ (theo PID)
-5. Watch file bằng chokidar
-6. Đợi response (timeout + close event)
-7. Parse JSON response, trả `{ error?, response? }`
+```
+1. if (!meta) → #updateMeta()
+2. if (!process) → #startProcess(timeout)
+3. Tạo requests dir: r/
+4. Cleanup request cũ:
+   for each file in r/:
+     pid = parsePidFromFilename(file)
+     try kill(pid, 0) → nếu ESRCH → rm(file)
+5. Request file: r/<process.pid>_<uuid>.json
+   { name, params }
+6. Watcher = chokidar.watch(requestFilePath, { awaitWriteFinish: true })
+7. Promise.race([
+     onWatcherChange → readFile → parse JSON → resolve({ response, error }),
+     requestTimeout → reject(RequestTimeoutError),
+     onProcessClose → setTimeout(CLOSE_TIMEOUT) → reject/retry
+   ])
+8. Finally: watcher.close(), rm(requestFilePath)
+```
+
+### Chi tiết timeout logic
+
+```ts
+// engineTimeout: Promise.race giữa startProcess và setTimeout
+// requestTimeout: setTimeout reject trong Promise.race
+// closeTimeout: 60s grace period khi process đóng bất ngờ
+```
 
 ## File structure của engine
 
 ```
 data/
 ├── s/                  # Settings files (*.ini)
-├── t/                  # Temp files
+├── t/                  # Temp files (PID-based lock files)
 ├── r/                  # Request files (*.json)
 └── <version>/          # Engine version directory
     ├── FastExecuteScript.exe
     ├── project.xml
     └── worker_command_line.txt  # Nội dung: --mock-connector
 ```
+
+## Engine initialization steps
+
+| Bước | Method | Điều kiện | Action |
+|---|---|---|---|
+| Update meta | `#updateMeta()` | meta chưa load | Parse project.xml → fetch/cache metadata JSON |
+| Checksum | `#startProcessInternal()` | Zip tồn tại | SHA1 hash zip → compare với meta.checksum → xoá nếu mismatch |
+| Download | `#startProcessInternal()` | Engine dir missing | Download zip từ meta.url → verify SHA1 |
+| Extract | `#startProcessInternal()` | Script dir missing | extract-zip → copy project.xml → tạo config files |
+| Spawn | `#startProcessInternal()` | Engine ready | execFile('FastExecuteScript.exe', ['--silent', ...args]) |

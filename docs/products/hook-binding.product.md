@@ -2,24 +2,61 @@
 
 ## Tổng quan
 
-Hook Binding intercept Playwright methods để tự động resize viewport mỗi khi tạo page mới. Viewport không thể thay đổi sau khi set -- tránh phá vỡ fingerprint.
+Hook Binding intercept Playwright methods để tự động resize viewport và chặn thay đổi kích thước sau khi fingerprint đã set.
 
-## Cách hoạt động
+## Chi tiết
 
-Khi bạn gọi `context.newPage()`:
+### Khi bạn gọi `context.newPage()`
 
-1. Hook binding intercept lời gọi
-2. `onPageCreated` hook được gọi
-3. CDP resize viewport về kích thước fingerprint
-4. `setViewportSize()` bị chặn -- in warning
+```
+Browser.newContext()
+  → force viewport: null (chống Playwright tự resize)
+  → patch context
+
+BrowserContext.newPage()
+  → onPageCreated hook
+  → CDP resize → viewport theo fingerprint
+  → patch page
+
+Page.setViewportSize()
+  → bị chặn → in warning
+```
+
+### onClose
+
+Khi Browser disconnected hoặc BrowserContext closed, cleanup handler được gọi:
 
 ```ts
-// setViewportSize sẽ không hoạt động
+onClose(browser, () => cleanup());
+// Browser: 'disconnected' event
+// BrowserContext: 'close' event
+```
+
+### bindHooks
+
+```ts
+bindHooks(browser, {
+  onPageCreated: async (page) => {
+    await setViewport(page, { width: 1920, height: 1080 });
+    console.log('Viewport resized');
+  },
+});
+```
+
+## Ví dụ
+
+```ts
+const context = await Chromium.newContext();
+const page = await context.newPage();
+// page tự động resize về kích thước fingerprint
+
+// Không thể thay đổi:
 await page.setViewportSize({ width: 800, height: 600 });
 // Warning: "Khong the thay doi viewport: kich thuoc da bi khoa boi fingerprint"
 ```
 
 ## Lưu ý
 
-- Hook chỉ ảnh hưởng pages mới, không resize page đã tồn tại
-- Page đầu tiên được resize ngay trong `configure()` của PlaywrightBridge
+- Hook chỉ áp dụng cho Pages mới, không resize page đã tồn tại
+- `resetOptions()` force `viewport: null` để Playwright không resize trước -- engine tự resize qua CDP
+- `patchPage` proxy `setViewportSize` in warning, không throw -- để không crash code

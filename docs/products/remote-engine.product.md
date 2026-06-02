@@ -2,23 +2,55 @@
 
 ## Tổng quan
 
-RemoteEngine quản lý vòng đời của `FastExecuteScript.exe` -- tải, giải nén, cấu hình và IPC với engine.
+RemoteEngine quản lý `FastExecuteScript.exe` -- engine binary từ bablosoft. Nó tự động tải, giải nén, cấu hình, và giao tiếp với engine để setup browser với fingerprint.
 
-## File-based IPC
+## Engine lifecycle
 
-Engine giao tiếp qua JSON file trên ổ cứng:
+Khi bạn gọi `Chromium.launch()`, các bước sau xảy ra:
+
+### 1. Kiểm tra metadata
+
+Engine đọc `project.xml` (có sẵn trong project) để lấy version. Sau đó fetch metadata từ bablosoft để biết URL download và SHA1 checksum. Kết quả được cache vào file để lần sau khởi động nhanh hơn.
+
+### 2. Download + Extract
+
+Nếu engine chưa được tải:
 
 ```
-Request:  r/<pid>_<uuid>.json  →  { name: "setup", params: {...} }
-Response: Ghi đè nội dung file request →  { response: {...} }
+data/
+└── <version>/
+    ├── FastExecuteScript.exe
+    ├── project.xml
+    └── worker_command_line.txt   # --mock-connector
 ```
 
-Lý do không dùng pipe: engine binary được thiết kế để chạy độc lập, không gắn với parent process lifecycle.
+### 3. File-based IPC
 
-## Cache metadata
+Engine giao tiếp qua JSON file, không qua pipe:
 
-Sau khi fetch metadata từ bablosoft, lưu vào `cwd/<version>_<ARCH>.json` để lần sau không cần gọi API nữa. Giảm thời gian khởi động và tránh phụ thuộc network.
+```
+Bạn gửi:    r/<pid>_<uuid>.json  →  { name: "setup", params: {...} }
+Engine trả: Ghi đè nội dung file →  { response: { id, pid, pwd, ... } }
+```
 
-## SHA1 checksum verification
+### 4. PID cleanup
 
-Mỗi lần start, engine zip được verify SHA1. Nếu checksum không khớp, xoá toàn bộ và tải lại. Ngăn chặn dùng engine corrupt do tải dở dang.
+Trước mỗi request, engine dọn các request cũ từ process đã chết. Không sợ tích tụ file rác.
+
+## Timeout
+
+- **engineTimeout** (mặc định 300s): timeout cho download + extract + spawn
+- **requestTimeout** (mặc định 300s): timeout cho từng IPC request
+- **closeTimeout** (60s): thời gian chờ engine đóng sau khi process kết thúc
+
+Có thể cấu hình qua env:
+
+```bash
+set FINGERPRINT_TIMEOUT=600000  # 10 phút
+```
+
+## Sự kiện
+
+Engine phát ra 2 sự kiện:
+- `'beforeDownload'`: "Dang tai browser..." -- khi bắt đầu download
+- `'beforeExtract'`: "Dang cai dat browser..." -- khi bắt đầu extract

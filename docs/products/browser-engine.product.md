@@ -2,35 +2,44 @@
 
 ## Tổng quan
 
-`Chromium` singleton là public API chính của thư viện. Dùng fluent pattern để cấu hình và lifecycle.
+`Chromium` là singleton public API -- điểm vào duy nhất bạn cần. Dùng fluent pattern để cấu hình và lifecycle.
 
-## Cách dùng đầy đủ
+## Ví dụ đầy đủ
 
 ```ts
 import { Chromium } from 'fingerprint-chromium-engine';
 
-// 1. Cấu hình
+// --- Cấu hình ---
 Chromium
   .usePrivateKey(process.env.BABLOSOFT_KEY)
-  .useFingerprint(fingerprintJson)
+  .useFingerprint(fingerprintJson, {
+    usePerfectCanvas: true,
+    safeWebGL: true,
+    safeCanvas: true,
+  })
   .useProxy('socks5://127.0.0.1:9050', {
     changeWebRTC: 'replace',
     enableTunneling: true,
+    dnsMode: 'custom-direct',
   })
-  .useProfile('./profiles/user_01', {
+  .useProfile('./profiles/my_profile', {
     loadProxy: true,
     loadFingerprint: true,
   });
 
-// 2. Launch + tạo context
-await Chromium.launch({ headless: false });
+// --- Launch ---
+await Chromium.launch({
+  headless: false,
+  args: ['--disable-web-security'],
+});
+
+// --- Lấy context ---
 const context = await Chromium.newContext();
 const page = await context.newPage();
-
-// 3. Dùng page như bình thường
 await page.goto('https://example.com');
+console.log(await page.title());
 
-// 4. Dọn dẹp
+// --- Dọn dẹp ---
 await Chromium.quit();
 ```
 
@@ -38,7 +47,43 @@ await Chromium.quit();
 
 | Gọi method | Khi chưa launch | Sau launch | Sau quit |
 |---|---|---|---|
-| `launch()` | OK | Throw | OK |
-| `newContext()` | Throw | OK | Throw |
+| `launch()` | OK | Throw (1 lần) | OK |
+| `newContext()` | Throw | OK (1 lần) | Throw |
 | `quit()` | No-op | OK | No-op |
 | `useFingerprint()` | OK | OK | OK |
+| `useProxy()` | OK | OK | OK |
+| `useProfile()` | OK | OK | OK |
+
+## Profile safety
+
+Khi bạn gọi `useProfile('./profiles/user')`, dữ liệu được:
+
+1. **Copy** vào thư mục tạm `<BROWSER_RUNNING_DIR>/profile/<timestamp>_<random>/`
+2. **Browser chạy trên bản copy** -- không corrupt dữ liệu gốc
+3. **Khi quit**: copy ngược lại thư mục gốc, xoá thư mục tạm
+
+Nếu browser crash, profile gốc vẫn an toàn. Thư mục tạm được CleanupDaemon dọn sau.
+
+## Custom launcher
+
+Bạn có thể thay thế Playwright launcher mặc định bằng `repackChromium()`:
+
+```ts
+import { Chromium } from 'fingerprint-chromium-engine';
+import { chromium } from 'playwright-extra';
+
+Chromium.repackChromium({
+  launch: (opts) => chromium.launch(opts),
+  launchPersistentContext: (dir, opts) => chromium.launchPersistentContext(dir, opts),
+});
+```
+
+**Lưu ý**: gọi `repackChromium()` sẽ reset toàn bộ config -- cần set lại fingerprint/proxy/profile.
+
+## Môi trường
+
+| Biến | Mục đích |
+|---|---|
+| `BABLOSOFT_KEY` | Key bảo mật |
+| `BROWSER_RUNNING_DIR` | Thư mục tạm cho browser (mặc định `temp`) |
+| `ENGINE_WORKING_DIR` | Thư mục làm việc engine (mặc định `data`) |

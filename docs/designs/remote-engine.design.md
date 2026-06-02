@@ -2,37 +2,40 @@
 
 ## Vấn đề
 
-Cần giao tiếp với `FastExecuteScript.exe` (engine binary của bablosoft) để setup browser với fingerprint. Engine binary này chạy dưới dạng child process, giao tiếp qua file-based IPC, không phải stdin/stdout.
+Cần giao tiếp với `FastExecuteScript.exe` (engine binary của bablosoft) để setup browser với fingerprint. Engine binary này là một C++ executable độc lập, không hỗ trợ stdin/stdout-based IPC, không thể dùng pipe để giao tiếp.
 
-## Giải pháp: RemoteEngine class
+## Tại sao file-based IPC?
 
-### Quy trình khởi tạo engine
+Các phương án giao tiếp với process con:
 
-1. **Update metadata**: Đọc `project.xml` để lấy version engine, fetch metadata JSON từ bablosoft (`http://bablosoft.com/distr/FastExecuteScript${ARCH}/${version}/FastExecuteScript.x${ARCH}.zip.meta.json`), lưu cache vào `cwd/<version>_<ARCH>.json`.
+| Phương án | Vấn đề |
+|---|---|
+| stdin/stdout pipe | Engine binary không hỗ trợ -- nó là standalone executable, không phải CLI tool |
+| Unix socket | Không portable -- cần cross-platform, mà engine chạy Windows |
+| TCP socket | Cần thêm port management, firewall issues |
+| File-based IPC | Engine đã hỗ trợ sẵn: đọc JSON từ thư mục `r/`, ghi response vào cùng file |
 
-2. **Download**: Nếu thư mục engine chưa tồn tại, tải zip từ URL trong metadata. Verify SHA1 checksum của file zip sau khi tải.
+File-based IPC đơn giản, không cần port, không cần protocol negotiation. Engine binary polling thư mục `r/` để tìm request mới.
 
-3. **Extract**: Nếu thư mục script chưa tồn tại, giải nén zip bằng `extract-zip`, copy `project.xml`, tạo `worker_command_line.txt` (nội dung: `--mock-connector`) và `settings.ini` (nội dung: `RunProfileRemoverImmediately=true`).
+## Tại sao SHA1 checksum?
 
-4. **Checksum verification**: Nếu zip có sẵn nhưng checksum không khớp, xoá toàn bộ thư mục engine và tải lại từ đầu. Tránh dùng engine corrupt.
+Engine zip tải từ bablosoft có thể bị corrupt nếu:
+- Download bị gián đoạn (mất mạng giữa chừng)
+- CDN serve file lỗi
+- Disk full khi ghi
 
-### File-based IPC
+SHA1 checksum từ bablosoft metadata JSON cho phép phát hiện corrupt file trước khi extract. Nếu checksum không khớp, xoá toàn bộ thư mục engine và tải lại -- tránh debug khó khăn với engine lỗi.
 
-Engine binary giao tiếp qua file trên ổ cứng, không qua pipe:
-- Request: `r/<pid>_<uuid>.json` chứa `{ name: string, params: object }`
-- Response: Ghi đè nội dung file request JSON bởi engine
-- Watch: Dùng `chokidar` với `awaitWriteFinish: true` để tránh đọc file chưa ghi xong
+## Tại sao cần PID-based cleanup?
 
-### PID-based cleanup
+Mỗi request là một file JSON trong `r/`. Nếu process crash trước khi xoá request file, file tồn tại vĩnh viễn. Bằng cách kiểm tra PID từ tên file (`<pid>_<uuid>.json`), ta biết process gốc còn sống không. Nếu PID đã chết, file là orphan → xoá.
 
-Trước mỗi request, quét thư mục `r/`, kiểm tra PID từ tên file (`<pid>_<uuid>.json`). Nếu PID không còn tồn tại (kill(pid, 0) trả ESRCH), xoá file request cũ. Tránh tích tụ file rác.
+## Cache metadata
 
-### Timeout cơ chế
-
-- `engineTimeout`: timeout cho việc start process (download + extract + execFile). Dùng `Promise.race`.
-- `requestTimeout`: timeout cho từng request IPC. Dùng `setTimeout` reject.
-
-Nếu engine process đóng khi đang chờ response, chờ thêm 60s graceful timeout rồi mới reject.
+Metadata JSON từ bablosoft chứa checksum và URL. Cache vào file `<version>_<ARCH>.json` để:
+- Không cần gọi bablosoft API mỗi lần khởi động
+- Cho phép offline startup (sau lần đầu)
+- Giảm thời gian launch (tránh network latency)
 
 ---
 

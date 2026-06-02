@@ -2,41 +2,60 @@
 
 ## Tổng quan
 
-Type definitions cho tất cả options của fingerprint-chromium-engine.
+Type definitions cho tất cả options. TypeScript strict mode, không dùng `any`.
 
 ## Interface chính
 
 ### PWChromium
 
-9 methods: `repackChromium`, `useFingerprint`, `useProxy`, `useProfile`, `newFingerprint`, `launch`, `newContext`, `quit`.
-
-### FingerprintOptions
+Interface fluent API với 9 methods. Toàn bộ lifecycle đều type-safe:
 
 ```ts
-interface FingerprintOptions {
-  emulateDeviceScaleFactor?: boolean; // HiDPI/Retina
-  emulateSensorAPI?: boolean;         // Cảm biến (gia tốc, con quay)
-  usePerfectCanvas?: boolean;         // Canvas chính xác
-  useFontPack?: boolean;              // Đồng bộ font
-  safeElementSize?: boolean;          // Che ClientRects (mặc định false)
-  safeBattery?: boolean;              // Nhiễu Battery API
-  safeCanvas?: boolean;               // Nhiễu Canvas 2D
-  safeAudio?: boolean;                // Nhiễu Web Audio
-  safeWebGL?: boolean;                // Nhiễu WebGL
+export interface PWChromium {
+  readonly engine: object;
+  repackChromium(launcher: Launcher): this;
+  useFingerprint(data: string, options?: FingerprintOptions): this;
+  useProxy(data: string, options?: ProxyOptions): this;
+  useProfile(dirPath: string, options?: ProfileOptions): this;
+  newFingerprint(options: FetchOptions): Promise<string | undefined>;
+  launch(options?: PluginLaunchOptions): this;
+  newContext(options?: PluginLaunchOptions): Promise<BrowserContext>;
+  quit(saveDataPath?: string): Promise<void>;
 }
 ```
 
-### FetchOptions
+### FetchOptions & Time & Tag
 
 Dùng để lọc fingerprint từ service:
 
 ```ts
-interface FetchOptions {
-  tags?: Tag[];           // ['Desktop', 'Chrome', 'Windows 10']
-  timeLimit?: Time;       // '30 days'
-  minWidth?: number;
-  maxWidth?: number;
-  minBrowserVersion?: number | 'current';
-  maxBrowserVersion?: number | 'current';
-}
+type Time = '*' | '15 days' | '30 days' | '60 days';
+type Tag = '*' | 'Desktop' | 'Mobile' | 'Chrome' | 'Firefox' | ...;
 ```
+
+`minBrowserVersion: 'current'` là magic value -- engine tự match với version trình duyệt đang cài.
+
+### Branded type IPString
+
+```ts
+type IPString = string & {};
+```
+
+Runtime vẫn là string, chỉ TypeScript phân biệt. Giúp tránh truyền nhầm regular string vào IP field.
+
+### ProxyOptions (19 fields)
+
+Các option dạng `{ v4, v6 }` cho IPv4/IPv6 riêng:
+
+```ts
+detectExternalIP: true;
+// Hoặc
+detectExternalIP: { v4: true, v6: false };
+```
+
+## Lưu ý
+
+- Tất cả interface đều optional -- engine dùng giá trị mặc định nếu không set
+- `safeElementSize` là field duy nhất default `false` trong FingerprintOptions
+- `changeGeolocation` default `false` trong ProxyOptions (cần permission)
+- Enum dùng string literal union -- IDE autocomplete tốt

@@ -2,7 +2,13 @@
 
 ## Tổng quan
 
-Thư viện `fingerprint-chromium-engine` cung cấp API fluent để điều khiển Chromium với fingerprint thật.
+`fingerprint-chromium-engine` là thư viện Node.js điều khiển Chromium với fingerprint thật, inject ở cấp C/C++. Hỗ trợ proxy đồng bộ, profile bền vững.
+
+## Yêu cầu hệ thống
+
+- **Node.js** >= 18
+- **OS**: Windows (win32) -- 32-bit hoặc 64-bit
+- **Playwright**: `playwright` >= 1.27.1 hoặc `playwright-core`
 
 ## Cài đặt
 
@@ -10,32 +16,47 @@ Thư viện `fingerprint-chromium-engine` cung cấp API fluent để điều kh
 npm install fingerprint-chromium-engine
 ```
 
-Yêu cầu Node.js >= 18, Windows (win32).
+Cần cài Playwright riêng (peer dependency):
 
-## Sử dụng cơ bản
+```bash
+# Bản đầy đủ (có browser installer)
+npm install playwright
+
+# Hoặc chỉ core (nhẹ)
+npm install playwright-core
+```
+
+## Sử dụng nhanh
 
 ```ts
 import { Chromium } from 'fingerprint-chromium-engine';
 
-const context = await Chromium
-  .usePrivateKey('your-key')
-  .useFingerprint('{...fingerprint JSON...}')
-  .useProxy('http://user:pass@proxy:8080')
-  .useProfile('./profile')
-  .launch()
-  .newContext();
+// Bước 1: Cấu hình
+Chromium.usePrivateKey(process.env.BABLOSOFT_KEY);
 
+// Bước 2: Launch
+await Chromium.launch({ headless: false });
+
+// Bước 3: Tạo context + page
+const context = await Chromium.newContext();
 const page = await context.newPage();
-// Sử dụng page như bình thường
+await page.goto('https://example.com');
 
+// Bước 4: Dọn dẹp
 await Chromium.quit();
 ```
 
-## Các lệnh phát triển
+## Build và test
 
 ```bash
-npm run build    # Build ESM + CJS + DTS
-npm test         # Chạy mocha tests
+npm run build    # Build ESM + CJS + DTS vào dist/
+npm test         # Chạy Mocha tests (cần browser thật)
 npm run lint     # ESLint
-npm run format   # Prettier
+npm run format   # Prettier format
 ```
+
+## Lưu ý
+
+- `headless: false` là bắt buộc -- một số fingerprint check phát hiện headless mode
+- Key `BABLOSOFT_KEY` có thể set qua env hoặc gọi `usePrivateKey()`
+- Chỉ launch được một lần -- phải `quit()` trước khi launch lại

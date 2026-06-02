@@ -2,12 +2,16 @@
 
 ## Tổng quan
 
-Proxy config với 19 option cho phép kiểm soát chi tiết routing, WebRTC, DNS và đồng bộ thông tin vị trí.
+Proxy config cho phép route traffic browser, đồng bộ thông tin vị trí theo proxy, kiểm soát WebRTC và DNS. Hỗ trợ HTTP/HTTPS/SOCKS4/SOCKS5.
 
 ## Cách dùng
 
 ```ts
-Chromium.useProxy('http://user:pass@192.168.1.1:8080', {
+// Cơ bản
+Chromium.useProxy('http://user:pass@192.168.1.1:8080');
+
+// Với options
+Chromium.useProxy('socks5://127.0.0.1:9050', {
   changeTimezone: true,
   changeGeolocation: true,
   changeWebRTC: 'replace',
@@ -17,18 +21,53 @@ Chromium.useProxy('http://user:pass@192.168.1.1:8080', {
 });
 ```
 
-## WebRTC
+## Các nhóm option
 
-- `enable`: Bật WebRTC -- có thể lộ IP thật
-- `disable`: Tắt hoàn toàn WebRTC -- một số site cần WebRTC cho chat/video
-- `replace` (default): Thay IP trong WebRTC bằng IP proxy -- an toàn nhất
+### Đồng bộ thông tin
 
-## DNS
+| Option | Mặc định | Mô tả |
+|---|---|---|
+| `changeBrowserLanguage` | `true` | Ngôn ngữ trình duyệt theo proxy |
+| `changeGeolocation` | `false` | Vị trí địa lý (có thể gây popup) |
+| `changeTimezone` | `true` | Múi giờ tự động theo IP |
 
-- `system-proxy`: DNS qua proxy -- mặc định
-- `custom-proxy`: DNS custom qua proxy
-- `custom-direct`: DNS custom trực tiếp (không qua proxy) -- traffic còn lại vẫn qua proxy
+### WebRTC
 
-## Đồng bộ thông tin
+| Giá trị | Mô tả |
+|---|---|
+| `'enable'` | Bật WebRTC -- có thể lộ IP thật |
+| `'disable'` | Tắt WebRTC -- một số site cần WebRTC cho chat/video |
+| `'replace'` | Thay IP trong WebRTC bằng IP proxy -- **an toàn nhất** |
 
-Khi bật `changeGeolocation` hoặc `changeTimezone`, engine tự động lookup thông tin từ IP proxy và inject vào browser.
+### DNS
+
+| Giá trị | Mô tả |
+|---|---|
+| `'system-proxy'` | DNS hệ thống, traffic qua proxy |
+| `'custom-proxy'` | DNS tuỳ chỉnh qua proxy |
+| `'custom-direct'` | DNS trực tiếp (1.1.1.1), traffic còn lại qua proxy |
+
+### IP Detection
+
+Engine có thể tự động phát hiện IP public và thay thế IP trong WebRTC:
+
+```ts
+detectExternalIP: true,
+ipExtractionMethod: 'jsonpath',   // 'raw' | 'xpath' | 'regexp' | 'jsonpath'
+ipExtractionURL: 'https://api.ipify.org?format=json',
+ipExtractionParam: '$.ip',
+```
+
+### Tunneling
+
+```ts
+enableTunneling: true,  // Bật tunneling qua proxy
+enableQUIC: false,      // QUIC protocol (mặc định tắt -- có thể bypass proxy)
+```
+
+## Lưu ý
+
+- SOCKS4/5 cho phép TCP tunneling, HTTP/HTTPS proxy chỉ route HTTP traffic
+- `changeGeolocation` mặc định false vì geolocation API cần user permission
+- `enableQUIC` nên để false nếu proxy không hỗ trợ QUIC
+- Proxy cũng có thể cấu hình qua arg `--proxy-server=...` nếu không dùng `useProxy()`
