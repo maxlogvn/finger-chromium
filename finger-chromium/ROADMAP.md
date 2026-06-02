@@ -306,3 +306,19 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - 3 lỗi `@typescript-eslint/consistent-type-imports` được fix (engine.ts, plugin/index.ts, PWChromium.ts)
   - `npm run clean` đã fix -- dùng `tsup --clean` thay `rm -rf`
   - Lint: 0 errors, 16 warnings (all pre-existing `no-explicit-any`)
+
+---
+
+### Cấu hình build và tài liệu cài đặt (Build Config & Install Docs)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-02
+- **Cập nhật:** 2026-06-02
+- **Tài liệu:** [Overview](overviews/build-config-install-docs.overview.md)
+- **Ghi chú:**
+  - Thêm `prepare` script (`npm run build`) để tự động build `dist/` khi cài từ GitHub
+  - Đơn giản hóa `build` script: bỏ `npm run clean` ở trước vì tsup đã có `clean: true`
+  - `clean` script dùng `tsup --clean` thay `rm -rf` để tương thích Windows
+  - Cập nhật hướng dẫn cài đặt trong README.md, product, design, spec docs
+  - Fix tiếng Việt thiếu dấu trong debug-logging.spec.md
+  - Fix ghi chú `npm run clean` cũ trong Welcome.md, overviews, design docs
