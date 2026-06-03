@@ -6,7 +6,7 @@
 
 Native Mutex cung cấp Windows named mutex thông qua C++ addon (`mutex.node`). Mutex dùng cho `worker.exe` (BAS process) để đồng bộ truy cập tài nguyên dùng chung giữa các process — tránh xung đột khi nhiều instance fingerprint cùng chạy.
 
-Source: `src/plugin/mutex/index.ts` (75 dòng).
+Source: `src/plugin/mutex/index.ts` (63 dòng).
 
 ## Yêu cầu
 
@@ -75,7 +75,7 @@ release('BASProcess12345');
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/mutex/index.ts` | Native addon wrapper | 75 |
+| `src/plugin/mutex/index.ts` | Native addon wrapper | 63 |
 | `src/plugin/mutex/win32-ia32/mutex.node` | Addon 32-bit | — |
 | `src/plugin/mutex/win32-x64/mutex.node` | Addon 64-bit | — |
 
@@ -83,11 +83,11 @@ release('BASProcess12345');
 
 | Tình huống | Hành vi |
 |---|---|
-| Architecture không hỗ trợ (not win32, not ia32/x64) | Throw `Error('Unsupported OS architecture for named mutex.')` chi tiết |
-| Platform không phải win32 | Throw `Error('Unsupported OS platform for named mutex.')` |
+| Architecture không hỗ trợ (not win32, not ia32/x64) | Throw `PluginError('Unsupported OS architecture for named mutex.')` chi tiết |
+| Platform không phải win32 | Throw `PluginError('Unsupported OS platform for named mutex.')` |
 | Load native module fail (file không tồn tại) | Catch error, log `console.error` với detail, throw |
 | Native addon không có method `close` | `release()` skip silently — kernel tự cleanup |
-| `resolvePackageRoot` không tìm thấy | Throw `Error('[Mutex] Không tìm thấy thư mục gốc...')` |
+| `resolvePackageRoot` không tìm thấy | Throw `PluginError('[Mutex] Không tìm thấy thư mục gốc...')` |
 
 ## Kiểm tra
 

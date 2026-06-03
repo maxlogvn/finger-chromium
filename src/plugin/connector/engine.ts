@@ -20,7 +20,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { type ChildProcess, execFile } from 'node:child_process';
 import { createReadStream, createWriteStream } from 'node:fs';
 import debugFactory from 'debug';
-import { EngineTimeoutError, InvalidEngineError, RequestTimeoutError } from '../errors';
+import { EngineTimeoutError, InvalidEngineError, PluginError, RequestTimeoutError } from '../errors';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -34,6 +34,7 @@ const debug = debugFactory('browser-with-fingerprints:connector:engine');
 
 export const CLOSE_TIMEOUT = 60_000;
 export const DEFAULT_TIMEOUT = 300_000;
+export const KILL_TIMEOUT = 5_000;
 export const ARCH = process.arch.includes('32') ? '32' : '64';
 export const CWD = path.join(process.cwd(), 'data');
 
@@ -57,7 +58,7 @@ function resolvePackageRoot(startDir: string): string {
 
     const parent = path.dirname(current);
     if (parent === current) {
-      throw new Error('[RemoteEngine] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.');
+      throw new PluginError('[RemoteEngine] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.');
     }
     current = parent;
   }
@@ -127,9 +128,58 @@ async function checksum(filePath: string): Promise<string> {
 }
 
 async function download(url: string, filePath: string): Promise<void> {
-  const response = await axios.get(url, { responseType: 'stream' });
-  const writer = createWriteStream(filePath);
-  await pipeline(response.data, writer);
+  const httpsUrl = url.replace(/^http:/, 'https:');
+  const tmpPath = filePath + '.tmp';
+  const writer = createWriteStream(tmpPath);
+  try {
+    try {
+      const response = await axios.get(httpsUrl, { responseType: 'stream' });
+      await pipeline(response.data, writer);
+    } catch (err) {
+      const axiosErr = err as { code?: string; response?: { status: number } };
+      if (axiosErr.code === 'ERR_NETWORK' || axiosErr.code === 'ECONNREFUSED' || axiosErr.code === 'ECONNRESET' || !axiosErr.response) {
+        debug(`HTTPS download failed, falling back to HTTP: ${url}`);
+        const response = await axios.get(url, { responseType: 'stream' });
+        await pipeline(response.data, writer);
+      } else {
+        throw err;
+      }
+    }
+
+    // Rename temp file to target, fallback to copy+unlink if cross-device
+    try {
+      await fs.rename(tmpPath, filePath);
+    } catch (renameErr) {
+      const renameError = renameErr as NodeJS.ErrnoException;
+      if (renameError.code === 'EXDEV') {
+        await fs.copyFile(tmpPath, filePath);
+        await fs.unlink(tmpPath);
+      } else {
+        throw renameErr;
+      }
+    }
+  } catch (err) {
+    await fs.unlink(tmpPath).catch(() => {});
+    throw err;
+  }
+}
+
+/**
+ * Wrapper axios request -- thử HTTPS trước, fallback HTTP nếu lỗi network.
+ * Chỉ fallback khi là lỗi network (không fallback cho 4xx/5xx).
+ */
+async function fetchWithFallback<T = unknown>(url: string, options?: Record<string, unknown>) {
+  const httpsUrl = url.replace(/^http:/, 'https:');
+  try {
+    return await axios.get<T>(httpsUrl, options);
+  } catch (httpsErr) {
+    const axiosErr = httpsErr as { code?: string; response?: { status: number } };
+    if (axiosErr.code === 'ERR_NETWORK' || axiosErr.code === 'ECONNREFUSED' || axiosErr.code === 'ECONNRESET' || !axiosErr.response) {
+      debug(`HTTPS failed, falling back to HTTP: ${url}`);
+      return await axios.get<T>(url, options);
+    }
+    throw httpsErr;
+  }
 }
 
 // ─── RemoteEngine ─────────────────────────────────────────────────────────────
@@ -321,20 +371,57 @@ export default class RemoteEngine extends EventEmitter {
   }
 
   /**
-   * Kill engine process -- dừng FastExecuteScript.exe.
-   * An toàn khi gọi nhiều lần (kiểm tra #process trước khi kill).
+   * Kiểm tra tiến trình engine còn sống hay không.
+   * Dùng signal 0 (không gửi signal thật) để kiểm tra PID tồn tại.
    */
-  kill(): void {
-    if (this.#process && !this.#process.killed) {
-      this.#process.kill();
-      this.#process = undefined;
+  #isProcessAlive(proc?: ChildProcess): boolean {
+    if (!proc) return false;
+    if (proc.killed) return false;
+    try {
+      process.kill(proc.pid!, 0);
+      return true;
+    } catch {
+      return false;
     }
   }
 
   /**
-   * startProcess với timeout -- throw EngineTimeoutError nếu quá thời gian.
+   * Kill engine process -- dừng FastExecuteScript.exe và đợi process thoát hẳn.
+   * Dùng timeout + SIGKILL fallback để tránh treo vô hạn.
+   * Cleaner sẽ không chạy khi process còn ghi file -- tránh EBUSY trên Windows.
+   *
+   * @param timeout - Thời gian chờ process thoát (ms), mặc định KILL_TIMEOUT
+   */
+  async kill(timeout = KILL_TIMEOUT): Promise<void> {
+    if (!this.#process || this.#process.killed) return;
+    const proc = this.#process;
+
+    const exitPromise = new Promise<void>((resolve) => {
+      proc.once('exit', () => resolve());
+    });
+
+    proc.kill();
+
+    const timer = setTimeout(() => {
+      proc.kill('SIGKILL');
+    }, timeout).unref();
+
+    await exitPromise;
+    clearTimeout(timer);
+    this.#process = undefined;
+  }
+
+  /**
+   * Lấy tiến trình engine đang chạy, hoặc spawn mới nếu chưa có.
+   * Cache process để tránh spawn lại mỗi lần gọi API.
+   * Chỉ áp dụng timeout khi thực sự spawn process mới.
    */
   async #startProcess(timeout?: number): Promise<ChildProcess> {
+    if (this.#isProcessAlive(this.#process)) {
+      debug('Tái sử dụng tiến trình engine hiện tại');
+      return this.#process!;
+    }
+
     if (!timeout) return await this.#startProcessInternal();
 
     let timer: NodeJS.Timeout | null = null;
@@ -359,12 +446,12 @@ export default class RemoteEngine extends EventEmitter {
   async #updateMeta(): Promise<void> {
     const project = await fs.readFile(PROJECT_PATH, 'utf8');
     const versionMatch = project.match(/<EngineVersion>(\d+\.\d+\.\d+)<\/EngineVersion>/);
-    if (!versionMatch) throw new Error('Không thể đọc phiên bản Engine từ project.xml');
+    if (!versionMatch) throw new InvalidEngineError('Không thể đọc phiên bản Engine từ project.xml');
 
     const version = versionMatch[1];
     debug(`Cập nhật metadata cho engine (arch: ${ARCH}, version: ${version})`);
 
-    const url = `http://bablosoft.com/distr/FastExecuteScript${ARCH}/${version}/FastExecuteScript.x${ARCH}.zip.meta.json`;
+    const url = `https://bablosoft.com/distr/FastExecuteScript${ARCH}/${version}/FastExecuteScript.x${ARCH}.zip.meta.json`;
     const metaPath = path.join(this.#cwd!, `${version}_${ARCH}.json`);
 
     if (await exists(metaPath)) {
@@ -372,7 +459,7 @@ export default class RemoteEngine extends EventEmitter {
       this.#meta = JSON.parse(await fs.readFile(metaPath, 'utf8'));
     } else {
       debug(`Yêu cầu metadata mới từ ${url}`);
-      const { data } = await axios.get<{ Checksum: string; Url: string }>(url);
+      const { data } = await fetchWithFallback<{ Checksum: string; Url: string }>(url);
       this.#meta = {
         checksum: data.Checksum,
         url: data.Url,

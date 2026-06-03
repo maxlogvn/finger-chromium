@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import fg from 'fast-glob';
-import { posix as path } from 'path';
+import path from 'node:path';
 import { rm } from 'fs/promises';
 import lock from 'proper-lockfile';
 import createDebug from 'debug';
@@ -27,7 +27,7 @@ const LOCKABLE_ITEMS = (pid: string, id: string): string[] => [`t/${pid}`, `s/${
  * Quản lý lock/unlock file tạm của engine để tránh xoá nhầm khi còn dùng.
  * Khởi động timer 15s quét và dọn dẹp các file không còn process sở hữu.
  */
-class SettingsCleaner {
+export class SettingsCleaner {
   #timer: ReturnType<typeof setInterval> | null = null;
   #folders: string[] = [];
 
@@ -115,4 +115,9 @@ class SettingsCleaner {
   }
 }
 
+/**
+ * @deprecated Từ v1.x. Không còn được production code sử dụng.
+ * Dùng `new SettingsCleaner()` để tạo instance riêng.
+ * Sẽ bị xoá ở major version 2.0.
+ */
 export default new SettingsCleaner();

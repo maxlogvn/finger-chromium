@@ -14,7 +14,7 @@ Source types: `src/types/fingerprint.ts` (91 dòng). Source config: `src/plugin/
 
 - `useFingerprint(data, options)` — gắn fingerprint data + options.
 - Validate: `data` phải là string, `options` phải là object không null.
-- Khi validate thất bại, dùng `new Error()` (không phải `PluginError`) — vì lỗi đầu vào đơn giản, không liên quan engine.
+- Khi validate thất bại, dùng `PluginError` — nhất quán với convention dùng `PluginError` cho mọi lỗi engine.
 - 9 field options với giá trị mặc định: `true` cho hầu hết, `safeElementSize` mặc định `false`.
 - Fingerprint data được gửi lên engine qua API `setup` khi `_launch()`.
 
@@ -28,7 +28,7 @@ User gọi useFingerprint(jsonString, options)
   └─ FingerprintPlugin.useFingerprint()
        │
        ├─ validateConfig('fingerprint', value, options)
-       │    └─ Throw Error nếu value không phải string hoặc options không phải object
+       │    └─ Throw PluginError nếu value không phải string hoặc options không phải object
        │
        └─ this.fingerprint = { value, options }
             │
@@ -78,16 +78,16 @@ Che giấu element size là kỹ thuật fingerprinting defense nặng — nó i
 | File | Vai trò | Dòng |
 |---|---|---|
 | `src/types/fingerprint.ts` | `FingerprintOptions` interface | 91 |
-| `src/plugin/index.ts` | `useFingerprint()` — validate + lưu config | 302 |
+| `src/plugin/index.ts` | `useFingerprint()` — validate + lưu config | 270 |
 | `src/plugin/utils.ts` | `validateConfig()` — kiểm tra kiểu tham số | — |
-| `src/plugin/config.ts` | `configure()` — resize viewport (liên quan gián tiếp) | 86 |
+| `src/plugin/config.ts` | `configure()` — resize viewport (liên quan gián tiếp) | 91 |
 
 ## Xử lý lỗi
 
 | Tình huống | Hành vi |
 |---|---|
-| `data` không phải string | Throw `Error` — lỗi validate đầu vào |
-| `options` không phải object (kể cả null) | Throw `Error` — lỗi validate đầu vào |
+| `data` không phải string | Throw `PluginError` — lỗi validate đầu vào |
+| `options` không phải object (kể cả null) | Throw `PluginError` — lỗi validate đầu vào |
 | Không gọi `useFingerprint()` | Engine dùng fingerprint mặc định (không lỗi) |
 | Gọi `useFingerprint()` sau `launch()` | Không throw, nhưng config không có hiệu lực |
 

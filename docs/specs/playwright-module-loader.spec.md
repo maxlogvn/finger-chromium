@@ -8,7 +8,7 @@ Generic Loader class giúp resolve package, kiểm tra version >= minimum, và t
 
 Nếu không tìm thấy package hoặc version không đạt tối thiểu, throw error hướng dẫn cài đặt.
 
-Source: `src/loader/index.ts` (68 dòng), `src/adapter/playwright/loader.ts` (13 dòng).
+Source: `src/loader/index.ts` (63 dòng), `src/adapter/playwright/loader.ts` (10 dòng).
 
 ## Yêu cầu
 
@@ -87,17 +87,17 @@ const browserType = defaultLoader.load('chromium');
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/loader/index.ts` | Generic Loader class | 68 |
-| `src/adapter/playwright/loader.ts` | Playwright instance (target 'playwright', min 1.27.1, fallback ['playwright-core']) | 13 |
-| `src/adapter/playwright/engine.ts` | Dùng loader để lấy BrowserType | 111 |
+| `src/loader/index.ts` | Generic Loader class | 63 |
+| `src/adapter/playwright/loader.ts` | Playwright instance (target 'playwright', min 1.27.1, fallback ['playwright-core']) | 10 |
+| `src/adapter/playwright/engine.ts` | Dùng loader để lấy BrowserType | 100 |
 
 ## Xử lý lỗi
 
 | Tình huống | Hành vi |
 |---|---|
 | `Loader.import()` với packages rỗng | Return `undefined`, không throw |
-| `Loader.load()` khi result undefined | Throw Error với message hướng dẫn cài đặt |
-| Version thấp hơn minimum | Throw Error với version cụ thể + yêu cầu |
+| `Loader.load()` khi result undefined | Throw `PluginError` với message hướng dẫn cài đặt |
+| Version thấp hơn minimum | Throw `PluginError` với version cụ thể + yêu cầu |
 | Property không tồn tại | Fallback về module gốc, không throw |
 
 ## Kiểm tra
@@ -105,5 +105,5 @@ const browserType = defaultLoader.load('chromium');
 - Happy path: `playwright` hoặc `playwright-core` có sẵn, version >= 1.27.1 → load thành công.
 - Edge case: packages rỗng → `import()` return undefined.
 - Edge case: property không tồn tại → fallback module gốc (không crash).
-- Error: cả 2 package đều không có → throw Error với message.
+- Error: cả 2 package đều không có → throw `PluginError` với message.
 - Error: version quá thấp → throw Error với message.

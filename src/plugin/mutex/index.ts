@@ -8,6 +8,7 @@
 import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { PluginError } from '../errors';
 
 const requireNative = createRequire(import.meta.url);
 
@@ -24,7 +25,7 @@ function resolvePackageRoot(startDir: string): string {
     }
     const parent = path.dirname(current);
     if (parent === current) {
-      throw new Error('[Mutex] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.');
+      throw new PluginError('[Mutex] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.');
     }
     current = parent;
   }
@@ -52,11 +53,11 @@ const mutex: MutexModule = (() => {
 
     if (process.platform === 'win32') {
       console.error(`[Mutex] Kiến trúc không được hỗ trợ: ${process.arch}${detail}`);
-      throw new Error(`Unsupported OS architecture for named mutex.${detail}`);
+      throw new PluginError(`Unsupported OS architecture for named mutex.${detail}`);
     }
 
     console.error(`[Mutex] Nền tảng không được hỗ trợ: ${process.platform}${detail}`);
-    throw new Error(`Unsupported OS platform for named mutex.${detail}`);
+    throw new PluginError(`Unsupported OS platform for named mutex.${detail}`);
   }
 })();
 

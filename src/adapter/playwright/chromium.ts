@@ -11,16 +11,15 @@
 import path from 'node:path';
 import { PlaywrightFingerprintPlugin } from './engine';
 import { AdapterDataManager } from './data';
+import { PluginError } from '../../plugin/errors';
 
 import type { BrowserContext, BrowserType } from 'playwright-core';
 import type { PWChromium } from '../../types/PWChromium';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 import type { ProfileOptions } from '../../types/profile';
 import type { FingerprintOptions } from '../../types/fingerprint';
 import type { ProxyOptions } from '../../types/proxy';
-import type { FetchOptions } from 'src/types/fetch';
+import type { FetchOptions } from '../../types/fetch';
 
 export type { ProfileOptions, FingerprintOptions, ProxyOptions, FetchOptions };
 /** Options cho launchPersistentContext -- trích xuất từ kiểu Playwright. */
@@ -69,8 +68,8 @@ export class BrowserEngine implements PWChromium {
   private fingerprints?: [string, FingerprintOptions?];
   private proxyData?: [string, ProxyOptions?];
 
-  constructor() {
-    this.engine = new PlaywrightFingerprintPlugin();
+  constructor(launcher?: Launcher) {
+    this.engine = new PlaywrightFingerprintPlugin(launcher);
     this.options = { ...DEFAULT_CONTEXT_OPTIONS };
     this.privateKey = PRIVATE_KEY;
     this.engineWorkingDirPath = ENGINE_WORKING_DIR;
@@ -133,7 +132,7 @@ export class BrowserEngine implements PWChromium {
    */
   launch(options: Partial<PluginLaunchOptions> = {}): this {
     if (this.isLaunched) {
-      throw new Error('[BrowserEngine] Phuong thuc launch() chi duoc goi mot lan.');
+      throw new PluginError('[BrowserEngine] Phuong thuc launch() chi duoc goi mot lan.');
     }
 
     // --- Bước 1: Hợp nhất options -- mặc định < cấu hình trước < truyền vào lúc launch
@@ -161,10 +160,10 @@ export class BrowserEngine implements PWChromium {
    */
   async newContext(options: Partial<PluginLaunchOptions> = {}): Promise<BrowserContext> {
     if (!this.isLaunched) {
-      throw new Error('[BrowserEngine] Phai goi launch() truoc khi tao context.');
+      throw new PluginError('[BrowserEngine] Phai goi launch() truoc khi tao context.');
     }
     if (this.context) {
-      throw new Error('[BrowserEngine] Context da duoc tao. Vui long goi quit() truoc khi tao moi.');
+      throw new PluginError('[BrowserEngine] Context da duoc tao. Vui long goi quit() truoc khi tao moi.');
     }
 
     this.options = { ...this.options, ...options };

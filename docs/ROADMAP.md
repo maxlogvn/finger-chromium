@@ -32,7 +32,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Mocha test runner + tsx loader
   - dotenv, jiti cho dev
   - package.json scripts: lint, test, build (tsup), prepare (auto-build khi cài từ GitHub), dev
-  - `npm run clean` -- xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #5 (fix Windows compatibility)
+  - `npm run clean` -- xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #17 -- fix Windows compatibility)
 
 ---
 
@@ -63,6 +63,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - `InvalidEngineError` -- engine chưa tải/giải nén
   - `EngineTimeoutError` -- timeout khởi động engine
   - `RequestTimeoutError` -- timeout request
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #14 -- export error classes ra public API, Issue #16 -- JSDoc tham chiếu method không tồn tại)
   - **Docs correction (2026-06-04):** Da bo sung giai thich "tai sao" cho `dedent`, `captureStackTrace`, `Symbol.toStringTag`; them chi tiet message tung class vao spec/product; fix overview sai "3 dong".
 
 ---
@@ -88,9 +89,10 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Cập nhật:** 2026-06-02
 - **Tài liệu:** [Design](designs/api-connector.design.md) | [Spec](specs/api-connector.spec.md) | [Plan](plans/api-connector.plan.md) | [Product](products/api-connector.product.md) | [Overview](overviews/api-connector.overview.md) -- `src/plugin/connector/index.ts`
 - **Ghi chú:**
-  - Singleton RemoteEngine với async-lock đồng bộ
+  - Class `Connector` — mỗi `FingerprintPlugin` instance sở hữu Connector riêng (không còn singleton)
   - `api(name, params)` -- wrapper error normalization
-  - Auto-start PCAP server
+  - Auto-start PCAP server (lazy init)
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #20 -- notify tích hợp, Issue #7 -- Connector factory, Issue #11 -- engine process cache)
 
 ---
 
@@ -103,7 +105,8 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Ghi chú:**
   - Minimal TCP server mô phỏng PCAP interface
   - Xử lý 2 lệnh binary: `0x01` (request ID), `0x07` (heartbeat)
-  - Retry port khi EADDRINUSE
+  - Retry port khi EADDRINUSE (fix promise hang)
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #5 -- lazy init, Issue #8 -- promise hang retry, Issue #21 -- pcap unref)
 
 ---
 
@@ -117,6 +120,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Spawn Chromium child process
   - Phát hiện DevTools listening URL từ stderr/stdout
   - Interface `Browser` với configure, close
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #1 -- dùng PluginError thay Error thô)
 
 ---
 
@@ -130,7 +134,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Native C++ addon (`mutex.node`)
   - Hỗ trợ win32 32-bit + 64-bit
   - `create(name)` -- tạo named mutex
-  - **Bug fix (2026-06-03):** Hardcoded path resolve bị sai sau khi tsup bundle. Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #6.
+  - **Bug fix (2026-06-03):** Hardcoded path resolve bị sai sau khi tsup bundle. Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #18).
 
 ---
 
@@ -146,6 +150,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - `fetch()` -- lấy fingerprint từ service
   - `versions()` -- danh sách browser version có sẵn
   - `_launch()` -- core: gọi api('setup'), spawn worker.exe, cleanup/configure/sync
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #6 -- cleaner singleton, Issue #7 -- Connector factory, Issue #22 -- AsyncLock per-instance)
 
 ---
 
@@ -160,6 +165,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Override launch/launchPersistentContext
   - Validate unsupported options (proxy, channel, firefoxUserPrefs)
   - Filter ignored Chromium arguments
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #3 -- defaultLauncher mutable state)
 
 ---
 
@@ -170,10 +176,11 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Cập nhật:** 2026-06-02
 - **Tài liệu:** [Design](designs/browser-engine.design.md) | [Spec](specs/browser-engine.spec.md) | [Plan](plans/browser-engine.plan.md) | [Product](products/browser-engine.product.md) | [Overview](overviews/browser-engine.overview.md) -- `src/adapter/playwright/chromium.ts`
 - **Ghi chú:**
-  - Singleton `Chromium` instance
+  - Multi-instance — mỗi `new BrowserEngine()` là instance độc lập, có thể launch riêng
   - Fluent API: useFingerprint -> useProxy -> useProfile -> launch -> newContext -> quit
   - repackChromium() -- thay thế Playwright launcher mặc định
-  - Chỉ cho phép launch() một lần
+  - Chỉ cho phép launch() một lần mỗi instance
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #15 -- quit unmap, Issue #19 -- singleton, Issue #3 -- launcher inject)
 
 ---
 
@@ -227,6 +234,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - CDP-based resize với retries (max 3 lần)
   - Sync availWidth/availHeight vào engine .ini file
   - bindHooks -- proxy viewport qua newPage/setViewportSize
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #10 -- synchronize key name, Issue #12 -- isBrowser type guard, Issue #13 -- pollInterval timeout, Issue #22 -- AsyncLock per-instance)
 
 ---
 
@@ -240,6 +248,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - proper-lockfile để tránh xoá file đang dùng
   - Timer 15s cleanup interval
   - ignore/include để lock/unlock file theo PID
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #9 -- posix path -> Windows native path)
 
 ---
 
@@ -295,72 +304,97 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
----
-
-### Bug #1 — `notify()` dead code
+### Dead export SettingsCleaner default (Bug fix #25)
 
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:** [Design](designs/bug-001-notify-dead-code.design.md) | [Spec](specs/bug-001-notify-dead-code.spec.md) | [Plan](plans/bug-001-notify-dead-code.plan.md) | [Overview](overviews/bug-001-notify-dead-code.overview.md)
+- **Tài liệu:** [Design](designs/bug-025-dead-export-settingscleaner.design.md) | [Spec](specs/bug-025-dead-export-settingscleaner.spec.md) | [Plan](plans/bug-025-dead-export-settingscleaner.plan.md) | [Overview](overviews/bug-025-dead-export-settingscleaner.overview.md)
 - **Ghi chú:**
-  - `notify()` trong `utils.ts` không được import bởi bất kỳ file nào
-  - `notifyTimer` + `clearTimeout(notifyTimer)` trong `index.ts` là dead code
-  - Cần quyết định: xoá hoặc tích hợp đúng luồng
+  - Đã thêm `@deprecated` JSDoc cho `export default new SettingsCleaner()` trong `src/plugin/cleaner.ts:118`.
+  - Đã refactor `tests/quit-cleanup.test.ts` sang dùng `new SettingsCleaner()` thay vì default import.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #25).
 
 ---
 
+### Tăng test coverage cho core modules
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:**
+- **Ghi chú:**
+  - Hiện chỉ có 2 file test: `multi-profile-singleton.test.ts` và `quit-cleanup.test.ts`
+  - Cần unit test cho: `RemoteEngine` (engine.ts), `Connector` (connector/index.ts), `PCAPServer`, `Cleaner`
+  - Test với browser thật (theo CONVENTIONS.md) nhưng cần thêm test cho logic xử lý lỗi và edge cases
+  - Mục tiêu: coverage tối thiểu 60% cho `src/plugin/` và `src/adapter/`
+
 ---
 
-### Bug #2 — Error classes không export trong public API
+### File corrupt download engine cleanup (Bug fix #24)
 
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:** [Design](designs/bug-002-export-error-classes.design.md) | [Spec](specs/bug-002-export-error-classes.spec.md) | [Plan](plans/bug-002-export-error-classes.plan.md) | [Overview](overviews/bug-002-export-error-classes.overview.md)
+- **Tài liệu:** [Design](designs/bug-024-download-cleanup.design.md) | [Spec](specs/bug-024-download-cleanup.spec.md) | [Plan](plans/bug-024-download-cleanup.plan.md) | [Overview](overviews/bug-024-download-cleanup.overview.md)
 - **Ghi chú:**
-  - Fix: them export block 5 error class tu `./plugin/errors` vao `src/index.ts`
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #2
+  - Hàm `download()` trong `src/plugin/connector/engine.ts:129-145` thiếu `finally` block dọn dẹp file partial khi download thất bại.
+  - Fix: chuyển sang cơ chế temp file + rename (ghi vào `.tmp`, rename sau pipeline thành công, xoá `.tmp` trong catch).
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #24).
 
 ---
 
-### Bug #4 — JSDoc trong `PWChromium.ts` tham chiếu method không tồn tại
+### Docs review & consistency fix
 
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:** [Design](designs/bug-004-jsdoc-privatekey.design.md) | [Spec](specs/bug-004-jsdoc-privatekey.spec.md) | [Plan](plans/bug-004-jsdoc-privatekey.plan.md) | [Overview](overviews/bug-004-jsdoc-privatekey.overview.md)
+- **Tài liệu:** [Overview](overviews/docs-review-consistency-fix.overview.md)
 - **Ghi chú:**
-  - Fix: xoá `usePrivateKey()` khỏi JSDoc, thay bằng hướng dẫn set env `BABLOSOFT_KEY`
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #4
+  - Rà soát toàn bộ hệ thống docs sau khi fix nhiều issue.
+  - Xoá local numbering (#1-#20) khỏi KNOWN_ISSUES.md để tránh nhầm lẫn với GitHub issue numbers.
+  - Cập nhật template known-issue.template.md: bỏ LOCAL_NUM, chỉ dùng GitHub number.
+  - Fix KNOWN_ISSUES.md: link hỏng #6, thiếu Overview 8 entries, header mapping.
+  - Fix ROADMAP.md: feature entries outdated (singleton descriptions), chuyển local # sang GitHub Issue #, thêm bug fix ghi chú, xoá bug entries, format lỗi.
 
 ---
 
-### Bug #3 — `quit()` xoá toàn bộ `BROWSER_RUNNING_DIR` thay vì chỉ xoá temp dir của instance
+### AsyncLock module-level gây contention giữa các instance (Bug fix #22)
 
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:** [Design](designs/bug-003-quit-unmap-root.design.md) | [Spec](specs/bug-003-quit-unmap-root.spec.md) | [Plan](plans/bug-003-quit-unmap-root.plan.md) | [Overview](overviews/bug-003-quit-unmap-root.overview.md)
+- **Tài liệu:** [Design](designs/bug-022-asynclock-per-instance.design.md) | [Spec](specs/bug-022-asynclock-per-instance.spec.md) | [Plan](plans/bug-022-asynclock-per-instance.plan.md) | [Overview](overviews/bug-022-asynclock-per-instance.overview.md)
 - **Ghi chú:**
-  - `this.dataManager.unmap(BROWSER_RUNNING_DIR)` trong `quit()` xoá cả thư mục gốc `.tmp/browser/running/`
-  - Fix: đổi thành `this.dataManager.dispose()` — chỉ xoá temp dir của instance hiện tại
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #3
+  - `const lock = new AsyncLock()` trong `src/plugin/config.ts:34` là module-level — tất cả `FingerprintPlugin` instance chia sẻ một lock.
+  - Fix: chuyển thành per-instance bằng cách refactor `config.ts` thành class `ConfigManager`.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #22).
 
 ---
 
-### Bug #7 — Singleton `Chromium` không hỗ trợ launch nhiều profile song song
+### Cleaner race condition khi cleanup: chờ engine process thoát hẳn (Bug fix #23)
 
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:** [Design](designs/bug-007-multi-profile-singleton.design.md) | [Spec](specs/bug-007-multi-profile-singleton.spec.md) | [Plan](plans/bug-007-multi-profile-singleton.plan.md) | [Overview](overviews/bug-007-multi-profile-singleton.overview.md)
+- **Tài liệu:** [Design](designs/bug-023-cleanup-race-condition.design.md) | [Spec](specs/bug-023-cleanup-race-condition.spec.md) | [Plan](plans/bug-023-cleanup-race-condition.plan.md) | [Overview](overviews/bug-023-cleanup-race-condition.overview.md)
 - **Ghi chú:**
-  - `BrowserEngine` là singleton — `launch()` chỉ cho phép gọi một lần
-  - Test `multi_context.ts` gọi launch cho 2 profile khác nhau trên cùng instance, lỗi "Phuong thuc launch() chi duoc goi mot lan."
-  - Nguyên nhân gốc: design singleton không phù hợp với use case multi-profile
+  - `RemoteEngine.kill()` fire-and-forget gây EBUSY khi cleaner xoá file lúc process còn ghi.
+  - Fix: chuyển `kill()` và `cleanup()` sang async, await process exit với timeout + SIGKILL fallback.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #23).
 
 ---
 
-<!-- Hết feature tasks -- các non-feature tasks (format code, fix quit, build config, known issues, documentation rewrite/correction) đã được dọn khỏi roadmap vì đã hoàn thành và không cần theo dõi tiến độ. -->
+### Process không tự động thoát sau khi quit() — PCAP server thiếu unref() (Bug fix #21)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-021-pcap-unref.design.md) | [Spec](specs/bug-021-pcap-unref.spec.md) | [Plan](plans/bug-021-pcap-unref.plan.md) | [Overview](overviews/bug-021-pcap-unref.overview.md)
+- **Ghi chú:**
+  - `net.Server` thiếu `unref()` — PCAP server giữ event loop sau khi cleanup.
+  - Fix: thêm `svr.unref()` trong callback `onListening` của PCAP server.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #21).
+
+---
 

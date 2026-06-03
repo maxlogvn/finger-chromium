@@ -4,21 +4,20 @@
 
 ## Mô tả
 
-API Connector là lớp trung gian singleton duy nhất giữa `FingerprintPlugin` (gọi lệnh) và `RemoteEngine` (thực thi). Nó dùng `async-lock` để đồng bộ — chỉ một request được xử lý tại một thời điểm — và tự động chuẩn hoá lỗi từ engine thành `MissingKeyError` hoặc `PluginError`.
+API Connector (class `Connector`) là lớp trung gian giữa `FingerprintPlugin` (gọi lệnh) và `RemoteEngine` (thực thi). Mỗi `FingerprintPlugin` instance sở hữu `Connector` riêng với `RemoteEngine` riêng và `AsyncLock` riêng. Nó dùng `async-lock` để đồng bộ — chỉ một request được xử lý tại một thời điểm — và tự động chuẩn hoá lỗi từ engine thành `MissingKeyError` hoặc `PluginError`.
 
-Connector không tự khởi tạo engine. `RemoteEngine` được tạo một lần ở module level. PCAP server cũng tự động start khi connector được import, vì engine cần kết nối TCP để đồng bộ ID request.
+PCAP server là singleton dùng chung cho cả process, lazy init ở lần gọi API đầu tiên.
 
-Source: `src/plugin/connector/index.ts` (99 dòng).
+Source: `src/plugin/connector/index.ts` (khoảng 123 dòng).
 
 ## Yêu cầu
 
-- Singleton `RemoteEngine` instance — dùng chung toàn bộ thư viện.
+- Class `Connector` — mỗi `FingerprintPlugin` instance sở hữu Connector riêng (không còn singleton).
 - `AsyncLock` với key `'client'` — đồng bộ request, tránh chồng chéo file-based IPC.
-- PCAP server tự động listen khi module được import.
+- PCAP server lazy init — chỉ listen ở lần gọi API đầu tiên.
 - `api()` wrapper: nhận tên hàm + params, gọi `engine.runFunction()`, chuẩn hoá lỗi.
 - `perfectCanvasRequest` trong params.options: set `requestTimeout = 0` (không timeout). Vì perfect canvas request có thể mất thời gian rất lâu.
-- `cleanup()`: kill engine process + close PCAP server.
-- Export `engine` instance để truy cập trực tiếp nếu cần custom flow.
+- `cleanup()`: kill engine process + close PCAP server (nếu đã init).
 
 ## Thiết kế
 
@@ -26,10 +25,8 @@ Source: `src/plugin/connector/index.ts` (99 dòng).
 
 ```
 connector/index.ts
-  ├── engine: RemoteEngine (singleton)
-  ├── pcapServer.listen() (tự động)
-  ├── api(name, params) → engine.runFunction() → error normalization
-  └── cleanup() → engine.kill() + pcapServer.close()
+  ├── class Connector (mỗi instance sở hữu RemoteEngine riêng)
+  ├── pcapServer.listen() (lazy init)
 ```
 
 ### Luồng api()
@@ -59,26 +56,24 @@ Tham chiếu design doc: `docs/designs/api-connector.design.md`.
 ## API / Data flow
 
 ```ts
-import { api, cleanup, engine } from '../../plugin/connector';
+import { Connector } from '../../plugin/connector';
+
+const connector = new Connector();
 
 // Gọi setup
-const result = await api('setup', {
+const result = await connector.api('setup', {
   key: process.env.BABLOSOFT_KEY,
   fingerprint: { value: '...', options: {} },
   proxy: { value: 'http://...', options: { changeTimezone: true } },
 });
 
 // Với perfectCanvasRequest (không timeout)
-const fpResult = await api('fetch', {
+const fpResult = await connector.api('fetch', {
   options: { perfectCanvasRequest: true },
 });
 
-// Dùng engine trực tiếp (custom flow)
-engine.setCwd('./custom/data');
-engine.setArgs(['--custom-flag']);
-
 // Cleanup
-await cleanup();
+await connector.cleanup();
 ```
 
 ### Các method engine có thể gọi qua api()
@@ -95,8 +90,8 @@ await cleanup();
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/connector/index.ts` | API Connector — api(), cleanup(), engine export | 99 |
-| `src/plugin/connector/engine.ts` | RemoteEngine — download, extract, IPC | 386 |
+| `src/plugin/connector/index.ts` | API Connector — class Connector với api(), cleanup() | ~130 |
+| `src/plugin/connector/engine.ts` | RemoteEngine — download, extract, IPC | 378 |
 | `src/plugin/connector/pcapServer/index.ts` | PCAP TCP server — mock PCAP interface | 71 |
 
 ## Events

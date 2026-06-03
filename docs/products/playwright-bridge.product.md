@@ -8,7 +8,7 @@ Bridge này không thay thế Playwright. Nó chỉ bọc bước launch để b
 
 ## Cách sử dụng
 
-Trong luồng thông thường, user dùng `Chromium` và không cần tạo bridge trực tiếp. Dùng trực tiếp `PlaywrightFingerprintPlugin` khi cần custom launcher hoặc muốn kiểm soát lớp bridge.
+Trong luồng thông thường, user dùng `BrowserEngine` và không cần tạo bridge trực tiếp. Dùng trực tiếp `PlaywrightFingerprintPlugin` khi cần custom launcher hoặc muốn kiểm soát lớp bridge.
 
 ```ts
 import { PlaywrightFingerprintPlugin } from './src/adapter/playwright/engine';

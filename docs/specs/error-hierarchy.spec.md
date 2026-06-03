@@ -11,7 +11,7 @@ Cơ chế:
 - `Symbol.toStringTag` — cho phép `Object.prototype.toString.call(err)` trả về `[object MissingKeyError]` thay vì `[object Error]`.
 - `dedent` — loại bỏ khoảng trắng thừa trong message nhiều dòng.
 
-Source: `src/plugin/errors.ts` (78 dòng).
+Source: `src/plugin/errors.ts` (72 dòng).
 
 ## Yêu cầu
 
@@ -131,7 +131,7 @@ new RequestTimeoutError('[msg]')
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/errors.ts` | Định nghĩa 5 error classes | 78 |
+| `src/plugin/errors.ts` | Định nghĩa 5 error classes | 72 |
 
 ## Xử lý lỗi
 
@@ -143,22 +143,21 @@ new RequestTimeoutError('[msg]')
 | `EngineTimeoutError` | `startProcess` quá thời gian | Gợi ý `setEngineTimeout()` |
 | `RequestTimeoutError` | `runFunction` quá thời gian | Gợi ý `setRequestTimeout()` |
 
-### Hạn chế hiện tại
+### Ghi chú
 
-Errors chưa được export từ `src/index.ts` (xem KNOWN_ISSUES.md #2). Trong `catch`, dùng `err.name` để phân biệt:
+5 error class (`PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError`) đã được export từ `src/index.ts` (xem KNOWN_ISSUES.md, Issue #14 — đã fix). Trong `catch`, có thể dùng `instanceof` để phân biệt:
 
 ```ts
+import { PluginError, MissingKeyError } from 'fingerprint-chromium-engine';
+
 try { ... } catch (err: unknown) {
-  if (err instanceof Error) {
-    switch (err.name) {
-      case 'MissingKeyError': ...
-      case 'InvalidEngineError': ...
-    }
+  if (err instanceof MissingKeyError) {
+    // Xử lý lỗi thiếu key
+  } else if (err instanceof PluginError) {
+    // Xử lý lỗi engine chung
   }
 }
 ```
-
-`instanceof PluginError` hiện không hoạt động nếu import từ package riêng.
 
 ## Kiểm tra
 

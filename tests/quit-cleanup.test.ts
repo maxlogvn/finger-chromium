@@ -17,7 +17,7 @@ import { strictEqual, ok } from 'node:assert';
 
 import RemoteEngine from '../src/plugin/connector/engine';
 import * as pcapServer from '../src/plugin/connector/pcapServer';
-import cleaner from '../src/plugin/cleaner';
+import { SettingsCleaner } from '../src/plugin/cleaner';
 import * as mutex from '../src/plugin/mutex';
 import FingerprintPlugin from '../src/plugin';
 import { BrowserEngine } from '../src/adapter/playwright/chromium';
@@ -30,10 +30,10 @@ describe('Module cleanup methods', function () {
   // ─── RemoteEngine.kill() ──────────────────────────────────────────────────
 
   describe('RemoteEngine', () => {
-    it('nên có method kill() và không throw khi không có process', () => {
+    it('nên có method kill() và không throw khi không có process', async () => {
       const engine = new RemoteEngine();
       ok(typeof engine.kill === 'function', 'kill() phải tồn tại');
-      engine.kill();
+      await engine.kill();
     });
   });
 
@@ -49,6 +49,8 @@ describe('Module cleanup methods', function () {
   // ─── cleaner.stop() ───────────────────────────────────────────────────────
 
   describe('cleaner', () => {
+    const cleaner = new SettingsCleaner();
+
     it('nên có method stop() và không throw khi chưa watch', async () => {
       ok(typeof cleaner.stop === 'function', 'stop() phải tồn tại');
       await cleaner.stop();

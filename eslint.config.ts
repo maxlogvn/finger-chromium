@@ -28,6 +28,15 @@ export default tseslint.config(
       // Code style
       'prefer-const': 'warn',
       'no-var': 'warn',
+
+      // Cấm throw new Error() — phải dùng PluginError (xem CONVENTIONS.md)
+      'no-restricted-syntax': [
+        'error',
+        {
+          message: 'Dùng PluginError thay vì Error thô (xem CONVENTIONS.md)',
+          selector: 'ThrowStatement > NewExpression > Identifier.callee[name="Error"]',
+        },
+      ],
     },
   }
 );

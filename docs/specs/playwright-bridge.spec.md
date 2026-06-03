@@ -8,7 +8,7 @@
 
 Nói cách khác: plugin core quản lý fingerprint engine (C/C++), Playwright Bridge quản lý Playwright processes và kết nối chúng.
 
-Source: `src/adapter/playwright/engine.ts` (111 dòng).
+Source: `src/adapter/playwright/engine.ts` (100 dòng).
 
 ## Yêu cầu
 
@@ -99,10 +99,10 @@ const context = await engine.launch().newContext();
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin` class | 111 |
+| `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin` class | 100 |
 | `src/adapter/playwright/utils.ts` | `onClose`, `bindHooks`, `setViewport`, `getViewport` | — |
-| `src/adapter/playwright/loader.ts` | Load Playwright chromium module | 13 |
-| `src/plugin/index.ts` | Base class `FingerprintPlugin` | 302 |
+| `src/adapter/playwright/loader.ts` | Load Playwright chromium module | 10 |
+| `src/plugin/index.ts` | Base class `FingerprintPlugin` | 270 |
 | `src/plugin/config.ts` | `configure()` và `synchronize()` | — |
 
 ## Constants
@@ -117,8 +117,8 @@ const context = await engine.launch().newContext();
 
 | Tình huống | Hành vi |
 |---|---|
-| Option không hỗ trợ (`proxy`, `channel`, `firefoxUserPrefs`) | Throw `Error('Option "<name>" không được hỗ trợ trong plugin này.')` |
-| Launcher thiếu `launchPersistentContext` | Throw `Error('Launcher không hỗ trợ phương thức "launchPersistentContext".')` |
+| Option không hỗ trợ (`proxy`, `channel`, `firefoxUserPrefs`) | Throw `PluginError('Option "<name>" không được hỗ trợ trong plugin này.')` |
+| Launcher thiếu `launchPersistentContext` | Throw `PluginError('Launcher không hỗ trợ phương thức "launchPersistentContext".')` |
 | `launch()` (không persistent) | In warning + fallback sang `launchPersistentContext('', options)` |
 | Resize viewport thất bại | Warning, không throw — không làm crash launch chỉ vì viewport lệch |
 | Browser close đột ngột | Cleanup handler chạy qua event `disconnected` |

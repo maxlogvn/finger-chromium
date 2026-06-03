@@ -87,7 +87,7 @@ await eng2.quit();
 ### 3. `src/types/PWChromium.ts` (sửa nhẹ)
 - JSDoc example dòng 22-36: đổi `new BrowserEngine()` thành `new BrowserEngine()` (giữ nguyên — đã đúng).
 - JSDoc dòng 17: sửa "Các method cấu hình (`useFingerprint`, `useProxy`, `useProfile`, `usePrivateKey`)".
-   `usePrivateKey` không tồn tại — đây là issue #4 riêng, không fix trong scope này.
+   `usePrivateKey` không tồn tại — đây là Issue #16 riêng, không fix trong scope này.
 
 ### 4. `tests/multi_context.ts` (sửa)
 - Import: `import { BrowserEngine } from '../src/adapter/playwright/chromium';`

@@ -8,7 +8,7 @@ Tính năng profile lưu và tái sử dụng dữ liệu trình duyệt (cookie
 
 Ngoài ra, engine tự động load lại proxy và fingerprint đã dùng lần trước từ profile nếu `loadProxy` / `loadFingerprint` là `true`.
 
-Source: `src/adapter/playwright/data.ts` (98 dòng), `src/types/profile.ts` (30 dòng).
+Source: `src/adapter/playwright/data.ts` (86 dòng), `src/types/profile.ts` (30 dòng).
 
 ## Yêu cầu
 
@@ -100,18 +100,18 @@ interface ProfileOptions {
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/adapter/playwright/data.ts` | `AdapterDataManager` — map/unmap/dispose | 98 |
-| `src/adapter/playwright/chromium.ts` | `useProfile()` — gọi dataManager.map | 231 |
+| `src/adapter/playwright/data.ts` | `AdapterDataManager` — map/unmap/dispose | 86 |
+| `src/adapter/playwright/chromium.ts` | `useProfile()` — gọi dataManager.map | 193 |
 | `src/types/profile.ts` | `ProfileOptions` type | 30 |
 
 ## Xử lý lỗi
 
 | Tình huống | Hành vi |
 |---|---|
-| Source profile không tồn tại hoặc không đọc được | Throw `Error('Sao chép thất bại: ...')` với path chi tiết |
+| Source profile không tồn tại hoặc không đọc được | Throw `PluginError('Sao chép thất bại: ...')` với path chi tiết |
 | Không có quyền ghi temp dir | `fs.cpSync` throw — propagate lên caller |
 | `unmap()` — temp dir không tồn tại | `console.warn` — không throw |
-| `unmap()` — xoá thất bại (file locked) | Throw `Error('Dọn dẹp thất bại: ...')` |
+| `unmap()` — xoá thất bại (file locked) | Throw `PluginError('[DataManager] Dọn dẹp thất bại: ...')` |
 
 ## Kiểm tra
 

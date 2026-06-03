@@ -8,6 +8,7 @@
 
 import { createRequire } from 'module';
 import { compare } from 'compare-versions';
+import { PluginError } from '../plugin/errors';
 
 const require = createRequire(import.meta.url);
 
@@ -43,7 +44,7 @@ export default class Loader {
         continue;
       }
     }
-    throw new Error(`None of the following packages could be found - "${packages.join('", "')}".`);
+    throw new PluginError(`None of the following packages could be found - "${packages.join('", "')}".`);
   }
 
   /**
@@ -55,11 +56,11 @@ export default class Loader {
   load<T = any>(property = 'chromium'): T {
     const result = Loader.import([this.target, ...this.packages]);
     if (!result) {
-      throw new Error(`Failed to resolve package "${this.target}".`);
+      throw new PluginError(`Failed to resolve package "${this.target}".`);
     }
     const [module, version] = result;
     if (version && this.version && compare(version, this.version, '<')) {
-      throw new Error(
+      throw new PluginError(
         `Version ${version} of the "${this.target}" package is not supported - use version ${this.version} or higher.`
       );
     }

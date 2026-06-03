@@ -92,3 +92,5 @@ Test tự tạo instance riêng cho mỗi profile.
 - **Lý do:** Người dùng lựa chọn — thiết kế trong sáng, mỗi instance độc lập, test có thể tạo nhiều instance riêng.
 - **Ràng buộc:** Là breaking change — cần cập nhật toàn bộ import và cách dùng `Chromium` thành `new BrowserEngine()`.
   Tầng dưới (connector/engine) vẫn là singleton — không refactor.
+
+> **Cập nhật sau:** Bug #14 (RemoteEngine factory) và Bug #13 (Cleaner singleton) sau đó đã refactor `Connector`, `RemoteEngine` và `SettingsCleaner` thành non-singleton. Mỗi `BrowserEngine` instance hiện sở hữu `Connector` riêng (với `RemoteEngine` riêng) và `SettingsCleaner` riêng. PCAP server vẫn là singleton dùng chung cho cả process.

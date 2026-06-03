@@ -11,6 +11,7 @@
 import type { BrowserContext, BrowserType, Page } from 'playwright-core';
 import FingerprintPlugin from '../../plugin';
 import defaultLoader from './loader';
+import { PluginError } from '../../plugin/errors';
 import { bindHooks, getViewport, onClose, setViewport } from './utils';
 import type { Launcher, PluginLaunchOptions } from './chromium';
 
@@ -26,11 +27,13 @@ export const LAUNCH_FALLBACK_WARNING = [
   'Khuyến nghị dùng "launchPersistentContext" trực tiếp để tránh tác dụng phụ.',
 ].join('\n');
 
-const browserType: BrowserType = defaultLoader.load();
-const defaultLauncher: Launcher = {
-  launch: browserType.launch.bind(browserType),
-  launchPersistentContext: browserType.launchPersistentContext.bind(browserType),
-};
+function createDefaultLauncher(): Launcher {
+  const browserType: BrowserType = defaultLoader.load();
+  return {
+    launch: browserType.launch.bind(browserType),
+    launchPersistentContext: browserType.launchPersistentContext.bind(browserType),
+  };
+}
 
 // ─── PlaywrightFingerprintPlugin ──────────────────────────────────────────────
 
@@ -41,9 +44,9 @@ const defaultLauncher: Launcher = {
 export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
   protected readonly pwLauncher: Launcher;
 
-  constructor(launcher: Launcher = defaultLauncher) {
+  constructor(launcher?: Launcher) {
     super();
-    this.pwLauncher = launcher;
+    this.pwLauncher = launcher ?? createDefaultLauncher();
   }
 
   /**
@@ -63,7 +66,7 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
     this.#validateOptions(options);
     const { ignoreDefaultArgs } = options;
     const method = 'launchPersistentContext' as const;
-    if (!this.pwLauncher[method]) throw new Error(`Launcher không hỗ trợ phương thức "${method}".`);
+    if (!this.pwLauncher[method]) throw new PluginError(`Launcher không hỗ trợ phương thức "${method}".`);
 
     return this._launch(false, {
       ...options,
@@ -105,7 +108,7 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
 
   #validateOptions(options: Record<string, unknown> = {}): void {
     for (const option of UNSUPPORTED_OPTIONS) {
-      if (option in options) throw new Error(`Option "${option}" không được hỗ trợ trong plugin này.`);
+      if (option in options) throw new PluginError(`Option "${option}" không được hỗ trợ trong plugin này.`);
     }
   }
 }

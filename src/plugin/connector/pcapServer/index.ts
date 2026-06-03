@@ -22,8 +22,9 @@ let server: net.Server | undefined;
  */
 export const listen = once((port = 0, host = '127.0.0.1'): Promise<number> => {
   let id = 0;
-  return new Promise<number>((resolve) => {
-    server = net.createServer((socket) => {
+  let retried = false;
+  return new Promise<number>((resolve, reject) => {
+    const svr = net.createServer((socket) => {
       socket.on('data', (data: Buffer) => {
         if (data.length === 0) return;
         const byte = data[0];
@@ -39,17 +40,26 @@ export const listen = once((port = 0, host = '127.0.0.1'): Promise<number> => {
       });
       socket.on('error', (error: Error) => log(error));
     });
-    server.on('error', (error: NodeJS.ErrnoException) => {
-      if (error.code === 'EADDRINUSE') {
-        setTimeout(() => server.listen(port, host), 1000).unref();
-      }
-    });
-    server.listen(port, host, () => {
-      const address = server.address();
+    server = svr;
+
+    const onListening = (): void => {
+      const address = svr.address();
       if (address && typeof address === 'object') {
         resolve(address.port);
       }
+      svr.unref();
+    };
+
+    svr.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'EADDRINUSE' && !retried) {
+        retried = true;
+        setTimeout(() => svr.listen(port, host, onListening), 1000).unref();
+      } else {
+        reject(error);
+      }
     });
+
+    svr.listen(port, host, onListening);
   });
 });
 

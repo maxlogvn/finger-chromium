@@ -8,7 +8,7 @@ Hook Binding intercept các Playwright method (`Browser.newContext`, `BrowserCon
 
 Giải quyết vấn đề: Playwright tự ý set viewport khi tạo context mới — nếu engine đã resize theo fingerprint data, Playwright set lại làm mất hiệu lực fingerprint viewport.
 
-Source: `src/adapter/playwright/utils.ts` (124 dòng).
+Source: `src/adapter/playwright/utils.ts` (114 dòng).
 
 ## Yêu cầu
 
@@ -40,10 +40,14 @@ const isBrowser = (target: unknown): target is Browser =>
   typeof target === 'object' &&
   target !== null &&
   'version' in target &&
-  typeof (target as Browser).version === 'function';
+  typeof (target as Browser).version === 'function' &&
+  'isConnected' in target &&
+  typeof (target as Browser).isConnected === 'function' &&
+  'contexts' in target &&
+  typeof (target as Browser).contexts === 'function';
 ```
 
-`version` là function — property unique của `Browser` class trong Playwright. Dùng để phân biệt `Browser` vs `BrowserContext`.
+`version`, `isConnected`, `contexts` là 3 method đặc trưng của `Browser` class trong Playwright. Kiểm tra đồng thời cả 3 để giảm false positive khi Playwright thay đổi API.
 
 ### setViewport() flow (CDP-based resize)
 
@@ -117,7 +121,7 @@ PlaywrightFingerprintPlugin.configure()
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/adapter/playwright/utils.ts` | `onClose`, `bindHooks`, `setViewport`, `getViewport`, `resetOptions` | 124 |
+| `src/adapter/playwright/utils.ts` | `onClose`, `bindHooks`, `setViewport`, `getViewport`, `resetOptions` | 114 |
 | `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin.configure()` gọi bindHooks | — |
 | `src/common/index.ts` | `waitForResize` và `getViewport` in-browser scripts | — |
 

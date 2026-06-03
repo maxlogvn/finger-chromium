@@ -6,7 +6,7 @@
 
 Common Scripts cung cấp 2 hàm JavaScript chạy trong browser context qua `page.evaluate()` (Playwright) hoặc CDP `Runtime.evaluate` (plugin path). Dùng để hỗ trợ resize viewport: `waitForResize` đợi layout/paint ổn định, `getViewport` đọc kích thước thực tế.
 
-Source: `src/common/index.ts` (25 dòng).
+Source: `src/common/index.ts` (23 dòng).
 
 ## Yêu cầu
 
@@ -75,8 +75,8 @@ await cdp.Runtime.evaluate({
 | File | Vai trò | Dòng |
 |---|---|---|
 | `src/common/index.ts` | Object `scripts` với 2 function | 25 |
-| `src/plugin/browser.ts` | Dùng CDP `Runtime.evaluate` gọi scripts | 88 |
-| `src/adapter/playwright/utils.ts` | Dùng `page.evaluate` gọi scripts | 124 |
+| `src/plugin/browser.ts` | Dùng CDP `Runtime.evaluate` gọi scripts | 76 |
+| `src/adapter/playwright/utils.ts` | Dùng `page.evaluate` gọi scripts | 114 |
 
 ## Xử lý lỗi
 

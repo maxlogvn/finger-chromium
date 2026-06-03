@@ -10,6 +10,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { PluginError } from '../../plugin/errors';
 import { BROWSER_RUNNING_DIR } from './chromium';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ export class AdapterDataManager {
     try {
       fs.cpSync(srcResolved, destResolved, { recursive: true, force: true });
     } catch (error) {
-      throw new Error(
+      throw new PluginError(
         `[DataManager] Sao chép thất bại: "${srcResolved}" → "${destResolved}".\n${(error as Error).message}`
       );
     }
@@ -70,7 +71,7 @@ export class AdapterDataManager {
     try {
       fs.rmSync(resolvedPath, { recursive: true, force: true });
     } catch (error) {
-      throw new Error(`[DataManager] Dọn dẹp thất bại: "${resolvedPath}".\n${(error as Error).message}`);
+      throw new PluginError(`[DataManager] Dọn dẹp thất bại: "${resolvedPath}".\n${(error as Error).message}`);
     }
   }
 
