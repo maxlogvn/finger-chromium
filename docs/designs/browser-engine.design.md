@@ -2,7 +2,7 @@
 
 ## Bối cảnh
 
-`BrowserEngine` là lớp public-facing nằm sau singleton `Chromium`. Đây là điểm vào chính cho user khi muốn cấu hình fingerprint, proxy, profile rồi tạo `BrowserContext` của Playwright.
+`BrowserEngine` là lớp public-facing triển khai interface `PWChromium`. Mỗi `new BrowserEngine()` là một instance độc lập, có cấu hình riêng. `Chromium` là alias của `BrowserEngine` cho backward compatibility. Đây là điểm vào chính cho user khi muốn cấu hình fingerprint, proxy, profile rồi tạo `BrowserContext` của Playwright.
 
 Source làm nguồn sự thật: `src/adapter/playwright/chromium.ts`. Interface public liên quan nằm ở `src/types/PWChromium.ts`.
 
@@ -10,9 +10,9 @@ Tài liệu cũ mô tả đúng ý tưởng Fluent API, nhưng còn thiếu lu�
 
 ## Câu hỏi làm rõ
 
-- Singleton hay factory? → Singleton `Chromium`, vì engine và profile runtime dùng tài nguyên nền, không nên tạo nhiều instance không kiểm soát.
+- Instance hay singleton? → Instance-based (`new BrowserEngine()`). Mỗi instance có fingerprint, proxy, profile riêng. Tài nguyên nền (engine process, mutex, cleaner) vẫn được quản lý tập trung qua `FingerprintPlugin` singleton, nhưng mỗi instance giữ reference riêng.
 - Fluent API hay config object? → Fluent API, vì user có thể đọc chuỗi cấu hình theo đúng thứ tự: fingerprint, proxy, profile, launch, context.
-- Cho phép `launch()` nhiều lần không? → Không. `launch()` chỉ chuẩn bị engine một lần. Nếu gọi lại, trạng thái profile và context có thể bị lẫn.
+- Cho phép `launch()` nhiều lần trên một instance không? → Không. `launch()` chỉ chuẩn bị engine một lần cho instance đó. Nếu cần session khác, tạo `new BrowserEngine()` mới.
 - Key bảo mật lấy từ đâu? → Từ `process.env.BABLOSOFT_KEY` qua constant `PRIVATE_KEY`. Code hiện không có method public để đổi key trên `BrowserEngine`.
 
 ## Các phương án
@@ -20,7 +20,7 @@ Tài liệu cũ mô tả đúng ý tưởng Fluent API, nhưng còn thiếu lu�
 ### Phương án 1: Truyền toàn bộ config vào `launch()`
 
 ```ts
-await Chromium.launch({
+await new BrowserEngine().launch({
   fingerprint,
   proxy,
   profile,
@@ -30,10 +30,11 @@ await Chromium.launch({
 - Ưu điểm: Tất cả cấu hình nằm trong một object.
 - Nhược điểm: Dễ biến `launch()` thành method quá tải. User khó đọc hơn vì fingerprint, proxy, profile có option riêng và ý nghĩa riêng.
 
-### Phương án 2: Fluent API qua singleton `Chromium`
+### Phương án 2: Fluent API qua instance `BrowserEngine`
 
 ```ts
-const context = await Chromium
+const engine = new BrowserEngine();
+const context = await engine
   .useFingerprint(fingerprintData)
   .useProxy('http://user:pass@host:port')
   .useProfile('./profiles/user_01')
@@ -44,24 +45,25 @@ const context = await Chromium
 - Ưu điểm: Luồng đọc giống luồng chạy thật. Mỗi method chỉ giữ một trách nhiệm nhỏ.
 - Nhược điểm: User phải gọi đúng thứ tự. `launch()` phải có guard để tránh gọi lại.
 
-### Phương án 3: Factory tạo instance mới cho mỗi session
+### Phương án 3: Factory tạo instance mới cho mỗi session (đã được chọn sau Bug #7)
 
 ```ts
-const browser = createChromium();
+const browser = new BrowserEngine();
 ```
 
-- Ưu điểm: Dễ cô lập nhiều session hơn.
-- Nhược điểm: Không khớp thiết kế hiện tại. Engine, cleaner, PCAP server và thư mục runtime đang được quản lý theo singleton.
+- Ưu điểm: Dễ cô lập nhiều session hơn. Mỗi instance có fingerprint, proxy, profile riêng.
+- Nhược điểm: Cần đảm bảo không leak tài nguyên (engine process, mutex, cleaner) khi tạo nhiều instance.
 
 ## Giải pháp được chọn
 
 - Phương án AI đề xuất: Phương án 2.
-- Phương án được chọn: Phương án 2.
+- Phương án được chọn (ban đầu): Phương án 2.
+- Thay đổi sau Bug #7: Chuyển từ singleton `Chromium` sang instance `BrowserEngine`. Design này mô tả code trước Bug #7. Xem Bug #7 design để biết lý do chuyển đổi.
 - Lý do: Fluent API khớp cách code hiện tại lưu cấu hình trong field riêng rồi đẩy xuống `PlaywrightFingerprintPlugin` tại `launch()`.
 - Ràng buộc hoặc điều kiện kèm theo:
-  - `launch()` chỉ được gọi một lần cho mỗi vòng đời.
+  - `launch()` chỉ được gọi một lần cho mỗi instance.
   - `newContext()` chỉ được gọi sau `launch()`.
-  - Mỗi instance chỉ giữ một `BrowserContext`. Muốn tạo context mới thì gọi `quit()` trước.
+  - Mỗi instance chỉ giữ một `BrowserContext`. Muốn tạo context mới thì gọi `quit()` trước hoặc tạo `new BrowserEngine()` mới.
   - `useProfile()` map profile sang thư mục tạm để tránh ghi trực tiếp vào profile gốc khi browser đang chạy.
   - `quit()` phải gọi `engine.cleanup()` vì đóng context chưa đủ để dọn worker, engine process, PCAP server, cleaner và mutex.
 
@@ -70,8 +72,8 @@ const browser = createChromium();
 Luồng chính của `BrowserEngine`:
 
 ```txt
-Chromium.useFingerprint/useProxy/useProfile
-  -> BrowserEngine.launch()
+engine.useFingerprint/useProxy/useProfile
+  -> engine.launch()
   -> PlaywrightFingerprintPlugin.setServiceKey()
   -> PlaywrightFingerprintPlugin.setWorkingFolder()
   -> PlaywrightFingerprintPlugin.useProfile/useProxy/useFingerprint()
@@ -84,7 +86,7 @@ Chromium.useFingerprint/useProxy/useProfile
 Luồng dọn dẹp:
 
 ```txt
-Chromium.quit()
+engine.quit()
   -> context.close()
   -> AdapterDataManager.map(runtimeProfile, targetProfile)
   -> engine.cleanup()

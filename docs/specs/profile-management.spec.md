@@ -52,8 +52,8 @@ BrowserEngine.quit(saveDataPath?)
   ├─ dataManager.map(tempPath, saveDataPath ?? dirPath)
   │    └─ copy temp → gốc
   │
-  └─ dataManager.unmap(tempDir)
-       └─ xoá temp dir
+   └─ dataManager.dispose()
+        └─ xoá temp dir của instance hiện tại
 ```
 
 Tại sao dùng temp dir? Nếu browser crash trong lúc chạy, profile gốc vẫn còn nguyên. Nếu không có temp dir, crash có thể corrupt thư mục profile.

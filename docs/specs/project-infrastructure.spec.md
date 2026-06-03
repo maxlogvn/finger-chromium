@@ -44,7 +44,14 @@ Thư mục src/:
 ```ts
 export { type PWChromium } from './types/PWChromium';
 export {
-  Chromium,
+  PluginError,
+  MissingKeyError,
+  InvalidEngineError,
+  EngineTimeoutError,
+  RequestTimeoutError,
+} from './plugin/errors';
+export {
+  BrowserEngine,
   type FetchOptions,
   type FingerprintOptions,
   type Launcher,
@@ -103,7 +110,7 @@ prettier (.prettierrc)
 | `eslint.config.ts` | ESLint flat config với typescript-eslint |
 | `.prettierrc` | Format: tabs, single quotes, 100 printWidth, trailingComma all |
 | `.mocharc.yml` | Mocha config: tsx loader, 10s timeout, exit |
-| `src/index.ts` | Entry point — re-export Chromium + types |
+| `src/index.ts` | Entry point — re-export BrowserEngine + errors + types |
 | `src/` | 5 nhánh: types, plugin, adapter/playwright, common, loader |
 | `dist/` | Build output (gitignored) |
 

@@ -6,7 +6,7 @@
 
 Task này hiệu chỉnh tài liệu của cụm core để tài liệu khớp với code thực tế. Đây là non-feature task, không thay đổi source code.
 
-Cụm core là đường đi chính khi user gọi `Chromium` để mở browser có fingerprint. Luồng này bắt đầu ở `BrowserEngine`, đi qua bridge của Playwright, vào `FingerprintPlugin`, gọi `API Connector`, rồi tới `RemoteEngine` để giao tiếp với `FastExecuteScript.exe`.
+Cụm core là đường đi chính khi user gọi `new BrowserEngine()` để mở browser có fingerprint. Luồng này bắt đầu ở `BrowserEngine`, đi qua bridge của Playwright, vào `FingerprintPlugin`, gọi `API Connector`, rồi tới `RemoteEngine` để giao tiếp với `FastExecuteScript.exe`.
 
 Tài liệu sau khi sửa phải giúp developer mới trả lời được 3 câu hỏi:
 
@@ -29,9 +29,9 @@ Tài liệu sau khi sửa phải giúp developer mới trả lời được 3 c�
 - Tài liệu phải mô tả rõ luồng launch chính:
 
 ```txt
-Chromium
-  -> BrowserEngine.launch()
-  -> BrowserEngine.newContext()
+BrowserEngine (new instance)
+  -> engine.launch()
+  -> engine.newContext()
   -> PlaywrightFingerprintPlugin.launchPersistentContext()
   -> FingerprintPlugin._launch(false, options)
   -> api('setup', params)
@@ -42,7 +42,7 @@ Chromium
 - Tài liệu phải mô tả rõ luồng cleanup chính:
 
 ```txt
-Chromium.quit()
+engine.quit()
   -> context.close()
   -> engine.cleanup()
   -> browser.close()
@@ -51,7 +51,7 @@ Chromium.quit()
   -> pcapServer.close()
   -> mutex.release()
   -> cleaner.stop()
-  -> dataManager.unmap()
+  -> dataManager.dispose()
 ```
 
 - Mỗi tài liệu cần giải thích "tại sao", không chỉ liệt kê "làm gì".
@@ -79,7 +79,7 @@ Task này không thêm API runtime. Data flow cần mô tả trong docs là data
 
 ### Luồng cấu hình và launch
 
-1. User gọi `Chromium.useFingerprint()`, `Chromium.useProxy()`, hoặc `Chromium.useProfile()`.
+1. User gọi `engine.useFingerprint()`, `engine.useProxy()`, hoặc `engine.useProfile()` (với `engine = new BrowserEngine()`).
 2. `BrowserEngine.launch()` hợp nhất options và đẩy cấu hình xuống `PlaywrightFingerprintPlugin`.
 3. `BrowserEngine.newContext()` gọi `engine.launchPersistentContext()` với profile runtime.
 4. `PlaywrightFingerprintPlugin.launchPersistentContext()` validate options, ép `viewport: null`, tạo launcher proxy, rồi gọi `_launch(false, options)`.
@@ -90,12 +90,12 @@ Task này không thêm API runtime. Data flow cần mô tả trong docs là data
 
 ### Luồng cleanup
 
-1. `Chromium.quit()` đóng `BrowserContext` nếu đã tạo.
+1. `engine.quit()` đóng `BrowserContext` nếu đã tạo.
 2. Nếu có profile đích, `AdapterDataManager` map dữ liệu từ thư mục runtime về thư mục lưu.
 3. `PlaywrightFingerprintPlugin.cleanup()` kế thừa từ `FingerprintPlugin.cleanup()`.
 4. `FingerprintPlugin.cleanup()` đóng browser, gọi `connectorCleanup()`, release mutex, và stop cleaner.
 5. `connectorCleanup()` kill `RemoteEngine` và close PCAP server.
-6. `Chromium.quit()` unmap thư mục runtime cuối cùng.
+6. `engine.quit()` dispose thư mục tạm của instance hiện tại.
 
 ## Components
 

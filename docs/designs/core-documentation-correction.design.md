@@ -67,9 +67,9 @@ Mỗi cụm tài liệu sẽ được viết theo cùng một cách để develo
 Tài liệu sau khi sửa phải giúp người đọc nhìn được luồng chính này:
 
 ```txt
-Chromium
-  -> BrowserEngine.launch()
-  -> BrowserEngine.newContext()
+BrowserEngine (new instance)
+  -> engine.launch()
+  -> engine.newContext()
   -> PlaywrightFingerprintPlugin.launchPersistentContext()
   -> FingerprintPlugin._launch(false, options)
   -> api('setup', params)
@@ -80,7 +80,7 @@ Chromium
 Luồng cleanup cũng cần được viết rõ:
 
 ```txt
-Chromium.quit()
+engine.quit()
   -> context.close()
   -> engine.cleanup()
   -> browser.close()
@@ -89,7 +89,7 @@ Chromium.quit()
   -> pcapServer.close()
   -> mutex.release()
   -> cleaner.stop()
-  -> dataManager.unmap()
+  -> dataManager.dispose()
 ```
 
 Hai luồng này quan trọng vì chúng giải thích vì sao task này không thể chỉ sửa từng tài liệu rời rạc. Developer cần hiểu quan hệ giữa các lớp để debug launch, fingerprint, proxy, profile và cleanup.

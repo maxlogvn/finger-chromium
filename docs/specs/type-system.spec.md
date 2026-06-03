@@ -10,7 +10,7 @@ Source: `src/types/*.ts`.
 
 ## Yêu cầu
 
-- `PWChromium` là interface (không phải class) — không thể `new PWChromium()`. Implementation là `BrowserEngine` singleton.
+- `PWChromium` là interface (không phải class) — không thể `new PWChromium()`. Implementation là `BrowserEngine` class — mỗi `new BrowserEngine()` là instance riêng.
 - Các option types có JSDoc đầy đủ, ghi rõ `@default`.
 - Tất cả public types được re-export từ `src/index.ts`.
 - `FetchOptions` dùng cho method `newFingerprint()`.
@@ -118,7 +118,14 @@ Xem chi tiết tại [proxy-config.spec.md](proxy-config.spec.md). Các field đ
 ```ts
 export { type PWChromium } from './types/PWChromium';
 export {
-  Chromium,
+  PluginError,
+  MissingKeyError,
+  InvalidEngineError,
+  EngineTimeoutError,
+  RequestTimeoutError,
+} from './plugin/errors';
+export {
+  BrowserEngine,
   type FetchOptions,
   type FingerprintOptions,
   type Launcher,

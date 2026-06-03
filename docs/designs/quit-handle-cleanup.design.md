@@ -2,7 +2,7 @@
 
 ## Bối cảnh
 
-Khi gọi `Chromium.quit()`, method chỉ close `BrowserContext` và unmap thư mục profile tạm. Bỏ sót toàn bộ tài nguyên nền: worker.exe, engine process, PCAP server, chokidar watcher, cleaner timer, Windows named mutex.
+Khi gọi `engine.quit()`, method chỉ close `BrowserContext` và unmap thư mục profile tạm. Bỏ sót toàn bộ tài nguyên nền: worker.exe, engine process, PCAP server, chokidar watcher, cleaner timer, Windows named mutex.
 
 Hậu quả: Node.js process không thoát tự nhiên vì event loop còn bận.
 

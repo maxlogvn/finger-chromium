@@ -7,7 +7,7 @@ Thư viện cần cung cấp TypeScript types cho người dùng: interface chí
 ## Câu hỏi làm rõ
 
 - Nên để type trong file riêng hay gộp chung? → File riêng, tránh circular dependency, dễ maintain.
-- `PWChromium` có nên là class hay interface? → Interface, vì implementation là `BrowserEngine` singleton.
+- `PWChromium` có nên là class hay interface? → Interface, vì implementation là `BrowserEngine` class.
 - Có cần export tất cả type không? → Chỉ export public types. Internal types giữ internal.
 
 ## Các phương án
@@ -38,4 +38,4 @@ Thư viện cần cung cấp TypeScript types cho người dùng: interface chí
 
 **`IPString = string & {}`:** Dùng kỹ thuật branded type để tạo type riêng cho IP string. `string & {}` là intersection với empty object type, tạo ra subtype của `string` có thể phân biệt với `string` thường ở compile time. Điều này giúp type-safe hơn khi truyền tham số — function nhận `IPString` sẽ báo lỗi nếu truyền `string` thường, tránh nhầm lẫn giữa IP và các giá trị chuỗi khác.
 
-**`PWChromium` là interface, không phải class:** Implementation là `BrowserEngine` singleton (`src/adapter/playwright/chromium.ts`). Dùng interface giúp tách contract ra khỏi implementation, cho phép thay đổi implementation mà không ảnh hưởng đến người dùng. Người dùng chỉ tương tác qua singleton `Chromium`, không cần `new`.
+**`PWChromium` là interface, không phải class:** Implementation là `BrowserEngine` class (`src/adapter/playwright/chromium.ts`). Dùng interface giúp tách contract ra khỏi implementation, cho phép thay đổi implementation mà không ảnh hưởng đến người dùng. Người dùng dùng `new BrowserEngine()` để tạo instance. `Chromium` là alias class cho backward compatibility.

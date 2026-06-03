@@ -4,7 +4,7 @@
 
 ## Mô tả
 
-`BrowserEngine` là lớp triển khai public API `Chromium` — singleton duy nhất mà người dùng thư viện tương tác. Nó cung cấp Fluent API để cấu hình fingerprint, proxy, profile, sau đó launch engine, tạo `BrowserContext` Playwright, và dọn dẹp khi kết thúc.
+`BrowserEngine` là lớp triển khai public API `PWChromium`. Mỗi `new BrowserEngine()` là một instance độc lập, có cấu hình riêng. `Chromium` là alias của `BrowserEngine` cho backward compatibility. Nó cung cấp Fluent API để cấu hình fingerprint, proxy, profile, sau đó launch engine, tạo `BrowserContext` Playwright, và dọn dẹp khi kết thúc.
 
 `BrowserEngine` không tự inject fingerprint. Nó là lớp điều phối: nhận cấu hình từ user, chuyển xuống `PlaywrightFingerprintPlugin`, gọi `launchPersistentContext()` để bridge vào plugin core, và quản lý vòng đời của `BrowserContext`.
 
@@ -12,7 +12,7 @@ Source: `src/adapter/playwright/chromium.ts` (231 dòng).
 
 ## Yêu cầu
 
-- Export singleton `Chromium` — chỉ một instance trong toàn bộ vòng đời ứng dụng.
+- Export class `BrowserEngine` — mỗi `new BrowserEngine()` tạo instance độc lập. `Chromium` là alias class.
 - Hỗ trợ Fluent API: mọi method config trả về `this` để chain.
 - `launch()` chỉ được gọi một lần — guard bằng `isLaunched` flag.
 - `newContext()` phải gọi sau `launch()`, trước `quit()`.
@@ -25,12 +25,11 @@ Source: `src/adapter/playwright/chromium.ts` (231 dòng).
 ### Kiến trúc tổng quan
 
 ```
-Chromium (singleton)
-  └── BrowserEngine
-       ├── engine: PlaywrightFingerprintPlugin
-       ├── dataManager: AdapterDataManager
-       ├── context: BrowserContext
-       └── config fields
+BrowserEngine (class, mỗi instance độc lập)
+  ├── engine: PlaywrightFingerprintPlugin
+  ├── dataManager: AdapterDataManager
+  ├── context: BrowserContext
+  └── config fields
 ```
 
 `BrowserEngine` giữ cấu hình trong private fields, không expose ra ngoài. Mỗi field lưu tuple `[value, options?]` để khi `launch()` gọi, chuyển nguyên cụm xuống plugin.
@@ -57,16 +56,19 @@ Lý do guard một lần ở `BrowserEngine` thay vì `FingerprintPlugin`: user 
 ### Input
 
 ```ts
-import { Chromium } from 'fingerprint-chromium-engine';
+import { BrowserEngine } from 'fingerprint-chromium-engine';
+import type { PluginLaunchOptions } from 'fingerprint-chromium-engine';
+
+const engine = new BrowserEngine();
 
 // Config methods — lưu vào field, trả về this
-Chromium.repackChromium(customLauncher);        // thay launcher mặc định
-Chromium.useFingerprint(jsonData, options);     // lưu fingerprint
-Chromium.useProxy(url, options);                 // lưu proxy
-Chromium.useProfile(dirPath, options);           // map profile + lưu
-Chromium.launch(options);                        // khởi động engine
-Chromium.newContext(options);                    // tạo BrowserContext
-Chromium.quit(saveDataPath);                     // dọn dẹp
+engine.repackChromium(customLauncher);          // thay launcher mặc định
+engine.useFingerprint(jsonData, options);        // lưu fingerprint
+engine.useProxy(url, options);                   // lưu proxy
+engine.useProfile(dirPath, options);             // map profile + lưu
+engine.launch(options);                          // khởi động engine
+engine.newContext(options);                      // tạo BrowserContext
+engine.quit(saveDataPath);                       // dọn dẹp
 ```
 
 ### Output
@@ -75,6 +77,7 @@ Chromium.quit(saveDataPath);                     // dọn dẹp
 - `newContext()` → `Promise<BrowserContext>` — context Playwright có fingerprint.
 - `quit()` → `Promise<void>`.
 - `newFingerprint(options)` → `Promise<string | undefined>` — JSON string từ service.
+- `repackChromium()` → `this` — thay launcher mặc định (gọi trước `launch()`).
 
 ### Luồng dữ liệu
 
@@ -101,7 +104,7 @@ User code
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/adapter/playwright/chromium.ts` | `BrowserEngine` class + `Chromium` singleton | 231 |
+| `src/adapter/playwright/chromium.ts` | `BrowserEngine` class + `Chromium` alias | 228 |
 | `src/adapter/playwright/data.ts` | `AdapterDataManager` — map/unmap profile, copy temp dir | — |
 | `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin` — bridge từ đây xuống plugin core | 111 |
 | `src/types/PWChromium.ts` | Interface `PWChromium` — public API contract | — |

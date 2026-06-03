@@ -80,16 +80,9 @@ Tham chiếu design doc: `docs/designs/playwright-bridge.design.md`.
 
 ```ts
 // Dùng qua BrowserEngine (không gọi trực tiếp)
-const context = await Chromium.launch().newContext();
-
-// Dùng trực tiếp (internal use)
-import { PlaywrightFingerprintPlugin } from './adapter/playwright/engine';
-const plugin = new PlaywrightFingerprintPlugin();
-plugin.setServiceKey(process.env.BABLOSOFT_KEY ?? '');
-context = await plugin.launchPersistentContext('./profiles/user_01', {
-  viewport: { width: 1280, height: 720 },
-});
-await plugin.cleanup();
+import { BrowserEngine } from 'fingerprint-chromium-engine';
+const engine = new BrowserEngine();
+const context = await engine.launch().newContext();
 ```
 
 ### Input
