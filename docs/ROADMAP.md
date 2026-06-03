@@ -379,15 +379,16 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Test Profile (AdapterDataManager)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
-- **Cập nhật:** 2026-06-03
-- **Tài liệu:**
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/test-profile.design.md) | [Spec](specs/test-profile.spec.md) | [Plan](plans/test-profile.plan.md) | [Overview](overviews/test-profile.overview.md)
 - **Ghi chú:**
-  - File test: `tests/profile.test.ts`
-  - Module cần test: `adapter/playwright/data.ts`
+  - File test: `tests/profile.test.ts` — 12 test cases mới
+  - Module đã test: `adapter/playwright/data.ts` — `AdapterDataManager`
   - Unit test: map/unmap/dispose, generateUniqueName, edge cases
   - Dùng thư mục temp thật (fs thật, không mock)
+  - Tất cả 116 tests pass (12 mới + 104 cũ)
 
 ---
 
