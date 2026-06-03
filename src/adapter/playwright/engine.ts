@@ -27,11 +27,13 @@ export const LAUNCH_FALLBACK_WARNING = [
   'Khuyến nghị dùng "launchPersistentContext" trực tiếp để tránh tác dụng phụ.',
 ].join('\n');
 
-const browserType: BrowserType = defaultLoader.load();
-const defaultLauncher: Launcher = {
-  launch: browserType.launch.bind(browserType),
-  launchPersistentContext: browserType.launchPersistentContext.bind(browserType),
-};
+function createDefaultLauncher(): Launcher {
+  const browserType: BrowserType = defaultLoader.load();
+  return {
+    launch: browserType.launch.bind(browserType),
+    launchPersistentContext: browserType.launchPersistentContext.bind(browserType),
+  };
+}
 
 // ─── PlaywrightFingerprintPlugin ──────────────────────────────────────────────
 
@@ -42,9 +44,9 @@ const defaultLauncher: Launcher = {
 export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
   protected readonly pwLauncher: Launcher;
 
-  constructor(launcher: Launcher = defaultLauncher) {
+  constructor(launcher?: Launcher) {
     super();
-    this.pwLauncher = launcher;
+    this.pwLauncher = launcher ?? createDefaultLauncher();
   }
 
   /**

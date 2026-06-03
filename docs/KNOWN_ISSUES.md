@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#11, #13-#15, #19, #20): GitHub issues [#3](https://github.com/maxlogvn/finger-chromium/issues/3), [#6](https://github.com/maxlogvn/finger-chromium/issues/6)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
-- **FIXED** (#1-#10, #12, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#2](https://github.com/maxlogvn/finger-chromium/issues/2), [#4](https://github.com/maxlogvn/finger-chromium/issues/4)-[#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
+- **OPEN** (#13-#15, #19, #20): GitHub issues [#6](https://github.com/maxlogvn/finger-chromium/issues/6)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
+- **FIXED** (#1-#12, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
 
@@ -49,11 +49,7 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 
 ### OPEN
 
-**#11 — `defaultLauncher` mutable state gây khó unit test**
-- **File:** `src/adapter/playwright/engine.ts:29-33`
-- **Vấn đề:** `defaultLauncher` là object khởi tạo ở module scope — là global mutable state. Khi test với launcher mock, state này ảnh hưởng đến các test khác trong cùng process.
-- **Fix:** Chuyển thành getter hoặc factory function, cho phép inject launcher trong constructor (không dùng default).
-- **GitHub:** [#3](https://github.com/maxlogvn/finger-chromium/issues/3)
+---
 
 **#13 — `cleaner` singleton dùng chung giữa các `BrowserEngine` instance**
 - **File:** `src/plugin/cleaner.ts:118`
@@ -88,6 +84,18 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 ---
 
 ### FIXED
+
+**#11 — `defaultLauncher` mutable state gây khó unit test**
+- **File:** `src/adapter/playwright/engine.ts:30-36`, `src/adapter/playwright/chromium.ts:75`
+- **Vấn đề:** `defaultLauncher` là object khởi tạo ở module scope — global mutable state. Khi test với launcher mock, state này không thể thay thế được vì đã resolve tại thời điểm import.
+- **Fix:**
+  1. Xoá `defaultLauncher` và `browserType` khỏi module scope, thay bằng `createDefaultLauncher()` factory function trong `engine.ts`.
+  2. `PlaywrightFingerprintPlugin` constructor dùng `launcher ?? createDefaultLauncher()`.
+  3. `BrowserEngine` constructor nhận `launcher?: Launcher` param — inject được mock khi unit test.
+- **Tài liệu:** [Design](designs/bug-011-default-launcher.design.md) | [Spec](specs/bug-011-default-launcher.spec.md) | [Plan](plans/bug-011-default-launcher.plan.md) | [Overview](overviews/bug-011-default-launcher.overview.md)
+- **GitHub:** [#3](https://github.com/maxlogvn/finger-chromium/issues/3) (closed)
+
+---
 
 **#18 — Mỗi lần gọi API spawn một process engine mới, không tái sử dụng**
 - **File:** `src/plugin/connector/engine.ts:337-353`

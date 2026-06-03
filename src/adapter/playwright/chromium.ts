@@ -16,8 +16,6 @@ import { PluginError } from '../../plugin/errors';
 import type { BrowserContext, BrowserType } from 'playwright-core';
 import type { PWChromium } from '../../types/PWChromium';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 import type { ProfileOptions } from '../../types/profile';
 import type { FingerprintOptions } from '../../types/fingerprint';
 import type { ProxyOptions } from '../../types/proxy';
@@ -70,8 +68,8 @@ export class BrowserEngine implements PWChromium {
   private fingerprints?: [string, FingerprintOptions?];
   private proxyData?: [string, ProxyOptions?];
 
-  constructor() {
-    this.engine = new PlaywrightFingerprintPlugin();
+  constructor(launcher?: Launcher) {
+    this.engine = new PlaywrightFingerprintPlugin(launcher);
     this.options = { ...DEFAULT_CONTEXT_OPTIONS };
     this.privateKey = PRIVATE_KEY;
     this.engineWorkingDirPath = ENGINE_WORKING_DIR;

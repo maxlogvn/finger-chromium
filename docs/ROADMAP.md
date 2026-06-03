@@ -375,5 +375,20 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+---
+
+### Bug #11 — `defaultLauncher` mutable state gây khó unit test
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-011-default-launcher.design.md) | [Spec](specs/bug-011-default-launcher.spec.md) | [Plan](plans/bug-011-default-launcher.plan.md) | [Overview](overviews/bug-011-default-launcher.overview.md)**
+- **Ghi chú:**
+  - `browserType` load ở module scope, `defaultLauncher` là shared mutable state
+  - Fix: factory function + inject launcher qua `BrowserEngine` constructor
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #11
+
+---
+
 <!-- Hết feature tasks -- các non-feature tasks (format code, fix quit, build config, known issues, documentation rewrite/correction) đã được dọn khỏi roadmap vì đã hoàn thành và không cần theo dõi tiến độ. -->
 
