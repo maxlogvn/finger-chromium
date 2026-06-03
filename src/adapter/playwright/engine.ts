@@ -11,6 +11,7 @@
 import type { BrowserContext, BrowserType, Page } from 'playwright-core';
 import FingerprintPlugin from '../../plugin';
 import defaultLoader from './loader';
+import { PluginError } from '../../plugin/errors';
 import { bindHooks, getViewport, onClose, setViewport } from './utils';
 import type { Launcher, PluginLaunchOptions } from './chromium';
 
@@ -63,7 +64,7 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
     this.#validateOptions(options);
     const { ignoreDefaultArgs } = options;
     const method = 'launchPersistentContext' as const;
-    if (!this.pwLauncher[method]) throw new Error(`Launcher không hỗ trợ phương thức "${method}".`);
+    if (!this.pwLauncher[method]) throw new PluginError(`Launcher không hỗ trợ phương thức "${method}".`);
 
     return this._launch(false, {
       ...options,
@@ -105,7 +106,7 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
 
   #validateOptions(options: Record<string, unknown> = {}): void {
     for (const option of UNSUPPORTED_OPTIONS) {
-      if (option in options) throw new Error(`Option "${option}" không được hỗ trợ trong plugin này.`);
+      if (option in options) throw new PluginError(`Option "${option}" không được hỗ trợ trong plugin này.`);
     }
   }
 }

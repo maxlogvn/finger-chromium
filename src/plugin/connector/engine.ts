@@ -20,7 +20,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { type ChildProcess, execFile } from 'node:child_process';
 import { createReadStream, createWriteStream } from 'node:fs';
 import debugFactory from 'debug';
-import { EngineTimeoutError, InvalidEngineError, RequestTimeoutError } from '../errors';
+import { EngineTimeoutError, InvalidEngineError, PluginError, RequestTimeoutError } from '../errors';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -57,7 +57,7 @@ function resolvePackageRoot(startDir: string): string {
 
     const parent = path.dirname(current);
     if (parent === current) {
-      throw new Error('[RemoteEngine] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.');
+      throw new PluginError('[RemoteEngine] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.');
     }
     current = parent;
   }
@@ -359,7 +359,7 @@ export default class RemoteEngine extends EventEmitter {
   async #updateMeta(): Promise<void> {
     const project = await fs.readFile(PROJECT_PATH, 'utf8');
     const versionMatch = project.match(/<EngineVersion>(\d+\.\d+\.\d+)<\/EngineVersion>/);
-    if (!versionMatch) throw new Error('Không thể đọc phiên bản Engine từ project.xml');
+    if (!versionMatch) throw new InvalidEngineError('Không thể đọc phiên bản Engine từ project.xml');
 
     const version = versionMatch[1];
     debug(`Cập nhật metadata cho engine (arch: ${ARCH}, version: ${version})`);

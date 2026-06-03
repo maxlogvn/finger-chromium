@@ -21,7 +21,7 @@ import type { PWChromium } from '../../types/PWChromium';
 import type { ProfileOptions } from '../../types/profile';
 import type { FingerprintOptions } from '../../types/fingerprint';
 import type { ProxyOptions } from '../../types/proxy';
-import type { FetchOptions } from 'src/types/fetch';
+import type { FetchOptions } from '../../types/fetch';
 
 export type { ProfileOptions, FingerprintOptions, ProxyOptions, FetchOptions };
 /** Options cho launchPersistentContext -- trích xuất từ kiểu Playwright. */

@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import path from 'path';
+import { PluginError } from './errors';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -111,7 +112,7 @@ export const getProfilePath = ({ args = [], userDataDir = '' }: GetProfilePathOp
  */
 export const validateConfig = (type: string, value: unknown, options: unknown): void => {
   if (typeof value !== 'string' || typeof options !== 'object' || options === null) {
-    throw new Error(`Tham số không hợp lệ cho cấu hình "${type}".`);
+    throw new PluginError(`Tham số không hợp lệ cho cấu hình "${type}".`);
   }
 };
 
@@ -120,6 +121,6 @@ export const validateConfig = (type: string, value: unknown, options: unknown): 
  */
 export const validateLauncher = (launcher: unknown): void => {
   if (launcher == null || typeof launcher !== 'object' || typeof (launcher as BrowserLauncher).launch !== 'function') {
-    throw new Error('Browser launcher không được hỗ trợ - yêu cầu một object có method "launch".');
+    throw new PluginError('Browser launcher không được hỗ trợ - yêu cầu một object có method "launch".');
   }
 };

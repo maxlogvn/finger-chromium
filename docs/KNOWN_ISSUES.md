@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#8, #10, #11, #13-#15, #18-#20): GitHub issues [#2](https://github.com/maxlogvn/finger-chromium/issues/2)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#11](https://github.com/maxlogvn/finger-chromium/issues/11)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
-- **FIXED** (#1-#7, #9, #12, #16-#17): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1), [#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#10](https://github.com/maxlogvn/finger-chromium/issues/10), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
+- **OPEN** (#8, #11, #13-#15, #18-#20): GitHub issues [#3](https://github.com/maxlogvn/finger-chromium/issues/3)-[#4](https://github.com/maxlogvn/finger-chromium/issues/4), [#6](https://github.com/maxlogvn/finger-chromium/issues/6)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#11](https://github.com/maxlogvn/finger-chromium/issues/11)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
+- **FIXED** (#1-#7, #9-#10, #12, #16-#17): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#2](https://github.com/maxlogvn/finger-chromium/issues/2), [#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#10](https://github.com/maxlogvn/finger-chromium/issues/10), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
 
@@ -53,12 +53,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **Vấn đề:** URL metadata fetch dùng `http://bablosoft.com/distr/...` — không có HTTPS, dễ bị MITM tấn công khi tải engine binary xuống máy người dùng.
 - **Fix:** Đổi scheme thành `https://`; nếu HTTPS fail thì fallback sang HTTP để tránh blocking.
 - **GitHub:** [#4](https://github.com/maxlogvn/finger-chromium/issues/4)
-
-**#10 — Import path alias `'src/types/fetch'` không khớp tsconfig**
-- **File:** `src/adapter/playwright/chromium.ts:23`
-- **Vấn đề:** Import `from 'src/types/fetch'` — tsconfig.json chỉ define alias `@src/*`, không define `src/*`. Có thể không resolve được ở một số môi trường (ts-node, jiti...).
-- **Fix:** Đổi thành relative path `from '../../types/fetch'` hoặc align alias thành `@src/*` nếu muốn dùng absolute import.
-- **GitHub:** [#2](https://github.com/maxlogvn/finger-chromium/issues/2)
 
 **#11 — `defaultLauncher` mutable state gây khó unit test**
 - **File:** `src/adapter/playwright/engine.ts:29-33`
@@ -176,6 +170,15 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
   2. Thêm ESLint rule `no-restricted-syntax` với AST selector `ThrowStatement > NewExpression > Identifier.callee[name="Error"]` — tự động báo lỗi nếu ai đó dùng `throw new Error(...)` trong `src/`.
 - **Tài liệu:** [Design](designs/bug-009-error-tho.design.md) | [Spec](specs/bug-009-error-tho.spec.md) | [Plan](plans/bug-009-error-tho.plan.md)
 - **GitHub:** [#1](https://github.com/maxlogvn/finger-chromium/issues/1) (closed)
+
+---
+
+**#10 — Import path alias `'src/types/fetch'` không khớp tsconfig**
+- **File:** `src/adapter/playwright/chromium.ts:24`
+- **Vấn đề:** Import `from 'src/types/fetch'` — tsconfig.json chỉ define alias `@src/*`, không define `src/*`. Không resolve được ở ts-node/jiti runtime nếu không có tsconfig paths support.
+- **Fix:** Đổi thành relative path `from '../../types/fetch'` — nhất quán với các import type khác trong cùng file.
+- **Tài liệu:** [Design](designs/bug-010-import-path-alias.design.md) | [Spec](specs/bug-010-import-path-alias.spec.md) | [Plan](plans/bug-010-import-path-alias.plan.md)
+- **GitHub:** [#2](https://github.com/maxlogvn/finger-chromium/issues/2) (closed)
 
 ---
 

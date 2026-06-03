@@ -27,6 +27,7 @@ Dự án đồng bộ issue giữa local (`docs/KNOWN_ISSUES.md`) và GitHub Iss
 - Trước khi fix bug, đọc KNOWN_ISSUES.md để biết trạng thái hiện tại.
 - Khi fix xong, cập nhật KNOWN_ISSUES.md theo template [`docs/templates/known-issue.template.md`](docs/templates/known-issue.template.md) và đồng bộ lên GitHub issue tương ứng.
 - Comment trên GitHub issue phải theo template [`docs/templates/github-closing-comment.template.md`](docs/templates/github-closing-comment.template.md).
+- **Cảnh báo:** Template yêu cầu "Đầy đủ dấu: Phải có dấu tiếng Việt đầy đủ. Không viết kiểu 'khong dau'." — **đọc kỹ template trước khi post**, kiểm tra lại nội dung để tránh lặp lại lỗi cũ.
 - Khi tạo issue mới, thêm entry vào KNOWN_ISSUES.md (theo template) và tạo GitHub issue tương ứng.
 
 ---
@@ -69,9 +70,9 @@ Kết cấu nhất quán giữa các feature: cùng loại tài liệu có cùng
 
 ---
 
-## Phong cách viết tài liệu và code
+## Phong cách viết tài liệu, code và GitHub
 
-Tất cả tài liệu (design, spec, plan, product, overview) và code comment phải:
+Tất cả tài liệu (design, spec, plan, product, overview), code comment, và GitHub comment phải:
 
 - **Viết bằng tiếng Việt**, dùng từ ngữ thân thiện, dễ hiểu, như đang giải thích cho một developer đồng nghiệp.
 - **Tránh lạm dụng thuật ngữ** khiến nội dung khó đọc. Nếu bắt buộc dùng thuật ngữ chuyên ngành (ví dụ `BrowserContext`, `launchPersistentContext`, `CDP`), giải thích ngắn gọn ngay kế bên.
@@ -107,3 +108,4 @@ npm run typecheck  # TypeScript type check (tsc --noEmit)
 
 - Dự án chỉ hỗ trợ **Windows** (win32).
 - Không mock Playwright browser trong test -- test với browser thật.
+- **Luôn viết tiếng Việt có dấu đầy đủ** trong mọi nội dung: tài liệu, code comment, GitHub comment, commit message. Kiểm tra kỹ trước khi gửi lên GitHub.
