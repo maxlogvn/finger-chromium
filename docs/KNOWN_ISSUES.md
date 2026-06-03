@@ -16,7 +16,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 ### Mapping giữa local và GitHub
 
 - **OPEN** (#19, #20): GitHub issues [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
-- **FIXED** (#1-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#7](https://github.com/maxlogvn/finger-chromium/issues/7), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng); GitHub [#8](https://github.com/maxlogvn/finger-chromium/issues/8) (cho #15) chưa close — se dong sau khi verify
+- **FIXED** (#1-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#7](https://github.com/maxlogvn/finger-chromium/issues/7), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
 
