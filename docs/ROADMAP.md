@@ -304,6 +304,19 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Dead export SettingsCleaner default (Bug fix #25)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-025-dead-export-settingscleaner.design.md) | [Spec](specs/bug-025-dead-export-settingscleaner.spec.md) | [Plan](plans/bug-025-dead-export-settingscleaner.plan.md) | [Overview](overviews/bug-025-dead-export-settingscleaner.overview.md)
+- **Ghi chú:**
+  - Đã thêm `@deprecated` JSDoc cho `export default new SettingsCleaner()` trong `src/plugin/cleaner.ts:118`.
+  - Đã refactor `tests/quit-cleanup.test.ts` sang dùng `new SettingsCleaner()` thay vì default import.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #25).
+
+---
+
 ### Tăng test coverage cho core modules
 
 - **Trạng thái:** [-] Sắp làm

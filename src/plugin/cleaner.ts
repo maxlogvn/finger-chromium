@@ -115,4 +115,9 @@ export class SettingsCleaner {
   }
 }
 
+/**
+ * @deprecated Từ v1.x. Không còn được production code sử dụng.
+ * Dùng `new SettingsCleaner()` để tạo instance riêng.
+ * Sẽ bị xoá ở major version 2.0.
+ */
 export default new SettingsCleaner();

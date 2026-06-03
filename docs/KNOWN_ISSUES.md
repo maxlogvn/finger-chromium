@@ -15,7 +15,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** (không có)
+- **OPEN:** 4 issues — xem section OPEN bên dưới
 - **FIXED:** 20 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
@@ -53,7 +53,25 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 
 ### OPEN
 
-*(Không có issue nào đang mở.)*
+**Process không tự động thoát sau khi quit()**
+- **File:** `src/plugin/connector/pcapServer/index.ts:61`, `src/plugin/connector/index.ts:142-144`, `src/plugin/index.ts:286-296`
+- **Issue:** `net.Server` thiếu `unref()`, không đóng được sau cleanup.
+- **GitHub:** [#21](https://github.com/maxlogvn/finger-chromium/issues/21)
+
+**AsyncLock module-level gây contention giữa các instance**
+- **File:** `src/plugin/config.ts:34,87`
+- **Issue:** `AsyncLock` module-level bị sót sau refactor per-instance.
+- **GitHub:** [#22](https://github.com/maxlogvn/finger-chromium/issues/22)
+
+**Race condition khi cleanup: cleaner chạy trước khi engine process thoát hẳn**
+- **File:** `src/plugin/index.ts:291`, `src/plugin/connector/index.ts:142-144`, `src/plugin/connector/engine.ts:372-377`
+- **Issue:** Kill engine fire-and-forget, cleaner xoá file khi process còn ghi.
+- **GitHub:** [#23](https://github.com/maxlogvn/finger-chromium/issues/23)
+
+**File corrupt tích luỹ khi download engine thất bại**
+- **File:** `src/plugin/connector/engine.ts:131-145`
+- **Issue:** `download()` không có `finally` dọn partial file khi thất bại.
+- **GitHub:** [#24](https://github.com/maxlogvn/finger-chromium/issues/24)
 
 ---
 
@@ -255,3 +273,14 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
   3. Giữ `export default new SettingsCleaner()` cho backward compatibility.
 - **Tài liệu:** [Design](designs/bug-013-cleaner-singleton.design.md) | [Spec](specs/bug-013-cleaner-singleton.spec.md) | [Plan](plans/bug-013-cleaner-singleton.plan.md) | [Overview](overviews/bug-013-cleaner-singleton.overview.md)
 - **GitHub:** [#6](https://github.com/maxlogvn/finger-chromium/issues/6) (closed)
+
+---
+
+**Dead export SettingsCleaner default**
+- **File:** `src/plugin/cleaner.ts:118`
+- **Vấn đề:** `export default new SettingsCleaner()` không còn production code nào import — sót lại từ refactor per-instance cleaner.
+- **Fix:**
+  1. Thêm `@deprecated` JSDoc cho default export.
+  2. Refactor test `quit-cleanup.test.ts` sang dùng `new SettingsCleaner()` thay vì default import.
+- **Tài liệu:** [Design](designs/bug-025-dead-export-settingscleaner.design.md) | [Spec](specs/bug-025-dead-export-settingscleaner.spec.md) | [Plan](plans/bug-025-dead-export-settingscleaner.plan.md) | [Overview](overviews/bug-025-dead-export-settingscleaner.overview.md)
+- **GitHub:** [#25](https://github.com/maxlogvn/finger-chromium/issues/25) (closed)
