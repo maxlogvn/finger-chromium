@@ -237,9 +237,18 @@ Ngoại lệ: file adapter có thể re-export type để tiện import (`export
 `docs/KNOWN_ISSUES.md` là **entry point duy nhất** cho mọi bug, known issue, và fix đã được ghi nhận.
 
 - **Roadmap** (`ROADMAP.md`): Không link trực tiếp đến bug fix docs trong trường `Tài liệu`. Nếu feature có bug fix, thêm ghi chú ngắn trong trường `Ghi chú` kèm link `KNOWN_ISSUES.md #N`.
-- **Welcome** (`Welcome.md`): Chỉ giữ link tóm tắt đến `KNOWN_ISSUES.md` (ví dụ: "Hiện có N issue OPEN"). Không chứa chi tiết issue nào.
-- **Khi fix bug**: Cập nhật `KNOWN_ISSUES.md` trước -- chuyển từ OPEN sang FIXED, thêm link đến design/spec/plan/overview của bug fix. Không sửa Roadmap hay Welcome để thêm chi tiết fix.
+- **Welcome** (`Welcome.md`): Chỉ giữ link tóm tắt đến `KNOWN_ISSUES.md` và GitHub Issues. Không chứa chi tiết issue nào.
+- **Khi fix bug**: Cập nhật `KNOWN_ISSUES.md` trước -- chuyển từ OPEN sang FIXED, theo đúng template [`docs/templates/known-issue.template.md`](templates/known-issue.template.md). Thêm link đến design/spec/plan/overview của bug fix. Không sửa Roadmap hay Welcome để thêm chi tiết fix.
 - **Quét định kỳ**: Khi thêm issue mới, kiểm tra ROADMAP.md và Welcome.md có tham chiếu inline đến issue đó không; nếu có, thay bằng link `KNOWN_ISSUES.md #N`.
+
+### Đồng bộ với GitHub Issues
+
+Dự án đồng bộ issue giữa local (`docs/KNOWN_ISSUES.md`) và GitHub Issues.
+
+**Quy trình:**
+- Mỗi issue local có một GitHub issue tương ứng (ghi trong trường `GitHub:`).
+- Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.template.md`](templates/known-issue.template.md).
+- Khi fix xong: cập nhật KNOWN_ISSUES.md -> tạo/update GitHub issue -> thêm comment chi tiết (theo template [`docs/templates/github-closing-comment.template.md`](templates/github-closing-comment.template.md)) -> đóng GitHub issue.
 
 ### Mục đích
 

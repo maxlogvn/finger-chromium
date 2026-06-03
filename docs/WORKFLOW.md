@@ -257,7 +257,9 @@ docs/
 │   ├── spec.template.md
 │   ├── plan.template.md
 │   ├── overview.template.md
-│   └── product.template.md
+│   ├── product.template.md
+│   ├── known-issue.template.md
+│   └── github-closing-comment.template.md
 ├── ROADMAP.md     — theo dõi tiến độ tất cả tính năng
 ├── CONVENTIONS.md — quy ước code
 ├── STACK.md       — công nghệ sử dụng
@@ -276,6 +278,8 @@ Mỗi loại tài liệu có file template riêng tại `docs/templates/`. AI d�
 - [plan.template.md](templates/plan.template.md) — dùng ở bước 4
 - [product.template.md](templates/product.template.md) — dùng ở bước 9 (feature task)
 - [overview.template.md](templates/overview.template.md) — dùng ở bước 9
+- [known-issue.template.md](templates/known-issue.template.md) — dùng cho entries trong KNOWN_ISSUES.md (OPEN và FIXED)
+- [github-closing-comment.template.md](templates/github-closing-comment.template.md) — dùng cho comment đóng GitHub issue
 
 ---
 

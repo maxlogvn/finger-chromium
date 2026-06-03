@@ -47,7 +47,9 @@ docs/
 │   ├── spec.template.md
 │   ├── plan.template.md
 │   ├── overview.template.md
-│   └── product.template.md
+│   ├── product.template.md
+│   ├── known-issue.template.md
+│   └── github-closing-comment.template.md
 ├── KNOWN_ISSUES.md -- danh sách bug và vấn đề đã biết
 ├── ROADMAP.md     -- theo dõi tiến độ tất cả tính năng
 ├── CONVENTIONS.md -- quy ước code
@@ -74,7 +76,14 @@ src/
 
 ## Known Issues
 
-Hiện có **13 issue OPEN** — đang chờ xử lý. Chi tiết tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+Issue được theo dõi song song ở hai nơi:
+
+| Nơi | Link | Mục đích |
+|-----|------|----------|
+| **Local** | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | Entry point chính -- đọc để biết tình trạng |
+| **GitHub** | [Issues](https://github.com/maxlogvn/finger-chromium/issues) | Lưu trữ vĩnh viễn, traceable |
+
+Hiện có **13 issue OPEN** — đang chờ xử lý. Chi tiết và mapping local-GitHub tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ---
 

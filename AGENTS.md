@@ -17,6 +17,17 @@ Các tài liệu dưới đây chứa toàn bộ ngữ cảnh quan trọng của
 | [`docs/STACK.md`](docs/STACK.md) | Công nghệ sử dụng |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Theo dõi tiến độ tất cả tính năng |
 | [`docs/WORKFLOW.md`](docs/WORKFLOW.md) | Quy trình phát triển tính năng từ đầu đến cuối |
+| [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md) | Bug và vấn đề đã biết, đồng bộ với GitHub Issues |
+
+### Issue tracking
+
+Dự án đồng bộ issue giữa local (`docs/KNOWN_ISSUES.md`) và GitHub Issues (<https://github.com/maxlogvn/finger-chromium/issues>).
+
+**Quy tắc cho AI agent:**
+- Trước khi fix bug, đọc KNOWN_ISSUES.md để biết trạng thái hiện tại.
+- Khi fix xong, cập nhật KNOWN_ISSUES.md theo template [`docs/templates/known-issue.template.md`](docs/templates/known-issue.template.md) và đồng bộ lên GitHub issue tương ứng.
+- Comment trên GitHub issue phải theo template [`docs/templates/github-closing-comment.template.md`](docs/templates/github-closing-comment.template.md).
+- Khi tạo issue mới, thêm entry vào KNOWN_ISSUES.md (theo template) và tạo GitHub issue tương ứng.
 
 ---
 

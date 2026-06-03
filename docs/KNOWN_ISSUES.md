@@ -28,26 +28,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Quy tắc comment trên GitHub Issues
 
-Mỗi GitHub issue (kể cả đã đóng) phải có một comment duy nhất với cấu trúc:
-
-```markdown
-## TRẠNG THÁI: ĐÃ HOÀN THÀNH
-
-Issue này đã được xử lý và đóng. Chi tiết bên dưới.
-
-## 1. Vấn đề
-...
-## 2. Tác động
-...
-## 3. Cách khắc phục
-...
-## 4. File đã thay đổi
-...
-## 5. Commit
-...
-## 6. Tài liệu đầy đủ
-...
-```
+Mỗi GitHub issue (kể cả đã đóng) phải có một comment duy nhất theo template [`docs/templates/github-closing-comment.template.md`](templates/github-closing-comment.template.md).
 
 ### Tạo issue mới
 
@@ -58,13 +39,12 @@ Khi phát hiện bug hoặc vấn đề mới:
 
 ### Template cho issue mới
 
-```markdown
-**#N — Tiêu đề ngắn**
-- **File:** ...
-- **Vấn đề:** ...
-- **Fix:** ...
-- **GitHub:** [#N](https://github.com/maxlogvn/finger-chromium/issues/N)
-```
+Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.template.md`](templates/known-issue.template.md). Có 2 dạng:
+
+| Loại | Khi nào dùng |
+|------|-------------|
+| OPEN | Bug đã ghi nhận, chưa sửa |
+| FIXED | Bug đã sửa, đã có tài liệu |
 
 ### OPEN
 
@@ -194,10 +174,12 @@ Khi phát hiện bug hoặc vấn đề mới:
 
 ---
 
-**#9 — `BrowserEngine.launch()` dùng `Error` thô thay vì `PluginError`**
-- **File:** `src/adapter/playwright/chromium.ts`
-- **Vấn đề:** 3 `throw new Error(...)` trong `chromium.ts` (launch + newContext) — vi phạm CONVENTIONS.md yêu cầu dùng `PluginError` cho mọi lỗi engine.
-- **Fix:** Thêm import `PluginError`, đổi cả 3 `Error` thành `PluginError`.
+**#9 — `BrowserEngine.launch()` dùng `Error` thô thay vì `PluginError`** (sweep fix toàn bộ codebase)
+- **File:** `src/adapter/playwright/chromium.ts`, `src/plugin/mutex/index.ts`, `src/plugin/connector/engine.ts`, `src/plugin/utils.ts`, `src/adapter/playwright/data.ts`, `src/adapter/playwright/engine.ts`, `src/loader/index.ts`, `eslint.config.ts`
+- **Vấn đề:** Toàn bộ codebase có 17 `throw new Error(...)` thay vì `PluginError` — vi phạm CONVENTIONS.md yêu cầu dùng `PluginError` cho mọi lỗi engine. Gồm: 3 trong `chromium.ts`, 3 trong `mutex/index.ts`, 2 trong `connector/engine.ts`, 2 trong `plugin/utils.ts`, 2 trong `data.ts`, 2 trong `engine.ts`, 3 trong `loader/index.ts`.
+- **Fix:** 
+  1. Đổi tất cả 17 `throw new Error(...)` thành `PluginError` hoặc subclass (`InvalidEngineError`).
+  2. Thêm ESLint rule `no-restricted-syntax` với AST selector `ThrowStatement > NewExpression > Identifier.callee[name="Error"]` — tự động báo lỗi nếu ai đó dùng `throw new Error(...)` trong `src/`.
 - **Tài liệu:** [Design](designs/bug-009-error-tho.design.md) | [Spec](specs/bug-009-error-tho.spec.md) | [Plan](plans/bug-009-error-tho.plan.md)
 - **GitHub:** [#1](https://github.com/maxlogvn/finger-chromium/issues/1) (closed)
 
