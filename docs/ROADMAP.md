@@ -295,6 +295,18 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Tăng test coverage cho core modules
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:**
+- **Ghi chú:**
+  - Hiện chỉ có 2 file test: `multi-profile-singleton.test.ts` và `quit-cleanup.test.ts`
+  - Cần unit test cho: `RemoteEngine` (engine.ts), `Connector` (connector/index.ts), `PCAPServer`, `Cleaner`
+  - Test với browser thật (theo CONVENTIONS.md) nhưng cần thêm test cho logic xử lý lỗi và edge cases
+  - Mục tiêu: coverage tối thiểu 60% cho `src/plugin/` và `src/adapter/`
+
 ---
 
 ### Bug #1 — `notify()` dead code

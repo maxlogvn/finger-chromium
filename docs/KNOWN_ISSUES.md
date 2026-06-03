@@ -14,7 +14,31 @@
 
 ### OPEN
 
-<!-- Hiện không có issue OPEN nào. Thêm issue mới vào đây theo template ở trên. -->
+**#8 — Engine download URL dùng HTTP không an toàn**
+- **File:** `src/plugin/connector/engine.ts:367`
+- **Vấn đề cũ:** URL metadata fetch dùng `http://bablosoft.com/distr/...` — không có HTTPS, dễ bị MITM tấn công khi tải engine binary xuống máy người dùng.
+- **Fix:** Đổi scheme thành `https://`; nếu HTTPS fail thì fallback sang HTTP để tránh blocking.
+
+---
+
+**#9 — `BrowserEngine.launch()` dùng `Error` thô thay vì `PluginError`**
+- **File:** `src/adapter/playwright/chromium.ts:136`
+- **Vấn đề cũ:** `throw new Error(...)` — vi phạm CONVENTIONS.md yêu cầu dùng `PluginError` cho mọi lỗi engine.
+- **Fix:** Đổi thành `throw new PluginError(...)`.
+
+---
+
+**#10 — Import path alias `'src/types/fetch'` không khớp tsconfig**
+- **File:** `src/adapter/playwright/chromium.ts:23`
+- **Vấn đề cũ:** Import `from 'src/types/fetch'` — tsconfig.json chỉ define alias `@src/*`, không define `src/*`. Có thể không resolve được ở một số môi trường (ts-node, jiti...).
+- **Fix:** Đổi thành relative path `from '../../types/fetch'` hoặc align alias thành `@src/*` nếu muốn dùng absolute import.
+
+---
+
+**#11 — `defaultLauncher` mutable state gây khó unit test**
+- **File:** `src/adapter/playwright/engine.ts:29-33`
+- **Vấn đề cũ:** `defaultLauncher` là object khởi tạo ở module scope — là global mutable state. Khi test với launcher mock, state này ảnh hưởng đến các test khác trong cùng process.
+- **Fix:** Chuyển thành getter hoặc factory function, cho phép inject launcher trong constructor (không dùng default).
 
 ---
 
