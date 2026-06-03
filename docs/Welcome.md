@@ -48,8 +48,7 @@ docs/
 │   ├── plan.template.md
 │   ├── overview.template.md
 │   ├── product.template.md
-│   ├── known-issue.template.md
-│   └── github-closing-comment.template.md
+│   └── known-issue.template.md          -- Mẫu body cho GitHub issue mới
 ├── KNOWN_ISSUES.md -- danh sách bug và vấn đề đã biết
 ├── ROADMAP.md     -- theo dõi tiến độ tất cả tính năng
 ├── CONVENTIONS.md -- quy ước code

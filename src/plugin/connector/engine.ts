@@ -400,6 +400,14 @@ export default class RemoteEngine extends EventEmitter {
       proc.once('exit', () => resolve());
     });
 
+    // --- Bước 1: Kiểm tra process đã exit trước khi gửi tín hiệu
+    // Nếu process đã thoát trước khi listener 'exit' được đăng ký,
+    // exitPromise sẽ không bao giờ resolve -- gây treo vô hạn.
+    if (proc.exitCode !== null) {
+      this.#process = undefined;
+      return;
+    }
+
     proc.kill();
 
     const timer = setTimeout(() => {
