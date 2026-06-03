@@ -145,7 +145,7 @@ new RequestTimeoutError('[msg]')
 
 ### Hạn chế hiện tại
 
-Errors chưa được export từ `src/index.ts` (xem KNOWN_ISSUES.md #2). Trong `catch`, dùng `err.name` để phân biệt:
+Errors chưa được export từ `src/index.ts` (xem KNOWN_ISSUES.md, Issue #14). Trong `catch`, dùng `err.name` để phân biệt:
 
 ```ts
 try { ... } catch (err: unknown) {

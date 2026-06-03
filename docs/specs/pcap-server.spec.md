@@ -80,11 +80,11 @@ await pcapServer.close();
 ### Luồng
 
 ```
-Connector import
+Lần gọi api() đầu tiên
   │
-  └─ pcapServer.listen(0, '127.0.0.1')
+  └─ ensureInit() → pcapServer.listen(0, '127.0.0.1')
        │
-       ├─ [EADDRINUSE] setTimeout 1s → retry
+       ├─ [EADDRINUSE] setTimeout 1s → retry (resolve promise gốc khi thành công)
        │
        └─ [OK] Resolve port → set engine args --mock-pcap-port=<port>
             │
@@ -95,7 +95,7 @@ Connector import
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/connector/pcapServer/index.ts` | TCP server | 71 |
+| `src/plugin/connector/pcapServer/index.ts` | TCP server (lazy init) | ~80 |
 
 ## Xử lý lỗi
 

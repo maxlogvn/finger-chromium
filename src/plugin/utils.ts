@@ -44,10 +44,6 @@ interface GetProfilePathOptions {
   userDataDir?: string;
 }
 
-interface ValidateConfigOptions {
-  [key: string]: unknown;
-}
-
 interface BrowserLauncher {
   launch: (...args: unknown[]) => Promise<unknown> | unknown;
   [key: string]: unknown;

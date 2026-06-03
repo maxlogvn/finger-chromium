@@ -10,6 +10,7 @@ import path from 'path';
 import { createInterface } from 'readline';
 import type { ChildProcess } from 'child_process';
 import { exec, spawn } from 'child_process';
+import { PluginError } from '../errors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ export const launch = async ({
       }
     }
     function onTimeout(): void {
-      reject(new Error(`Timed out after ${timeout}ms while trying to launch the browser.`));
+      reject(new PluginError(`Timed out after ${timeout}ms while trying to launch the browser.`));
     }
   });
 

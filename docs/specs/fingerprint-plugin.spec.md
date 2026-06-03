@@ -19,7 +19,7 @@ Source: `src/plugin/index.ts` (302 dòng).
 - `setWorkingFolder()`, `setRequestTimeout()`, `setEngineTimeout()` — cấu hình engine.
 - `setServiceKey()` — set key module-level (dùng chung cho mọi instance).
 - `static create(launcher)` — factory method validate launcher trước khi khởi tạo.
-- Export singleton `plugin` — instance global cho Playwright bridge.
+- Export class `FingerprintPlugin` — Playwright bridge kế thừa từ class này.
 - `cleanup()` phải dọn: browser, connector (engine + PCAP), mutex, cleaner.
 
 ## Thiết kế
@@ -122,11 +122,11 @@ interface SetupResponse {
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/index.ts` | `FingerprintPlugin` + singleton `plugin` | 302 |
+| `src/plugin/index.ts` | `FingerprintPlugin` class — PlaywrightFingerprintPlugin kế thừa | ~300 |
 | `src/plugin/utils.ts` | `defaultArgs`, `getProfilePath`, `validateConfig`, `validateLauncher` | — |
 | `src/plugin/config.ts` | `configure()` + `synchronize()` — resize + .ini sync | — |
 | `src/plugin/launcher/index.ts` | Launcher mặc định — spawn worker.exe | 99 |
-| `src/plugin/connector/index.ts` | `api()` + `cleanup()` — connector singleton | — |
+| `src/plugin/connector/index.ts` | class `Connector` — mỗi instance có connector riêng | — |
 | `src/plugin/cleaner.ts` | `SettingsCleaner` — dọn file tạm engine | — |
 | `src/plugin/mutex/index.ts` | Windows named mutex — đồng bộ process | 75 |
 | `src/plugin/browser.ts` | `setViewport` + `getViewport` qua CDP (plugin path) | — |
