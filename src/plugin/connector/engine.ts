@@ -111,7 +111,7 @@ export interface FunctionResult {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function exists(filePath: string): Promise<boolean> {
+export async function exists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
     return true;
@@ -120,14 +120,14 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-async function checksum(filePath: string): Promise<string> {
+export async function checksum(filePath: string): Promise<string> {
   const reader = createReadStream(filePath);
   const hash = createHash('sha1');
   await pipeline(reader, hash);
   return hash.digest('hex');
 }
 
-async function download(url: string, filePath: string): Promise<void> {
+export async function download(url: string, filePath: string): Promise<void> {
   const httpsUrl = url.replace(/^http:/, 'https:');
   const tmpPath = filePath + '.tmp';
   const writer = createWriteStream(tmpPath);
@@ -168,7 +168,7 @@ async function download(url: string, filePath: string): Promise<void> {
  * Wrapper axios request -- thử HTTPS trước, fallback HTTP nếu lỗi network.
  * Chỉ fallback khi là lỗi network (không fallback cho 4xx/5xx).
  */
-async function fetchWithFallback<T = unknown>(url: string, options?: Record<string, unknown>) {
+export async function fetchWithFallback<T = unknown>(url: string, options?: Record<string, unknown>) {
   const httpsUrl = url.replace(/^http:/, 'https:');
   try {
     return await axios.get<T>(httpsUrl, options);

@@ -20,7 +20,7 @@ let server: net.Server | undefined;
  * @param host - Địa chỉ (mặc định 127.0.0.1)
  * @returns Port đang lắng nghe
  */
-export const listen = once((port = 0, host = '127.0.0.1'): Promise<number> => {
+export const listen: (port?: number, host?: string) => Promise<number> = once((port = 0, host = '127.0.0.1'): Promise<number> => {
   let id = 0;
   let retried = false;
   return new Promise<number>((resolve, reject) => {

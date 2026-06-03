@@ -333,16 +333,18 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Test Connector (RemoteEngine + Connector + PCAP)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:**
+- **Tài liệu:** [Design](designs/test-connector.design.md) | [Spec](specs/test-connector.spec.md) | [Plan](plans/test-connector.plan.md) | [Overview](overviews/test-connector.overview.md)
 - **Ghi chú:**
-  - File test: `tests/connector.test.ts`
-  - Module cần test: `connector/engine.ts`, `connector/index.ts`, `connector/pcapServer/index.ts`
-  - Unit test: mock axios, chokidar, child_process
-  - Integration test: dùng engine thật (download + spawn + IPC call), không cần key
-  - Cần mock network cho unit test, skip integration nếu chưa có engine
+  - File test: `tests/connector.test.ts` — 27 test cases mới
+  - PCAP Server: 5 tests (listen/close, request ID, heartbeat, data rỗng, close server)
+  - RemoteEngine: 15 tests (constructor, setters, exists, checksum, download, kill)
+  - Connector: 7 tests (constructor, api error normalization, cleanup)
+  - Tất cả 85 tests pass (27 mới + 58 cũ)
+  - Hybrid approach: PCAP với TCP thật, helpers với file thật + HTTP server local, Connector với mock RemoteEngine
+  - Integration test với engine thật: `it.skip` — triển khai sau
 
 ---
 
