@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#15, #19, #20): GitHub issues [#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
-- **FIXED** (#1-#14, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#7](https://github.com/maxlogvn/finger-chromium/issues/7), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
+- **OPEN** (#19, #20): GitHub issues [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
+- **FIXED** (#1-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#7](https://github.com/maxlogvn/finger-chromium/issues/7), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng); GitHub [#8](https://github.com/maxlogvn/finger-chromium/issues/8) (cho #15) chưa close — se dong sau khi verify
 
 ### Quy trình fix một issue
 
@@ -51,12 +51,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 
 ---
 
-**#15 — PCAP server retry EADDRINUSE nhưng promise gốc không bao giờ resolve**
-- **File:** `src/plugin/connector/pcapServer/index.ts:42-46`
-- **Vấn đề:** Khi port bận, error handler gọi `server.listen()` lại, nhưng promise từ `listen()` gốc không resolve. Caller treo vĩnh viễn.
-- **Fix:** Trong error handler EADDRINUSE, reject promise cũ và tạo promise mới cho lần retry.
-- **GitHub:** [#8](https://github.com/maxlogvn/finger-chromium/issues/8)
-
 **#19 — `isBrowser` type guard dùng string check fragile**
 - **File:** `src/adapter/playwright/utils.ts:19-23`
 - **Vấn đề:** Phân biệt `Browser` vs `BrowserContext` bằng cách check method `version()` tồn tại. Nếu Playwright thay đổi API, type guard sai.
@@ -85,6 +79,20 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 
 ---
 
+**#15 — PCAP server retry EADDRINUSE nhưng promise gốc không bao giờ resolve**
+- **File:** `src/plugin/connector/pcapServer/index.ts`
+- **Vấn đề:** Khi port bận, error handler gọi `svr.listen()` lại mà không gắn callback — promise từ `listen()` gốc không resolve. Caller treo vĩnh viễn.
+- **Fix:** 
+  1. Thêm `reject` vào Promise executor.
+  2. Tách listening callback thành `onListening` riêng để dùng lại.
+  3. EADDRINUSE: retry sau 1s với `onListening` callback — resolve promise gốc khi retry thành công.
+  4. Error khác hoặc retry thất bại: `reject(error)`.
+- **Tài liệu:** [Design](designs/bug-015-pcap-promise-hang.design.md) | [Spec](specs/bug-015-pcap-promise-hang.spec.md) | [Plan](plans/bug-015-pcap-promise-hang.plan.md) | [Overview](overviews/bug-015-pcap-promise-hang.overview.md)
+- **GitHub:** [#8](https://github.com/maxlogvn/finger-chromium/issues/8) (open — chờ verify sau)
+
+---
+
+**#11**
 **#11 — `defaultLauncher` mutable state gây khó unit test**
 - **File:** `src/adapter/playwright/engine.ts:30-36`, `src/adapter/playwright/chromium.ts:75`
 - **Vấn đề:** `defaultLauncher` là object khởi tạo ở module scope — global mutable state. Khi test với launcher mock, state này không thể thay thế được vì đã resolve tại thời điểm import.
