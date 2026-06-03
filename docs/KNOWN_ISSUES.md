@@ -101,6 +101,7 @@
 - **Vấn đề cũ:** `notify()` được định nghĩa và export nhưng không có file nào import. `notifyTimer` được khai báo, `clearTimeout(notifyTimer)` có trong `finally`, nhưng `notifyTimer` không bao giờ được gán giá trị.
 - **Fix:** Import `notify()` vào `connector/index.ts` và gọi trong `api()` khi engine trả lỗi "key is missing". Sửa kiểu `notifyTimer` cho tương thích.
 - **Tài liệu:** [Design](designs/bug-001-notify-dead-code.design.md) | [Spec](specs/bug-001-notify-dead-code.spec.md) | [Plan](plans/bug-001-notify-dead-code.plan.md) | [Overview](overviews/bug-001-notify-dead-code.overview.md)
+- **GitHub:** [#20](https://github.com/maxlogvn/finger-chromium/issues/20) (closed)
 
 ---
 
@@ -109,6 +110,7 @@
 - **Vấn đề cũ:** `PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError` (trong `src/plugin/errors.ts`) không được re-export ra public API.
 - **Fix:** Thêm export block 5 error class từ `./plugin/errors` vào `src/index.ts`.
 - **Tài liệu:** [Design](designs/bug-002-export-error-classes.design.md) | [Spec](specs/bug-002-export-error-classes.spec.md) | [Plan](plans/bug-002-export-error-classes.plan.md) | [Overview](overviews/bug-002-export-error-classes.overview.md)
+- **GitHub:** [#14](https://github.com/maxlogvn/finger-chromium/issues/14) (closed)
 
 ---
 
@@ -117,6 +119,7 @@
 - **Vấn đề cũ:** `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc `.tmp/browser/running/`, không chỉ temp dir của instance hiện tại.
 - **Fix:** Đổi `this.dataManager.unmap(BROWSER_RUNNING_DIR)` thành `this.dataManager.dispose()` — chỉ xoá `instanceTempDir` của instance hiện tại.
 - **Tài liệu:** [Design](designs/bug-003-quit-unmap-root.design.md) | [Spec](specs/bug-003-quit-unmap-root.spec.md) | [Plan](plans/bug-003-quit-unmap-root.plan.md) | [Overview](overviews/bug-003-quit-unmap-root.overview.md)
+- **GitHub:** [#15](https://github.com/maxlogvn/finger-chromium/issues/15) (closed)
 
 ---
 
@@ -125,6 +128,7 @@
 - **Vấn đề cũ:** JSDoc example gọi `usePrivateKey()` — method không tồn tại trong interface.
 - **Fix:** Xoá tham chiếu `usePrivateKey()`, thay bằng hướng dẫn set biến môi trường `BABLOSOFT_KEY`.
 - **Tài liệu:** [Design](designs/bug-004-jsdoc-privatekey.design.md) | [Spec](specs/bug-004-jsdoc-privatekey.spec.md) | [Plan](plans/bug-004-jsdoc-privatekey.plan.md) | [Overview](overviews/bug-004-jsdoc-privatekey.overview.md)
+- **GitHub:** [#16](https://github.com/maxlogvn/finger-chromium/issues/16) (closed)
 
 ---
 
@@ -132,6 +136,7 @@
 - **File:** `package.json`
 - **Vấn đề cũ:** Dùng `rm -rf` không chạy được trên Windows.
 - **Fix:** Chuyển sang `tsup --clean` (built-in, cross-platform).
+- **GitHub:** [#17](https://github.com/maxlogvn/finger-chromium/issues/17) (closed)
 
 ---
 
@@ -140,6 +145,7 @@
 - **Vấn đề cũ:** Hardcoded `../../../` trong path resolve bị sai sau khi tsup bundle.
 - **Fix:** Walk-up algorithm tìm package root (`resolvePackageRoot`).
 - **Tài liệu:** [Design](designs/mutex-path-resolution.design.md) | [Spec](specs/mutex-path-resolution.spec.md) | [Plan](plans/mutex-path-resolution.plan.md) | [Overview](overviews/mutex-path-resolution.overview.md)
+- **GitHub:** [#18](https://github.com/maxlogvn/finger-chromium/issues/18) (closed)
 
 ---
 
@@ -148,3 +154,4 @@
 - **Vấn đề cũ:** `BrowserEngine` là singleton — `launch()` chỉ cho phép gọi một lần. Test `multi_context.ts` gọi launch cho 2 profile khác nhau trên cùng instance, lỗi `"Phuong thuc launch() chi duoc goi mot lan."`.
 - **Fix:** Xoá singleton `Chromium`, export class `BrowserEngine` trực tiếp. Mỗi `new BrowserEngine()` là instance độc lập, có thể launch riêng. Giữ alias `Chromium = BrowserEngine` cho backward compatibility.
 - **Tài liệu:** [Design](designs/bug-007-multi-profile-singleton.design.md) | [Spec](specs/bug-007-multi-profile-singleton.spec.md) | [Plan](plans/bug-007-multi-profile-singleton.plan.md) | [Overview](overviews/bug-007-multi-profile-singleton.overview.md)
+- **GitHub:** [#19](https://github.com/maxlogvn/finger-chromium/issues/19) (closed)
