@@ -23,8 +23,9 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 1. **Chọn issue** từ KNOWN_ISSUES.md (OPEN) hoặc GitHub Issues.
 2. **Fix code** theo đúng quy trình WORKFLOW.md.
 3. **Cập nhật KNOWN_issues.md**: chuyển từ OPEN sang FIXED, thêm link tài liệu.
-4. **Đồng bộ lên GitHub**: tạo/update GitHub issue, thêm comment chi tiết bằng tiếng Việt có dấu.
-5. **Đóng GitHub issue** sau khi đã verify fix.
+4. **Commit code**: commit tất cả thay đổi (code + docs), lấy full commit hash 40 ký tự.
+5. **Đồng bộ lên GitHub**: tạo/update GitHub issue, thêm comment chi tiết bằng tiếng Việt có dấu (kèm commit hash ở phần 6).
+6. **Đóng GitHub issue** sau khi đã verify fix.
 
 ### Quy tắc comment trên GitHub Issues
 

@@ -112,3 +112,4 @@ Nếu chỉ có 1 tác động, dùng bullet thay vì bảng.
 3. **Không thêm nội dung ngoài template:** Mỗi comment chỉ gồm 7 phần trên. Không thêm intro/outro.
 4. **Một comment duy nhất:** Issue đã đóng chỉ có ĐÚNG MỘT comment này. Nếu đã có comment cũ (vd: "đã fix"), ghi đè lên nó.
 5. **Không link nhánh `development/`:** Luôn dùng `blob/main/` trong URL. Nếu link cũ dùng sai nhánh, sửa lại.
+6. **Commit trước khi viết comment:** Phải commit code fix trước, lấy full commit hash (40 ký tự hex) để điền vào phần 6. Không được để phần 6 trống hoặc ghi "chưa commit".
