@@ -15,7 +15,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 0 issue — xem section OPEN bên dưới
+- **OPEN:** 4 issues — xem section OPEN bên dưới
 - **FIXED:** 25 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
@@ -53,7 +53,35 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 > **Ghi chú:** Không dùng local numbering. Mỗi entry chỉ có mô tả + số GitHub issue tương ứng.
 
-_Không có OPEN issue nào._
+### OPEN
+
+**Thiếu test coverage cho `runFunction()` — IPC core giao tiếp với engine binary**
+- **File:** `src/plugin/connector/engine.ts:234-314`, `tests/connector.test.ts`
+- **Vấn đề:** `runFunction()` là phương thức IPC duy nhất giao tiếp với engine binary (file-based IPC qua chokidar). Hoàn toàn không có test coverage — không có regression guard cho critical path này. Zero coverage trên toàn bộ flow: tạo request file, watch response, parse JSON, timeout handling.
+- **GitHub:** [#28](https://github.com/maxlogvn/finger-chromium/issues/28) (open)
+
+---
+
+**Thiếu test coverage cho EADDRINUSE retry logic trong PCAP server listen()**
+- **File:** `src/plugin/connector/pcapServer/index.ts:23-64`, `tests/connector.test.ts`
+- **Vấn đề:** PCAP server có retry logic khi port bận (`EADDRINUSE`) — nếu lần đầu thất bại, tự động retry sau 1 giây. Không có test nào kiểm tra cơ chế này. `once()` wrapper ngăn test gọi `listen()` nhiều lần. Nếu retry hỏng, `pcapServer.listen()` có thể treo promise vĩnh viễn.
+- **GitHub:** [#29](https://github.com/maxlogvn/finger-chromium/issues/29) (open)
+
+---
+
+**Thiếu test coverage cho HTTPS fallback và fetchWithFallback() trong download()**
+- **File:** `src/plugin/connector/engine.ts:130-183`, `tests/connector.test.ts`
+- **Vấn đề:** Hàm `download()` có fallback HTTPS→HTTP khi network error, và `fetchWithFallback()` được export để test. Cả hai đều không có test coverage. Fallback path (HTTPS fail → HTTP) là critical path cho việc tải engine — nếu hỏng, engine không bao giờ được tải xuống. Dự án đã từng có bug liên quan (Issue #4).
+- **GitHub:** [#30](https://github.com/maxlogvn/finger-chromium/issues/30) (open)
+
+---
+
+**Thiếu test coverage cho async-lock concurrency trong Connector.api()**
+- **File:** `src/plugin/connector/index.ts:61,119`, `tests/connector.test.ts`
+- **Vấn đề:** Connector dùng `async-lock` để đảm bảo chỉ một request IPC tại một thời điểm. Không có test nào kiểm tra lock behavior khi có concurrent calls — nếu lock hỏng, hai request có thể ghi chồng lên cùng file request, corrupt dữ liệu IPC.
+- **GitHub:** [#31](https://github.com/maxlogvn/finger-chromium/issues/31) (open)
+
+---
 
 ### FIXED
 

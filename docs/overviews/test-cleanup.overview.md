@@ -30,7 +30,8 @@
 - `docs/plans/test-cleanup.plan.md`
 - `docs/overviews/test-cleanup.overview.md` — file này
 - `tests/cleanup.test.ts` — file test mới
-- `package.json` — thêm `sinon` + `@types/sinon` vào devDependencies
+
+> **Sinon** không được thêm vào dependencies. Plan gốc yêu cầu cài sinon nhưng thực tế không cần: manual stub trên CJS module exports object đủ cho mọi mock, sinon chỉ dùng cho global spies (`setInterval`/`clearInterval`).
 
 ## Ghi chú
 

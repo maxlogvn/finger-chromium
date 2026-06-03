@@ -4,7 +4,7 @@
 
 ## Mô tả
 
-Viết unit test cho ba module cleanup: `cleaner.ts` (SettingsCleaner), `config.ts` (ConfigManager), và `mutex/index.ts` (Mutex). Test được tổ chức trong file `tests/cleanup.test.ts`. Dùng `sinon` stubs trực tiếp trên CJS module exports object để mock các dependency bên ngoài (proper-lockfile, fast-glob, async-lock, fs). Không dùng proxyquire vì không tương thích với tsx/esm loader.
+Viết unit test cho ba module cleanup: `cleaner.ts` (SettingsCleaner), `config.ts` (ConfigManager), và `mutex/index.ts` (Mutex). Test được tổ chức trong file `tests/cleanup.test.ts`. Dùng manual stub trên CJS module exports object (property mutation) để mock các dependency bên ngoài (proper-lockfile, fast-glob, async-lock, fs). Kết hợp integration style với temp directory thật cho fs operations. Sinon chỉ dùng cho global spies (`setInterval`/`clearInterval`). Không dùng proxyquire vì không tương thích với tsx/esm loader.
 
 Tham chiếu design: `docs/designs/test-cleanup.design.md` - Phương án 2 (Proxyquire + Sinon) được chọn.
 
@@ -38,8 +38,7 @@ tests/cleanup.test.ts
 │   ├── watch()
 │   ├── ignore()
 │   ├── include()
-│   ├── stop()
-│   └── #cleanup() (indirect)
+│   └── stop()
 ├── ConfigManager (describe)
 │   ├── configure() — with/without viewport
 │   ├── synchronize() — full flow
@@ -50,14 +49,17 @@ tests/cleanup.test.ts
     └── release()
 ```
 
+> **`#cleanup()` (private method):** Không test được. `cleaner.ts` dùng `#cleanup` (JS native private field) — không thể truy cập từ ngoài. Fake timers (sinon.useFakeTimers) không dùng được vì gây side effects với `Date.now()` và không await được async cleanup callback. Chỉ test `stop()` behavior unlock thay thế.
+
 ### Mock strategy
 
 | Module | Dependency | Cách mock |
-|---|---|---|---|
-| **SettingsCleaner** | `proper-lockfile` (default import `lock`) | Manual stub: replace `lock.lock`, `lock.unlock`, `lock.check` trực tiếp trên CJS module exports object |
+|---|---|---|
+| **SettingsCleaner** | `proper-lockfile` (default import `lock`) | Manual stub: property mutation `lock.lock = async () => {}` trên CJS module exports object |
 | | `fast-glob` (default import `fg`) | Integration style: dùng temp directory thật với file cần discover |
 | | `fs/promises` (`rm`) | Integration style: dùng temp directory thật, verify file state sau operation |
-| **ConfigManager** | `async-lock` (default import `AsyncLock`) | Manual stub: replace `AsyncLock.prototype.acquire` để chạy callback trực tiếp |
+| | `global.setInterval` / `global.clearInterval` | Sinon spy để verify timer behavior (global spy duy nhất) |
+| **ConfigManager** | `async-lock` (default import `AsyncLock`) | Manual stub: property mutation `AsyncLock.prototype.acquire = fn => fn()` |
 | | `./browser` (`setViewport`) | Không mock — test qua `sync` wrapper parameter thay vì verify setViewport call |
 | | `fs/promises` (`readFile`, `writeFile`) | Integration style: tạo file .ini thật trong temp directory |
 | | `timers/promises` (`setTimeout`) | Integration style: timer chạy thật (pollInterval delay) |
@@ -80,7 +82,7 @@ ESM module namespace (`node:fs/promises`, `node:timers/promises`) → dùng temp
 
 ## Components
 
-- **Không cần cài đặt mới** — test dùng manual stub (property mutation trên CJS exports) + integration style với temp directory thật.
+- **Dependencies:** Sinon chỉ dùng cho global spies — không cài sinon vào devDependencies (manual stub đủ cho mọi mock). Xem deviation: plan ghi cài sinon nhưng không cần vì ESM constraints.
 - **Tạo mới:** `tests/cleanup.test.ts` — file test duy nhất cho cả 3 module.
 - **Không sửa code nguồn** — test dùng manual stub + integration style.
 
@@ -96,7 +98,7 @@ ESM module namespace (`node:fs/promises`, `node:timers/promises`) → dùng temp
 
 ## Kiểm tra
 
-### SettingsCleaner (12-15 test cases)
+### SettingsCleaner (9 test cases)
 
 | Case | Input | Expected |
 |---|---|---|
@@ -109,9 +111,8 @@ ESM module namespace (`node:fs/promises`, `node:timers/promises`) → dùng temp
 | `stop()` clear timer | Đã watch folder | `clearInterval` được gọi, timer = null |
 | `stop()` unlock files | Folder có file locked | `lock.unlock()` được gọi cho từng file locked |
 | `stop()` clear folders | — | `#folders = []` |
-| `#cleanup()` giữ file locked | File locked + expired | Không xoá, `rm` không được gọi |
-| `#cleanup()` xoá file non-expired | File non-expired | `rm` không được gọi |
-| `#cleanup()` xoá file expired unlocked | File expired + unlocked | `rm` được gọi với recursive: true |
+
+> **`#cleanup()` (3 test cases):** Không test được. `#cleanup` là JS native private field — không thể truy cập từ ngoài. Fake timers không dùng được vì side effects với `Date.now()` và không await được async callback. Xem deviation tại overview `test-cleanup.overview.md`.
 
 ### ConfigManager (10-12 test cases)
 
@@ -129,7 +130,7 @@ ESM module namespace (`node:fs/promises`, `node:timers/promises`) → dùng temp
 | `getValidPollInterval()` 50 | 50 | 100 (clamp) |
 | `getValidPollInterval()` 300 | 300 | 300 (giữ nguyên) |
 
-### Mutex (4-5 test cases)
+### Mutex (4 test cases)
 
 | Case | Input | Expected |
 |---|---|---|

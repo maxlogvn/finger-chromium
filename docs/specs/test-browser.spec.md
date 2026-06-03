@@ -13,6 +13,9 @@ Viết test suite cho 4 module Browser: `launcher` (spawn Chromium process), `ut
 - Mỗi test tự cleanup hoàn toàn (close browser, close context, detach CDP).
 - Timeout mỗi test: 30s (cho phép Chromium spawn kịp).
 - Không phụ thuộc engine binary bablosoft (`FastExecuteScript.exe`).
+- `_launch()` cần engine API không khả dụng → tạo `TestPlugin` subclass override `_launch()` để bypass, dùng Playwright trực tiếp.
+- Export `isBrowser` từ `src/adapter/playwright/utils.ts` để test import được.
+- `setViewport` trong headless mode không chính xác (CDP `Browser.setWindowBounds` vô hiệu trong headless) — chỉ assert viewport > 0.
 - Tuân thủ convention codebase: `node:assert`, mocha, tiếng Việt trong `it()`.
 
 ## Thiết kế
@@ -105,6 +108,7 @@ Logic:  Gọi launch() từ src/plugin/launcher/index.ts
 9. `configure()` gọi `onClose` và `bindHooks`.
 
 ### BrowserEngine (14 tests)
+
 1. Constructor với defaults.
 2. Constructor với launcher custom.
 3. `repackChromium()` thay thế launcher.
@@ -118,6 +122,6 @@ Logic:  Gọi launch() từ src/plugin/launcher/index.ts
 11. `quit()` cleanup thành công.
 12. `quit()` idempotent.
 13. `quit()` chưa launch.
-14. `newFingerprint()` fetch fingerprint.
+14. `newFingerprint()` với `undefined` options — test error path (không test flow thật vì cần engine API, `setRequestTimeout(2000)` để fail nhanh).
 
-Tổng cộng: **38 tests**.
+Tổng cộng: **40 tests**.

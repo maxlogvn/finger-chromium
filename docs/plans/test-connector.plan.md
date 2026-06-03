@@ -17,10 +17,10 @@
     - File liên quan: `tests/connector.test.ts`
     - Phụ thuộc: Bước 2.
 
-- [ ] Bước 4: Viết PCAP Server tests — EADDRINUSE retry
-    - Làm gì: Listen trên port cố định, listen lại trên port đó → EADDRINUSE → server tự retry sau 1s.
+- [ ] Bước 4: ~~Viết PCAP Server tests — EADDRINUSE retry~~ (BỎ)
+    - Lý do: `listen()` dùng `once()` wrapper — chỉ chạy callback một lần, không thể test retry logic.
     - File liên quan: `tests/connector.test.ts`
-    - Phụ thuộc: Bước 2.
+    - Deviation: Xem overview `test-connector.overview.md`.
 
 - [ ] Bước 5: Viết RemoteEngine tests — constructor + setters
     - Làm gì: Test constructor với default options (kiểm tra `#cwd`, `#engineTimeout`, `#requestTimeout` qua getter). Test `setCwd`, `setArgs`, `setEngineTimeout`, `setRequestTimeout`. Cần mock `resolvePackageRoot` để tránh lỗi `PROJECT_PATH`. Dùng dynamic import + override `__dirname` hoặc mock `require`.
@@ -80,8 +80,8 @@ Các lệnh cần chạy để xác nhận kết quả sau khi code xong:
 
 ## Ghi chú
 
-- **Dynamic import + clear cache:** Vì connector module có `let initPromise` ở module scope và `import * as pcapServer from './pcapServer'`, cần dùng pattern `delete require.cache[...]` + `import()` dynamic giữa các test group để reset trạng thái.
-- **Mock chokidar:** Có thể dùng chokidar thật với file temp thay vì mock — chokidar watch file thật hoạt động ổn định trong unit test. Trong `runFunction()`, ta tạo request file thật, để chokidar detect change, đọc response từ file.
+- **ESM module cache:** Ban đầu định dùng `require.cache` để reset `initPromise` trong Connector, nhưng ESM không hỗ trợ `require.cache`. Giải pháp thực tế: import Connector trực tiếp, PCAP server dùng `once()` nên chỉ init một lần — không ảnh hưởng test.
+- **Mock chokidar:** Không test `runFunction()` trực tiếp vì `#process`, `#meta` là JS native private fields — không thể mock. Chỉ test gián tiếp qua Connector mock.
 - **Mock execFile:** Trả về một EventEmitter với `pid`, `killed`, `exitCode` properties. Dùng `process.nextTick` để simulate async behavior.
-- **`resolvePackageRoot` trong constructor RemoteEngine:** Hàm này throw nếu không tìm thấy package.json. Để test constructor mà không cần file thật, cần mock `require` hoặc dùng `__dirname` override. Cách đơn giản: tạo temp directory với `package.json` hợp lệ và set `__dirname` trỏ vào đó. Hoặc override `resolvePackageRoot` bằng `RemoteEngine.prototype` sau khi import.
+- **`resolvePackageRoot` trong constructor RemoteEngine:** Hàm này throw nếu không tìm thấy package.json. Để test constructor mà không cần file thật, cần mock `require` hoặc dùng `__dirname` override.
 - **Không thêm sinon/proxyquire:** Mock thủ công hoàn toàn.

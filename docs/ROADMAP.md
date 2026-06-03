@@ -64,7 +64,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - `EngineTimeoutError` -- timeout khởi động engine
   - `RequestTimeoutError` -- timeout request
   - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #14 -- export error classes ra public API, Issue #16 -- JSDoc tham chiếu method không tồn tại)
-  - **Docs correction (2026-06-04):** Da bo sung giai thich "tai sao" cho `dedent`, `captureStackTrace`, `Symbol.toStringTag`; them chi tiet message tung class vao spec/product; fix overview sai "3 dong".
+  - **Docs correction (2026-06-04):** Đã bổ sung giải thích "tại sao" cho `dedent`, `captureStackTrace`, `Symbol.toStringTag`; thêm chi tiết message từng class vào spec/product; fix overview sai "3 dòng".
 
 ---
 
@@ -457,6 +457,82 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - `net.Server` thiếu `unref()` — PCAP server giữ event loop sau khi cleanup.
   - Fix: thêm `svr.unref()` trong callback `onListening` của PCAP server.
   - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #21).
+
+---
+
+### Test coverage: `runFunction()` IPC core (Issue #28)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `runFunction()` là phương thức IPC duy nhất giao tiếp với engine binary qua chokidar + JSON request/response.
+  - Hiện tại không có test nào gọi `runFunction()` dù trực tiếp hay gián tiếp — zero coverage trên critical path.
+  - Cần mock IPC flow: request file -> chokidar -> response -> parse.
+  - Liên quan: Test Connector (đã hoàn thành).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #28).
+
+---
+
+### Test coverage: EADDRINUSE retry trong PCAP server (Issue #29)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - PCAP server có retry logic khi port bận nhưng không có test verify.
+  - Spec yêu cầu test "EADDRINUSE — Retry + thành công ở lần 2" nhưng chưa implement.
+  - Deviation: overview ghi "không test được vì `once()` wrapper".
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #29).
+
+---
+
+### Test coverage: HTTPS fallback trong `download()` (Issue #30)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `download()` có fallback HTTPS→HTTP khi network error, `fetchWithFallback()` được export để test.
+  - Cả hai đều không có coverage — dự án đã từng có bug liên quan (Issue #4).
+  - Liên quan: Test Connector, Bug fix #24 (download cleanup).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #30).
+
+---
+
+### Test coverage: async-lock trong Connector (Issue #31)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Connector dùng `async-lock` để serialise IPC requests. Spec yêu cầu test concurrent calls.
+  - Hiện tại không có test nào verify lock behavior — nguy cơ race condition trên file-based IPC.
+  - Liên quan: Test Connector, Bug fix #22 (AsyncLock per-instance).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #31).
+
+---
+
+### Docs: Fix spec/overview consistency và các lỗi nhỏ
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Overview](overviews/docs-spec-overview-consistency.overview.md)
+- **Ghi chú:**
+  - Đã cập nhật spec files để phản ánh deviations thực tế (EADDRINUSE, `#cleanup`, permission error, sinon).
+  - **`test-connector.spec.md`:** Xoá EADDRINUSE retry test, sửa `require.cache` → ESM import, cập nhật test counts (5+15+7=27).
+  - **`test-cleanup.spec.md`:** Sửa sinon → manual stub, xoá `#cleanup()` test cases, cập nhật test counts (9+10+4=23).
+  - **`test-browser.spec.md`:** Thêm TestPlugin pattern, isBrowser export, setViewport headless limitation, cập nhật count (40).
+  - **`test-profile.spec.md`:** Xoá map() error path, unmap() permission error, cập nhật counts (4+3+2=9).
+  - **`test-connector.plan.md`:** Xoá EADDRINUSE bước, sửa ESM cache notes.
+  - **`test-cleanup.plan.md`:** Xoá sinon installation task, xoá `#cleanup()` task, thay sinon code bằng manual stub.
+  - **`test-cleanup.overview.md`:** Sửa reference sai "thêm sinon vào devDependencies".
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — các issue #28-#31 vẫn open (test coverage gaps).
 
 ---
 

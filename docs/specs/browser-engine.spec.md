@@ -122,9 +122,9 @@ User code
 
 | Tình huống | Hành vi |
 |---|---|
-| `launch()` gọi lần thứ hai | Throw `PluginError('[BrowserEngine] Phuong thuc launch() chi duoc goi mot lan.')` |
-| `newContext()` trước `launch()` | Throw `PluginError('[BrowserEngine] Phai goi launch() truoc khi tao context.')` |
-| `newContext()` khi context đã tồn tại | Throw `PluginError('[BrowserEngine] Context da duoc tao. Vui long goi quit() truoc khi tao moi.')` |
+| `launch()` gọi lần thứ hai | Throw `PluginError('[BrowserEngine] Phương thức launch() chỉ được gọi một lần.')` |
+| `newContext()` trước `launch()` | Throw `PluginError('[BrowserEngine] Phải gọi launch() trước khi tạo context.')` |
+| `newContext()` khi context đã tồn tại | Throw `PluginError('[BrowserEngine] Context đã được tạo. Vui lòng gọi quit() trước khi tạo mới.')` |
 | `quit()` khi chưa launch | Return sớm, không throw — idempotent |
 | `newContext()` fail do engine | Engine throw `PluginError` / `MissingKeyError` / `EngineTimeoutError` |
 | `quit()` fail khi close context | Lỗi bị `catch(() => {})` — không crash toàn bộ cleanup |

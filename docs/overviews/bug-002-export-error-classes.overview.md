@@ -8,11 +8,11 @@
 
 | Bước | Kế hoạch | Thực tế | Sai lệch |
 |---|---|---|---|
-| Bước 1: Code | Them export block vao src/index.ts | Da them | Khong co |
-| Bước 2: Kiem tra | lint, build, test pass | 0 errors, build success, 20/20 test pass | Khong co |
-| Bước 3: Ra soat tai lieu | Cap nhat product doc | Da cap nhat error-hierarchy.product.md | Khong co |
-| Bước 4: Viet overview | Viet overview | Da viet | Khong co |
-| Bước 5: Cap nhat Roadmap | Danh dau Hoan thanh | Chua — cho duyet overview | — |
+| Bước 1: Code | Thêm export block vào src/index.ts | Đã thêm | Không có |
+| Bước 2: Kiểm tra | lint, build, test pass | 0 errors, build success, 20/20 test pass | Không có |
+| Bước 3: Rà soát tài liệu | Cập nhật product doc | Đã cập nhật error-hierarchy.product.md | Không có |
+| Bước 4: Viết overview | Viết overview | Đã viết | Không có |
+| Bước 5: Cập nhật Roadmap | Đánh dấu Hoàn thành | Chưa — chờ duyệt overview | — |
 
 ## Sai lệch đáng chú ý
 
@@ -24,8 +24,8 @@ Không có.
 - `docs/specs/bug-002-export-error-classes.spec.md`
 - `docs/plans/bug-002-export-error-classes.plan.md`
 - `docs/overviews/bug-002-export-error-classes.overview.md`
-- `docs/products/error-hierarchy.product.md` (da cap nhat)
+- `docs/products/error-hierarchy.product.md` (đã cập nhật)
 
 ## Ghi chú
 
-Khong co.
+Không có.

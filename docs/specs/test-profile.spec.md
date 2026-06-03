@@ -62,12 +62,14 @@ Không cần sửa source code.
 
 Test cần verify các lỗi sau được throw đúng kiểu (PluginError):
 
-| Tình huống | Expected |
-|-----------|----------|
-| `map()` với source không tồn tại | Throw `PluginError` với message "Sao chép thất bại" |
-| `unmap()` với path không tồn tại | Không throw — gọi `console.warn` và return |
-| `unmap()` path không có quyền xoá | Throw `PluginError` với message "Dọn dẹp thất bại" |
-| `map()` không có target — source không tồn tại | Throw `PluginError` |
+| Tình huống | Expected | Ghi chú |
+|-----------|----------|---------|
+| `unmap()` với path không tồn tại | Không throw — gọi `console.warn` và return | Đã test |
+| `map()` với source rỗng (empty string) | Throw `PluginError` | `path.resolve` vẫn hoạt động nhưng `fs.cpSync` lỗi |
+
+> **map() error path (source không tồn tại):** Không test được. `ensureDir(srcResolved)` tạo source tự động nếu chưa tồn tại — không thể trigger lỗi `cpSync` trong integration test với fs thật.
+>
+> **unmap() permission error:** Không test được trên Windows. `chmodSync(dir, 0o444)` không ngăn được chủ sở hữu xoá thư mục.
 
 ## Kiểm tra
 
@@ -76,18 +78,18 @@ Test cần verify các lỗi sau được throw đúng kiểu (PluginError):
 - Nên tạo instance với temp root chỉ định.
 - Nên sinh tên instanceTempDir duy nhất (timestamp + hex).
 
-### map()
+### map() (4 tests)
 - Nên copy file từ source vào instanceTempDir (happy path — 1 tham số).
 - Nên copy file từ source vào target chỉ định (2 tham số).
 - Nên tạo thư mục đích nếu chưa tồn tại.
-- Nên throw PluginError khi source không tồn tại.
-- Nên throw PluginError khi source là empty string (path.resolve vẫn hoạt động nhưng fs.cpSync lỗi).
+- Nên throw PluginError khi source là empty string.
+- ~~Nên throw PluginError khi source không tồn tại.~~ — **Bỏ:** `ensureDir` tạo source tự động, không thể trigger lỗi trong integration test.
 
-### unmap()
+### unmap() (3 tests)
 - Nên xoá thư mục đã map thành công.
 - Nên không throw khi path không tồn tại (console.warn).
 - Nên làm việc với relative path (path.resolve bên trong).
-- Nên throw PluginError khi không xoá được.
+- ~~Nên throw PluginError khi không xoá được (permission error).~~ — **Bỏ:** Windows `chmod` không ngăn được chủ sở hữu xoá thư mục.
 
 ### dispose()
 - Nên xoá instanceTempDir (kiểm tra bằng fs.existsSync sau dispose).

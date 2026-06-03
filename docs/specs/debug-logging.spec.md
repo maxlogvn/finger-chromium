@@ -72,12 +72,12 @@ $env:DEBUG=''; node app.js
 ### Ví dụ output
 
 ```
-browser-with-fingerprints:connector:engine Dang tai browser... +0ms
-browser-with-fingerprints:connector:engine Dang tai browser... +0ms
-browser-with-fingerprints:connector:engine Engine giai nen thanh cong... +5342ms
-browser-with-fingerprints:connector:engine Dang goi method "setup"... +10234ms
-browser-with-fingerprints:connector PCAP server dang lang nghe tai port 54321 +11000ms
-browser-with-fingerprints:connector:engine Da nhan ket qua tu engine thanh cong... +15234ms
+browser-with-fingerprints:connector:engine Đang tải browser... +0ms
+browser-with-fingerprints:connector:engine Đang tải browser... +0ms
+browser-with-fingerprints:connector:engine Engine giải nén thành công... +5342ms
+browser-with-fingerprints:connector:engine Đang gọi method "setup"... +10234ms
+browser-with-fingerprints:connector PCAP server đang lắng nghe tại port 54321 +11000ms
+browser-with-fingerprints:connector:engine Đã nhận kết quả từ engine thành công... +15234ms
 ```
 
 ## Components

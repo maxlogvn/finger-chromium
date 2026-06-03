@@ -10,11 +10,11 @@ Tham chiếu design: `docs/designs/test-connector.design.md`
 
 ## Yêu cầu
 
-- PCAP server: test listen/close, xử lý lệnh binary, EADDRINUSE retry.
-- RemoteEngine: test constructor/setters, `runFunction()` với mock IPC, `kill()`, helpers (`download`, `checksum`, `exists`).
+- PCAP server: test listen/close, xử lý lệnh binary. EADDRINUSE retry không test được vì `listen()` dùng `once()` — chỉ chạy một lần.
+- RemoteEngine: test constructor/setters, helpers (`download`, `checksum`, `exists`), `kill()`. `runFunction()` không test trực tiếp được vì `#process` và `#meta` là JS native private fields — chỉ test gián tiếp qua Connector mock.
 - Connector: test `api()` với error normalization (MissingKeyError, PluginError), lazy init PCAP, `cleanup()`.
 - Test dùng `mocha` + `node:assert`, không thêm thư viện mock (sinon, proxyquire).
-- Mock thủ công: override module-level dependencies qua dynamic `import()` + `delete require.cache`.
+- Mock thủ công: override module-level dependencies qua dynamic `import()` — ESM không hỗ trợ `require.cache`.
 - Integration test với engine thật `it.skip` — triển khai sau.
 
 ## Thiết kế
@@ -58,22 +58,16 @@ tests/connector.test.ts
 
 Vì `initPromise` là `let` ở module scope của `connector/index.ts`, không export được, cách tiếp cận:
 
-1. Trong `beforeEach`, dùng `delete require.cache` cho connector module.
-2. Dynamic `import()` lại connector để có instance mới với `initPromise = undefined`.
-3. Mock `pcapServer.listen` và `pcapServer.close` trước khi dynamic import connector.
+1. Import Connector trực tiếp (ESM không hỗ trợ `require.cache`).
+2. PCAP server dùng `once()` nên chỉ init một lần trong cả test suite — không cần reset `initPromise`.
+3. Các test Connector dùng mock trên `RemoteEngine.prototype` để không phụ thuộc PCAP.
 
 Pattern cụ thể:
 
 ```ts
 // Trong describe('Connector')
-beforeEach(() => {
-  // Clear cache để reset initPromise
-  for (const key of Object.keys(require.cache)) {
-    if (key.includes('connector') || key.includes('pcapServer')) {
-      delete require.cache[key];
-    }
-  }
-});
+// Connector được import trực tiếp — không cần reset cache
+// PCAP listen chỉ gọi một lần nhờ once(), test ở describe riêng
 ```
 
 ## API / Data flow
@@ -132,7 +126,7 @@ api(name, params)
 
 ## Kiểm tra
 
-### PCAP Server (6 test cases)
+### PCAP Server (5 test cases)
 
 | Case | Input | Expected |
 |---|---|---|
@@ -141,25 +135,30 @@ api(name, params)
 | heartbeat (0x07) | Gửi buffer `[0x07]` | Response heartbeat `[0x07, 0x00, 0x00, 0x00, 0x00]` |
 | data rỗng | Gửi buffer rỗng `[]` | Không crash, ignore |
 | close | Gọi `close()` | Server dừng, không listen nữa |
-| EADDRINUSE | Listen port đã dùng | Retry + thành công ở lần 2 |
 
-### RemoteEngine (12 test cases)
+> **EADDRINUSE retry:** Không test được. `listen()` dùng `once()` wrapper — chỉ chạy callback một lần, không thể test retry logic. Xem deviation tại overview `test-connector.overview.md`.
+
+### RemoteEngine (15 test cases)
 
 | Case | Input | Expected |
 |---|---|---|
-| Constructor defaults | Không options | `#cwd = CWD`, `#requestTimeout = DEFAULT_TIMEOUT` |
-| SetCwd | `/tmp/test` | `#cwd` được set |
-| SetArgs | `['--debug']` | `#args` được set |
-| SetEngineTimeout | `60000` | `#engineTimeout = 60000` |
-| SetRequestTimeout | `30000` | `#requestTimeout = 30000` |
+| Constructor defaults | Không options | default requestTimeout = 0 (getter) |
+| SetCwd | `/tmp/test` | `cwd` getter trả về path đã set |
+| SetArgs | `['--debug']` | `args` getter trả về array đã set |
+| SetEngineTimeout | `60000` | `engineTimeout` getter = 60000 |
+| SetRequestTimeout | `30000` | `requestTimeout` getter = 30000 |
 | exists — file tồn tại | Path temp file | `true` |
 | exists — file không tồn tại | Path không có | `false` |
 | checksum | Temp file với nội dung | SHA1 hex string đúng |
 | download — thành công | URL + file path | File được tạo, nội dung đúng |
 | download — HTTPS fail fallback HTTP | URL HTTPS fail | Fallback thành công HTTP |
 | download — thất bại cleanup | URL lỗi | File `.tmp` không còn tồn tại |
-| kill — process đang chạy | Mock ChildProcess | `proc.kill()` được gọi, `#process = undefined` |
+| kill — process đang chạy | Mock ChildProcess | `proc.kill()` được gọi |
 | kill — process đã killed | `killed = true` | Không gọi `kill()`, không throw |
+| kill — cleanup timeout | Process không thoát sau SIGTERM | SIGKILL fallback, cleanup timeout error |
+| kill — process không tồn tại (no-op) | `#process = undefined` | Không throw |
+
+> **`runFunction()`:** Không test trực tiếp. `#process`, `#meta` là JS native private fields — không thể mock. Chỉ test gián tiếp qua Connector mock. Integration test với engine thật sẽ fill gap sau (Issue #28).
 
 ### Connector (7 test cases)
 
