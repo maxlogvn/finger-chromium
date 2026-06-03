@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 4 issues — xem section OPEN bên dưới
-- **FIXED:** 20 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
+- **OPEN:** 3 issues — xem section OPEN bên dưới
+- **FIXED:** 21 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
 
@@ -67,11 +67,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **File:** `src/plugin/index.ts:291`, `src/plugin/connector/index.ts:142-144`, `src/plugin/connector/engine.ts:372-377`
 - **Issue:** Kill engine fire-and-forget, cleaner xoá file khi process còn ghi.
 - **GitHub:** [#23](https://github.com/maxlogvn/finger-chromium/issues/23)
-
-**File corrupt tích luỹ khi download engine thất bại**
-- **File:** `src/plugin/connector/engine.ts:131-145`
-- **Issue:** `download()` không có `finally` dọn partial file khi thất bại.
-- **GitHub:** [#24](https://github.com/maxlogvn/finger-chromium/issues/24)
 
 ---
 
@@ -284,3 +279,12 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
   2. Refactor test `quit-cleanup.test.ts` sang dùng `new SettingsCleaner()` thay vì default import.
 - **Tài liệu:** [Design](designs/bug-025-dead-export-settingscleaner.design.md) | [Spec](specs/bug-025-dead-export-settingscleaner.spec.md) | [Plan](plans/bug-025-dead-export-settingscleaner.plan.md) | [Overview](overviews/bug-025-dead-export-settingscleaner.overview.md)
 - **GitHub:** [#25](https://github.com/maxlogvn/finger-chromium/issues/25) (closed)
+
+---
+
+**File corrupt tích luỹ khi download engine thất bại**
+- **File:** `src/plugin/connector/engine.ts:129-145`
+- **Vấn đề:** `download()` mở file đích ngay từ đầu (`createWriteStream(filePath)`) và không dọn dẹp file partial khi download thất bại.
+- **Fix:** Chuyển sang cơ chế temp file + rename — ghi vào file `.tmp`, `rename()` thành file đích sau khi pipeline thành công, xoá `.tmp` trong catch khi lỗi. Fallback `copyFile` + `unlink` nếu cross-device rename.
+- **Tài liệu:** [Design](designs/bug-024-download-cleanup.design.md) | [Spec](specs/bug-024-download-cleanup.spec.md) | [Plan](plans/bug-024-download-cleanup.plan.md) | [Overview](overviews/bug-024-download-cleanup.overview.md)
+- **GitHub:** [#24](https://github.com/maxlogvn/finger-chromium/issues/24) (closed)

@@ -128,19 +128,38 @@ async function checksum(filePath: string): Promise<string> {
 
 async function download(url: string, filePath: string): Promise<void> {
   const httpsUrl = url.replace(/^http:/, 'https:');
-  const writer = createWriteStream(filePath);
+  const tmpPath = filePath + '.tmp';
+  const writer = createWriteStream(tmpPath);
   try {
-    const response = await axios.get(httpsUrl, { responseType: 'stream' });
-    await pipeline(response.data, writer);
-  } catch (err) {
-    const axiosErr = err as { code?: string; response?: { status: number } };
-    if (axiosErr.code === 'ERR_NETWORK' || axiosErr.code === 'ECONNREFUSED' || axiosErr.code === 'ECONNRESET' || !axiosErr.response) {
-      debug(`HTTPS download failed, falling back to HTTP: ${url}`);
-      const response = await axios.get(url, { responseType: 'stream' });
+    try {
+      const response = await axios.get(httpsUrl, { responseType: 'stream' });
       await pipeline(response.data, writer);
-    } else {
-      throw err;
+    } catch (err) {
+      const axiosErr = err as { code?: string; response?: { status: number } };
+      if (axiosErr.code === 'ERR_NETWORK' || axiosErr.code === 'ECONNREFUSED' || axiosErr.code === 'ECONNRESET' || !axiosErr.response) {
+        debug(`HTTPS download failed, falling back to HTTP: ${url}`);
+        const response = await axios.get(url, { responseType: 'stream' });
+        await pipeline(response.data, writer);
+      } else {
+        throw err;
+      }
     }
+
+    // Rename temp file to target, fallback to copy+unlink if cross-device
+    try {
+      await fs.rename(tmpPath, filePath);
+    } catch (renameErr) {
+      const renameError = renameErr as NodeJS.ErrnoException;
+      if (renameError.code === 'EXDEV') {
+        await fs.copyFile(tmpPath, filePath);
+        await fs.unlink(tmpPath);
+      } else {
+        throw renameErr;
+      }
+    }
+  } catch (err) {
+    await fs.unlink(tmpPath).catch(() => {});
+    throw err;
   }
 }
 

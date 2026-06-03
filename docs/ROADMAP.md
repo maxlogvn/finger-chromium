@@ -331,6 +331,19 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### File corrupt download engine cleanup (Bug fix #24)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-024-download-cleanup.design.md) | [Spec](specs/bug-024-download-cleanup.spec.md) | [Plan](plans/bug-024-download-cleanup.plan.md) | [Overview](overviews/bug-024-download-cleanup.overview.md)
+- **Ghi chú:**
+  - Hàm `download()` trong `src/plugin/connector/engine.ts:129-145` thiếu `finally` block dọn dẹp file partial khi download thất bại.
+  - Fix: chuyển sang cơ chế temp file + rename (ghi vào `.tmp`, rename sau pipeline thành công, xoá `.tmp` trong catch).
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #24).
+
+---
+
 ### Docs review & consistency fix
 
 - **Trạng thái:** [X] Hoàn thành
