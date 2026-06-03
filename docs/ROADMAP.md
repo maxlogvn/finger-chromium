@@ -317,17 +317,74 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
-### Tăng test coverage cho core modules
+### Test Error classes & Utilities
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/test-error-classes-utilities.design.md) | [Spec](specs/test-error-classes-utilities.spec.md) | [Plan](plans/test-error-classes-utilities.plan.md) | [Overview](overviews/test-error-classes-utilities.overview.md)
+- **Ghi chú:**
+  - File test: `tests/utils.test.ts` (35 test cases, 4 module)
+  - Module đã test: `errors.ts`, `utils.ts`, `common/index.ts`, `loader/index.ts`
+  - Tất cả 58 test (35 mới + 23 cũ) đều pass
+  - Sai lệch: 1 test `defaultArgs()` sửa behavior cho đúng với code (headless mặc định = true)
+
+---
+
+### Test Connector (RemoteEngine + Connector + PCAP)
 
 - **Trạng thái:** [-] Sắp làm
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
 - **Tài liệu:**
 - **Ghi chú:**
-  - Hiện chỉ có 2 file test: `multi-profile-singleton.test.ts` và `quit-cleanup.test.ts`
-  - Cần unit test cho: `RemoteEngine` (engine.ts), `Connector` (connector/index.ts), `PCAPServer`, `Cleaner`
-  - Test với browser thật (theo CONVENTIONS.md) nhưng cần thêm test cho logic xử lý lỗi và edge cases
-  - Mục tiêu: coverage tối thiểu 60% cho `src/plugin/` và `src/adapter/`
+  - File test: `tests/connector.test.ts`
+  - Module cần test: `connector/engine.ts`, `connector/index.ts`, `connector/pcapServer/index.ts`
+  - Unit test: mock axios, chokidar, child_process
+  - Integration test: dùng engine thật (download + spawn + IPC call), không cần key
+  - Cần mock network cho unit test, skip integration nếu chưa có engine
+
+---
+
+### Test Cleanup (SettingsCleaner + ConfigManager + Mutex)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:**
+- **Ghi chú:**
+  - File test: `tests/cleanup.test.ts`
+  - Module cần test: `cleaner.ts`, `config.ts`, `mutex/index.ts`
+  - Unit test: mock proper-lockfile, fs
+  - Integration test (nếu có): synchronize với file .ini thật
+
+---
+
+### Test Browser (Launcher + BrowserEngine + PlaywrightBridge)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:**
+- **Ghi chú:**
+  - File test: `tests/browser.test.ts`
+  - Module cần test: `launcher/index.ts`, `adapter/playwright/chromium.ts`, `adapter/playwright/engine.ts`, `adapter/playwright/utils.ts`
+  - Unit test: constructor, fluent API, guard logic, option validation
+  - Integration test: spawn với executablePath thật (nếu có engine)
+
+---
+
+### Test Profile (AdapterDataManager)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:**
+- **Ghi chú:**
+  - File test: `tests/profile.test.ts`
+  - Module cần test: `adapter/playwright/data.ts`
+  - Unit test: map/unmap/dispose, generateUniqueName, edge cases
+  - Dùng thư mục temp thật (fs thật, không mock)
 
 ---
 
