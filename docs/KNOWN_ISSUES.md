@@ -2,6 +2,22 @@
 
 > Issues này đã được ghi nhận và cần xử lý. Khi fix xong, cập nhật trạng thái tại đây.
 
+<!-- Template cho issue mới (copy-paste bên dưới, điền nội dung):
+
+**#N — Tiêu đề ngắn**
+- **File:** ...
+- **Vấn đề cũ:** ...
+- **Fix:** ...
+- **Tài liệu:** [Design](designs/...) | [Spec](specs/...) | [Plan](plans/...) | [Overview](overviews/...)
+
+-->
+
+### OPEN
+
+<!-- Hiện không có issue OPEN nào. Thêm issue mới vào đây theo template ở trên. -->
+
+---
+
 ### FIXED
 
 **#1 — `notify()` dead code**
