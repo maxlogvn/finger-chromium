@@ -34,6 +34,17 @@
 
 ---
 
+**#7 — Singleton `Chromium` không hỗ trợ launch nhiều profile song song**
+- **File:** `src/adapter/playwright/chromium.ts` (singleton `BrowserEngine`), `tests/multi_context.ts`
+- **Vấn đề:** `BrowserEngine` là singleton — `launch()` chỉ cho phép gọi một lần (kiểm tra `isLaunched`). Test `multi_context.ts` gọi `launchBrowserWithProfile()` cho 2 profile khác nhau trên cùng một instance, dẫn đến lỗi `"Phuong thuc launch() chi duoc goi mot lan."`.
+- **Nguyên nhân gốc:** `Chromium` được design như singleton (một browser session duy nhất), nhưng test `multi_context.ts` kỳ vọng có thể chạy nhiều profile độc lập đồng thời trên cùng một instance.
+- **Tác động:** Không thể chạy nhiều profile song song với API hiện tại.
+- **Hướng xử lý gợi ý:**
+  1. Tạo factory method (`BrowserEngine.create()`) trả về instance mới, giữ `Chromium` làm convenience singleton.
+  2. Hoặc sửa test chạy tuần tự (quit profile 1 trước, launch profile 2 sau).
+
+---
+
 ### FIXED
 
 **#5 — `npm run clean` không tương thích Windows**
