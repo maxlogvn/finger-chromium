@@ -136,10 +136,10 @@ export default class Connector {
   }
 
   /**
-   * Don dep connector -- chi kill engine process cua instance nay.
+   * Don dep connector -- kill engine process va cho no thoat han.
    * Khong dong PCAP server vi cac instance khac co the dang dung.
    */
-  cleanup(): void {
-    this.#engine.kill();
+  async cleanup(): Promise<void> {
+    await this.#engine.kill();
   }
 }

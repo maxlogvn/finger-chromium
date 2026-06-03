@@ -30,10 +30,10 @@ describe('Module cleanup methods', function () {
   // ─── RemoteEngine.kill() ──────────────────────────────────────────────────
 
   describe('RemoteEngine', () => {
-    it('nên có method kill() và không throw khi không có process', () => {
+    it('nên có method kill() và không throw khi không có process', async () => {
       const engine = new RemoteEngine();
       ok(typeof engine.kill === 'function', 'kill() phải tồn tại');
-      engine.kill();
+      await engine.kill();
     });
   });
 

@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 3 issues — xem section OPEN bên dưới
-- **FIXED:** 21 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
+- **OPEN:** 2 issues — xem section OPEN bên dưới
+- **FIXED:** 22 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
 
@@ -63,11 +63,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **Issue:** `AsyncLock` module-level bị sót sau refactor per-instance.
 - **GitHub:** [#22](https://github.com/maxlogvn/finger-chromium/issues/22)
 
-**Race condition khi cleanup: cleaner chạy trước khi engine process thoát hẳn**
-- **File:** `src/plugin/index.ts:291`, `src/plugin/connector/index.ts:142-144`, `src/plugin/connector/engine.ts:372-377`
-- **Issue:** Kill engine fire-and-forget, cleaner xoá file khi process còn ghi.
-- **GitHub:** [#23](https://github.com/maxlogvn/finger-chromium/issues/23)
-
 ---
 
 ### FIXED
@@ -89,6 +84,18 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
   2. `await setTimeout(2000)` → `await setTimeout(pollInterval)`.
 - **Tài liệu:** [Design](designs/bug-020-setTimeout-async-lock.design.md) | [Spec](specs/bug-020-setTimeout-async-lock.spec.md) | [Plan](plans/bug-020-setTimeout-async-lock.plan.md) | [Overview](overviews/bug-020-setTimeout-async-lock.overview.md)
 - **GitHub:** [#13](https://github.com/maxlogvn/finger-chromium/issues/13) (closed)
+
+---
+
+**Cleaner race condition khi cleanup: chờ engine process thoát hẳn**
+- **File:** `src/plugin/index.ts:291`, `src/plugin/connector/index.ts:142-144`, `src/plugin/connector/engine.ts:372-397`
+- **Vấn đề:** `RemoteEngine.kill()` là fire-and-forget (trả về `void`), không đợi `FastExecuteScript.exe` thoát hẳn. `FingerprintPlugin.cleanup()` gọi `cleaner.stop()` ngay sau đó khi process còn ghi file, gây `EBUSY` trên Windows.
+- **Fix:**
+  1. Chuyển `RemoteEngine.kill()` sang async -- await process exit với timeout + SIGKILL fallback.
+  2. Chuyển `Connector.cleanup()` sang async -- await `this.#engine.kill()`.
+  3. `FingerprintPlugin.cleanup()` await `this.#connector.cleanup()`.
+- **Tài liệu:** [Design](designs/bug-023-cleanup-race-condition.design.md) | [Spec](specs/bug-023-cleanup-race-condition.spec.md) | [Plan](plans/bug-023-cleanup-race-condition.plan.md) | [Overview](overviews/bug-023-cleanup-race-condition.overview.md)
+- **GitHub:** [#23](https://github.com/maxlogvn/finger-chromium/issues/23) (closed)
 
 ---
 

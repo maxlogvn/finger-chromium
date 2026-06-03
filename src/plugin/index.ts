@@ -288,7 +288,7 @@ export default class FingerprintPlugin {
       await this.browser.close().catch(() => {});
       this.browser = undefined;
     }
-    this.#connector.cleanup();
+    await this.#connector.cleanup();
     if (this.processId) {
       mutex.release(`BASProcess${this.processId}`);
     }

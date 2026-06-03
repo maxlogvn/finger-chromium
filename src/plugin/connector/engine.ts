@@ -34,6 +34,7 @@ const debug = debugFactory('browser-with-fingerprints:connector:engine');
 
 export const CLOSE_TIMEOUT = 60_000;
 export const DEFAULT_TIMEOUT = 300_000;
+export const KILL_TIMEOUT = 5_000;
 export const ARCH = process.arch.includes('32') ? '32' : '64';
 export const CWD = path.join(process.cwd(), 'data');
 
@@ -385,14 +386,29 @@ export default class RemoteEngine extends EventEmitter {
   }
 
   /**
-   * Kill engine process -- dừng FastExecuteScript.exe.
-   * An toàn khi gọi nhiều lần (kiểm tra #process trước khi kill).
+   * Kill engine process -- dừng FastExecuteScript.exe và đợi process thoát hẳn.
+   * Dùng timeout + SIGKILL fallback để tránh treo vô hạn.
+   * Cleaner sẽ không chạy khi process còn ghi file -- tránh EBUSY trên Windows.
+   *
+   * @param timeout - Thời gian chờ process thoát (ms), mặc định KILL_TIMEOUT
    */
-  kill(): void {
-    if (this.#process && !this.#process.killed) {
-      this.#process.kill();
-      this.#process = undefined;
-    }
+  async kill(timeout = KILL_TIMEOUT): Promise<void> {
+    if (!this.#process || this.#process.killed) return;
+    const proc = this.#process;
+
+    const exitPromise = new Promise<void>((resolve) => {
+      proc.once('exit', () => resolve());
+    });
+
+    proc.kill();
+
+    const timer = setTimeout(() => {
+      proc.kill('SIGKILL');
+    }, timeout).unref();
+
+    await exitPromise;
+    clearTimeout(timer);
+    this.#process = undefined;
   }
 
   /**

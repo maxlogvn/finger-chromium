@@ -359,3 +359,16 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Cleaner race condition khi cleanup: chờ engine process thoát hẳn (Bug fix #23)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-023-cleanup-race-condition.design.md) | [Spec](specs/bug-023-cleanup-race-condition.spec.md) | [Plan](plans/bug-023-cleanup-race-condition.plan.md) | [Overview](overviews/bug-023-cleanup-race-condition.overview.md)
+- **Ghi chú:**
+  - `RemoteEngine.kill()` fire-and-forget gây EBUSY khi cleaner xoá file lúc process còn ghi.
+  - Fix: chuyển `kill()` và `cleanup()` sang async, await process exit với timeout + SIGKILL fallback.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #23).
+
+---
+
