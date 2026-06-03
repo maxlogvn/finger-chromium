@@ -127,9 +127,39 @@ async function checksum(filePath: string): Promise<string> {
 }
 
 async function download(url: string, filePath: string): Promise<void> {
-  const response = await axios.get(url, { responseType: 'stream' });
+  const httpsUrl = url.replace(/^http:/, 'https:');
   const writer = createWriteStream(filePath);
-  await pipeline(response.data, writer);
+  try {
+    const response = await axios.get(httpsUrl, { responseType: 'stream' });
+    await pipeline(response.data, writer);
+  } catch (err) {
+    const axiosErr = err as { code?: string; response?: { status: number } };
+    if (axiosErr.code === 'ERR_NETWORK' || axiosErr.code === 'ECONNREFUSED' || axiosErr.code === 'ECONNRESET' || !axiosErr.response) {
+      debug(`HTTPS download failed, falling back to HTTP: ${url}`);
+      const response = await axios.get(url, { responseType: 'stream' });
+      await pipeline(response.data, writer);
+    } else {
+      throw err;
+    }
+  }
+}
+
+/**
+ * Wrapper axios request -- thử HTTPS trước, fallback HTTP nếu lỗi network.
+ * Chỉ fallback khi là lỗi network (không fallback cho 4xx/5xx).
+ */
+async function fetchWithFallback<T = unknown>(url: string, options?: Record<string, unknown>) {
+  const httpsUrl = url.replace(/^http:/, 'https:');
+  try {
+    return await axios.get<T>(httpsUrl, options);
+  } catch (httpsErr) {
+    const axiosErr = httpsErr as { code?: string; response?: { status: number } };
+    if (axiosErr.code === 'ERR_NETWORK' || axiosErr.code === 'ECONNREFUSED' || axiosErr.code === 'ECONNRESET' || !axiosErr.response) {
+      debug(`HTTPS failed, falling back to HTTP: ${url}`);
+      return await axios.get<T>(url, options);
+    }
+    throw httpsErr;
+  }
 }
 
 // ─── RemoteEngine ─────────────────────────────────────────────────────────────
@@ -386,7 +416,7 @@ export default class RemoteEngine extends EventEmitter {
     const version = versionMatch[1];
     debug(`Cập nhật metadata cho engine (arch: ${ARCH}, version: ${version})`);
 
-    const url = `http://bablosoft.com/distr/FastExecuteScript${ARCH}/${version}/FastExecuteScript.x${ARCH}.zip.meta.json`;
+    const url = `https://bablosoft.com/distr/FastExecuteScript${ARCH}/${version}/FastExecuteScript.x${ARCH}.zip.meta.json`;
     const metaPath = path.join(this.#cwd!, `${version}_${ARCH}.json`);
 
     if (await exists(metaPath)) {
@@ -394,7 +424,7 @@ export default class RemoteEngine extends EventEmitter {
       this.#meta = JSON.parse(await fs.readFile(metaPath, 'utf8'));
     } else {
       debug(`Yêu cầu metadata mới từ ${url}`);
-      const { data } = await axios.get<{ Checksum: string; Url: string }>(url);
+      const { data } = await fetchWithFallback<{ Checksum: string; Url: string }>(url);
       this.#meta = {
         checksum: data.Checksum,
         url: data.Url,

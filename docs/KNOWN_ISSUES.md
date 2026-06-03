@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#8, #11, #13-#15, #19, #20): GitHub issues [#3](https://github.com/maxlogvn/finger-chromium/issues/3)-[#4](https://github.com/maxlogvn/finger-chromium/issues/4), [#6](https://github.com/maxlogvn/finger-chromium/issues/6)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
-- **FIXED** (#1-#7, #9-#10, #12, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#2](https://github.com/maxlogvn/finger-chromium/issues/2), [#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
+- **OPEN** (#11, #13-#15, #19, #20): GitHub issues [#3](https://github.com/maxlogvn/finger-chromium/issues/3), [#6](https://github.com/maxlogvn/finger-chromium/issues/6)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
+- **FIXED** (#1-#10, #12, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#2](https://github.com/maxlogvn/finger-chromium/issues/2), [#4](https://github.com/maxlogvn/finger-chromium/issues/4)-[#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
 
@@ -48,12 +48,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 | FIXED | Bug đã sửa, đã có tài liệu |
 
 ### OPEN
-
-**#8 — Engine download URL dùng HTTP không an toàn**
-- **File:** `src/plugin/connector/engine.ts:367`
-- **Vấn đề:** URL metadata fetch dùng `http://bablosoft.com/distr/...` — không có HTTPS, dễ bị MITM tấn công khi tải engine binary xuống máy người dùng.
-- **Fix:** Đổi scheme thành `https://`; nếu HTTPS fail thì fallback sang HTTP để tránh blocking.
-- **GitHub:** [#4](https://github.com/maxlogvn/finger-chromium/issues/4)
 
 **#11 — `defaultLauncher` mutable state gây khó unit test**
 - **File:** `src/adapter/playwright/engine.ts:29-33`
@@ -163,6 +157,18 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **Fix:** Xoá singleton `Chromium`, export class `BrowserEngine` trực tiếp. Mỗi `new BrowserEngine()` là instance độc lập, có thể launch riêng. Giữ alias `Chromium = BrowserEngine` cho backward compatibility.
 - **Tài liệu:** [Design](designs/bug-007-multi-profile-singleton.design.md) | [Spec](specs/bug-007-multi-profile-singleton.spec.md) | [Plan](plans/bug-007-multi-profile-singleton.plan.md) | [Overview](overviews/bug-007-multi-profile-singleton.overview.md)
 - **GitHub:** [#19](https://github.com/maxlogvn/finger-chromium/issues/19) (closed)
+
+---
+
+**#8 — Engine download URL dùng HTTP không an toàn**
+- **File:** `src/plugin/connector/engine.ts:146-168,407-408`
+- **Vấn đề:** URL metadata fetch dùng `http://bablosoft.com/...` và URL download engine binary từ metadata cũng là HTTP — dễ bị MITM tấn công khi tải engine.
+- **Fix:**
+  1. Thêm helper `fetchWithFallback()` — thử HTTPS trước, fallback HTTP nếu network error.
+  2. Đổi metadata URL từ `http://` sang `https://`.
+  3. Dùng `fetchWithFallback()` cho cả metadata fetch và download engine.
+- **Tài liệu:** [Design](designs/bug-008-https-fallback.design.md) | [Spec](specs/bug-008-https-fallback.spec.md) | [Plan](plans/bug-008-https-fallback.plan.md) | [Overview](overviews/bug-008-https-fallback.overview.md)
+- **GitHub:** [#4](https://github.com/maxlogvn/finger-chromium/issues/4) (closed)
 
 ---
 

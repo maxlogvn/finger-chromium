@@ -94,4 +94,4 @@ Các lưu ý quan trọng về thiết kế và rủi ro cần biết khi phát 
 - **Phụ thuộc bablosoft engine:** Toàn bộ cơ chế inject fingerprint dựa vào binary engine của bablosoft (`FastExecuteScript.exe`) — closed-source, không audit được. Nếu bablosoft thay đổi API, checksum, hoặc ngừng service, thư viện ngừng hoạt động.
 - **Chỉ hỗ trợ Windows:** Dự án giới hạn ở `win32` (native mutex C++ addon, engine binary chỉ chạy trên Windows). Không thể mở rộng sang macOS/Linux mà không viết lại toàn bộ tầng inject.
 - **File-based IPC:** Engine giao tiếp qua file system (ghi JSON request file, chokidar watch phản hồi) thay vì pipe/socket. Đơn giản nhưng chậm hơn và dễ gặp vấn đề quyền truy cập file trên Windows.
-- **HTTP download:** URL tải engine metadata/ binary dùng `http://` thay vì `https://` — tiềm ẩn rủi ro MITM (đã ghi nhận là issue #8).
+- **HTTP download:** URL tải engine metadata/ binary đã được chuyển sang `https://` với fallback HTTP — xem [KNOWN_ISSUES.md #8](KNOWN_ISSUES.md).
