@@ -6,7 +6,7 @@
 
 Module spawn Chromium child process (`worker.exe`), phát hiện DevTools listening URL từ output, và trả về `Browser` object để quản lý vòng đời process. Đây là lớp thấp nhất trong chuỗi launch — sau khi `FingerprintPlugin` cấu hình engine, nó dùng launcher này để thực sự mở browser.
 
-Source: `src/plugin/launcher/index.ts` (99 dòng).
+Source: `src/plugin/launcher/index.ts` (88 dòng).
 
 ## Yêu cầu
 
@@ -87,16 +87,16 @@ await browser.configure();   // no-op
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/launcher/index.ts` | `launch()` function + `Browser` interface | 99 |
+| `src/plugin/launcher/index.ts` | `launch()` function + `Browser` interface | 88 |
 
 ## Xử lý lỗi
 
 | Tình huống | Hành vi |
 |---|---|
-| Process không in DevTools URL trong `timeout` ms | Reject với `Error('Timed out after ...ms while trying to launch the browser.')` |
+| Process không in DevTools URL trong `timeout` ms | Reject với `PluginError('Timed out after ...ms while trying to launch the browser.')` |
 | `executablePath` không tồn tại | Spawn throw `ENOENT` |
 | `close()` — `taskkill` fail | Fallback `childProcess.kill()` + force set `killed = true` |
-| `URL()` parse fail (URL không hợp lệ) | Throw `TypeError` từ `new URL()` |
+| `URL()` parse fail (URL không hợp lệ) | Throw `TypeError` từ `new URL()` (native, không dùng PluginError) |
 
 ## Kiểm tra
 

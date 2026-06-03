@@ -40,7 +40,7 @@ Jest phổ biến nhưng nặng, cần `ts-jest`. Mocha + tsx nhẹ hơn, chạy
 - **Phương án được chọn:** Phương án 2.
 - **Lý do:** tsup giảm tải cấu hình build, Mocha đủ cho test end-to-end với browser thật.
 - **Luồng hoạt động tổng quát:**
-  1. Người dùng import `Chromium` từ package.
+   1. Người dùng import `BrowserEngine` từ package (hoặc `Chromium` alias cho backward compatibility).
   2. Cấu hình fingerprint/proxy/profile qua fluent API.
   3. `launch()` — engine tải + giải nén + spawn worker.exe.
   4. `newContext()` — Playwright launchPersistentContext.

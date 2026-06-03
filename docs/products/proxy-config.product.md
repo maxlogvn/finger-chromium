@@ -7,9 +7,11 @@ Tính năng proxy định tuyến toàn bộ traffic trình duyệt qua HTTP/HTT
 ## Cách sử dụng
 
 ```ts
-import { Chromium } from 'fingerprint-chromium-engine';
+import { BrowserEngine } from 'fingerprint-chromium-engine';
 
-await Chromium
+const engine = new BrowserEngine();
+
+const context = await engine
   .useProxy('http://user:pass@192.168.1.1:8080', {
     changeTimezone: true,         // đồng bộ timezone theo IP proxy
     changeGeolocation: true,      // đồng bộ vị trí địa lý

@@ -8,7 +8,7 @@ Không có `RemoteEngine`, các lớp trên (`API Connector`, `FingerprintPlugin
 
 ## Cách sử dụng
 
-Thông thường bạn không tạo `RemoteEngine` trực tiếp. `API Connector` tạo sẵn một instance singleton:
+Thông thường bạn không tạo `RemoteEngine` trực tiếp. `Connector` tạo `RemoteEngine` riêng trong constructor:
 
 ```ts
 import RemoteEngine from './plugin/connector/engine';

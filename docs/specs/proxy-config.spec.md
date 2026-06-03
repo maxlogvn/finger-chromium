@@ -113,14 +113,14 @@ plugin.useProxy(url, {
 | File | Vai trò | Dòng |
 |---|---|---|
 | `src/types/proxy.ts` | `ProxyOptions` + type helpers | 210 |
-| `src/plugin/index.ts` | `useProxy()` — validate + lưu config + `setProxyFromArguments()` | 302 |
-| `src/adapter/playwright/chromium.ts` | `useProxy()` public API ở BrowserEngine | 231 |
+| `src/plugin/index.ts` | `useProxy()` — validate + lưu config + `setProxyFromArguments()` | 270 |
+| `src/adapter/playwright/chromium.ts` | `useProxy()` public API ở BrowserEngine | 193 |
 
 ## Xử lý lỗi
 
 | Tình huống | Hành vi |
 |---|---|
-| Proxy URL không đúng format | `validateConfig()` throw Error |
+| Proxy URL không đúng format | `validateConfig()` throw `PluginError` |
 | `ipInfoMethod` là `ip-api.com` nhưng thiếu key | Engine từ chối, báo lỗi qua API response |
 | Proxy không hoạt động | Engine tự báo lỗi qua API response |
 | Không gọi `useProxy()` và không có `--proxy-server` trong args | Engine launch không proxy |

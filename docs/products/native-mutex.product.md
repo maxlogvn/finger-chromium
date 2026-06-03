@@ -30,7 +30,7 @@ release('BASProcess12345');
 
 - Chỉ chạy trên Windows (win32).
 - Cần file `mutex.node` phù hợp với architecture (32-bit hoặc 64-bit).
-- File `mutex.node` được resolve từ package root — cần đúng path sau khi tsup bundle (xem KNOWN_ISSUES.md #6).
+- File `mutex.node` được resolve từ package root — cần đúng path sau khi tsup bundle (xem KNOWN_ISSUES.md GitHub #18).
 
 ## Tài liệu kỹ thuật liên quan
 

@@ -8,7 +8,7 @@ Tính năng tự động đặt kích thước viewport cho browser dựa trên 
 
 Sau khi viewport set, `page.setViewportSize()` bị chặn — tránh thay đổi viewport làm fingerprint lệch.
 
-Source: `src/plugin/browser.ts` (88 dòng), `src/plugin/config.ts` (86 dòng), `src/adapter/playwright/utils.ts` (124 dòng).
+Source: `src/plugin/browser.ts` (76 dòng), `src/plugin/config.ts` (91 dòng), `src/adapter/playwright/utils.ts` (114 dòng).
 
 ## Yêu cầu
 
@@ -104,11 +104,11 @@ await setViewport(page, { width: 1280, height: 720 });
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/browser.ts` | `setViewport` + `getViewport` qua chrome-remote-interface | 88 |
-| `src/plugin/config.ts` | `configure()` + `synchronize()` — .ini sync | 86 |
-| `src/adapter/playwright/utils.ts` | `setViewport` qua Playwright CDPSession | 124 |
-| `src/adapter/playwright/engine.ts` | `configure()` gọi setViewport + bindHooks | 111 |
-| `src/common/index.ts` | `waitForResize` + `getViewport` in-browser scripts | 25 |
+| `src/plugin/browser.ts` | `setViewport` + `getViewport` qua chrome-remote-interface | 76 |
+| `src/plugin/config.ts` | `configure()` + `synchronize()` — .ini sync | 91 |
+| `src/adapter/playwright/utils.ts` | `setViewport` qua Playwright CDPSession | 114 |
+| `src/adapter/playwright/engine.ts` | `configure()` gọi setViewport + bindHooks | 100 |
+| `src/common/index.ts` | `waitForResize` + `getViewport` in-browser scripts | 23 |
 
 ## Constants
 

@@ -10,7 +10,7 @@ Tài liệu cũ mô tả đúng ý tưởng Fluent API, nhưng còn thiếu lu�
 
 ## Câu hỏi làm rõ
 
-- Instance hay singleton? → Instance-based (`new BrowserEngine()`). Mỗi instance có fingerprint, proxy, profile riêng. Tài nguyên nền (engine process, mutex, cleaner) vẫn được quản lý tập trung qua `FingerprintPlugin` singleton, nhưng mỗi instance giữ reference riêng.
+- Instance hay singleton? → Instance-based (`new BrowserEngine()`). Mỗi instance có fingerprint, proxy, profile riêng. Mỗi instance cũng sở hữu `Connector` riêng (với `RemoteEngine` riêng) và `SettingsCleaner` riêng. PCAP server là singleton dùng chung cho cả process.
 - Fluent API hay config object? → Fluent API, vì user có thể đọc chuỗi cấu hình theo đúng thứ tự: fingerprint, proxy, profile, launch, context.
 - Cho phép `launch()` nhiều lần trên một instance không? → Không. `launch()` chỉ chuẩn bị engine một lần cho instance đó. Nếu cần session khác, tạo `new BrowserEngine()` mới.
 - Key bảo mật lấy từ đâu? → Từ `process.env.BABLOSOFT_KEY` qua constant `PRIVATE_KEY`. Code hiện không có method public để đổi key trên `BrowserEngine`.

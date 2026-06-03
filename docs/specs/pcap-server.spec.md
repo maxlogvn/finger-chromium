@@ -8,7 +8,7 @@ PCAP Server là một TCP server tối giản mô phỏng PCAP interface. Engine
 
 Tên "PCAP" giữ từ code gốc của BAS (Browser Automation Studio). Nó không liên quan đến PCAP network capture thật.
 
-Source: `src/plugin/connector/pcapServer/index.ts` (71 dòng).
+Source: `src/plugin/connector/pcapServer/index.ts` (72 dòng).
 
 ## Yêu cầu
 
@@ -95,7 +95,7 @@ Lần gọi api() đầu tiên
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/connector/pcapServer/index.ts` | TCP server (lazy init) | ~80 |
+| `src/plugin/connector/pcapServer/index.ts` | TCP server (lazy init) | 72 |
 
 ## Xử lý lỗi
 

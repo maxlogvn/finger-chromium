@@ -73,7 +73,7 @@ $env:DEBUG=''; node app.js
 
 ```
 browser-with-fingerprints:connector:engine Dang tai browser... +0ms
-browser-with-fingerprints:connector:downloading...
+browser-with-fingerprints:connector:engine Dang tai browser... +0ms
 browser-with-fingerprints:connector:engine Engine giai nen thanh cong... +5342ms
 browser-with-fingerprints:connector:engine Dang goi method "setup"... +10234ms
 browser-with-fingerprints:connector PCAP server dang lang nghe tai port 54321 +11000ms

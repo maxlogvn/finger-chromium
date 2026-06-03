@@ -8,7 +8,7 @@
 
 `BrowserEngine` không tự inject fingerprint. Nó là lớp điều phối: nhận cấu hình từ user, chuyển xuống `PlaywrightFingerprintPlugin`, gọi `launchPersistentContext()` để bridge vào plugin core, và quản lý vòng đời của `BrowserContext`.
 
-Source: `src/adapter/playwright/chromium.ts` (231 dòng).
+Source: `src/adapter/playwright/chromium.ts` (193 dòng).
 
 ## Yêu cầu
 
@@ -104,9 +104,9 @@ User code
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/adapter/playwright/chromium.ts` | `BrowserEngine` class + `Chromium` alias | 228 |
+| `src/adapter/playwright/chromium.ts` | `BrowserEngine` class + `Chromium` alias | 193 |
 | `src/adapter/playwright/data.ts` | `AdapterDataManager` — map/unmap profile, copy temp dir | — |
-| `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin` — bridge từ đây xuống plugin core | 111 |
+| `src/adapter/playwright/engine.ts` | `PlaywrightFingerprintPlugin` — bridge từ đây xuống plugin core | 100 |
 | `src/types/PWChromium.ts` | Interface `PWChromium` — public API contract | — |
 
 ## Constants
@@ -122,9 +122,9 @@ User code
 
 | Tình huống | Hành vi |
 |---|---|
-| `launch()` gọi lần thứ hai | Throw `Error('[BrowserEngine] Phuong thuc launch() chi duoc goi mot lan.')` |
-| `newContext()` trước `launch()` | Throw `Error('[BrowserEngine] Phai goi launch() truoc khi tao context.')` |
-| `newContext()` khi context đã tồn tại | Throw `Error('[BrowserEngine] Context da duoc tao. Vui long goi quit() truoc khi tao moi.')` |
+| `launch()` gọi lần thứ hai | Throw `PluginError('[BrowserEngine] Phuong thuc launch() chi duoc goi mot lan.')` |
+| `newContext()` trước `launch()` | Throw `PluginError('[BrowserEngine] Phai goi launch() truoc khi tao context.')` |
+| `newContext()` khi context đã tồn tại | Throw `PluginError('[BrowserEngine] Context da duoc tao. Vui long goi quit() truoc khi tao moi.')` |
 | `quit()` khi chưa launch | Return sớm, không throw — idempotent |
 | `newContext()` fail do engine | Engine throw `PluginError` / `MissingKeyError` / `EngineTimeoutError` |
 | `quit()` fail khi close context | Lỗi bị `catch(() => {})` — không crash toàn bộ cleanup |

@@ -8,7 +8,7 @@ PCAP ở đây không phải packet capture. Tên này giữ từ code gốc c�
 
 ## Cách sử dụng
 
-PCAP server được auto-start khi `connector/index.ts` được import. Bạn không cần khởi động thủ công:
+PCAP server được lazy init ở lần gọi API đầu tiên. Bạn cũng có thể khởi động thủ công nếu cần:
 
 ```ts
 import * as pcapServer from './plugin/connector/pcapServer';

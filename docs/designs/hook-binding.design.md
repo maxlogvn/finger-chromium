@@ -15,7 +15,7 @@ Ngoài ra, cần cleanup handler để dọn dẹp khi browser/context đóng.
 
 - Ai gọi bindHooks? → PlaywrightFingerprintPlugin.configure().
 - Có cần proxy Browser.newContext không? → Có, nếu target là Browser (không phải BrowserContext).
-- Làm sao biết target là Browser hay BrowserContext? → Dùng `isBrowser()` check `version` property.
+- Làm sao biết target là Browser hay BrowserContext? → Dùng `isBrowser()` check đồng thời `version`, `isConnected`, `contexts` — giảm false positive nếu Playwright thay đổi API.
 
 ## Các phương án
 

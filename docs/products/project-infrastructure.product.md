@@ -52,7 +52,7 @@ await engine.quit();
 
 - `launch()` chỉ gọi được một lần. Gọi lần 2 throw error.
 - `newContext()` chỉ gọi được sau `launch()`, trước `quit()`.
-- `quit()` dọn dẹp context, profile, engine process, PCAP server, mutex, cleaner.
+- `quit()` dọn dẹp context, profile, engine process, mutex, cleaner. PCAP server vẫn tồn tại vì là singleton dùng chung cho process.
 - `headless: false` mặc định — fingerprint check phát hiện headless mode.
 
 ## Giới hạn và điều kiện

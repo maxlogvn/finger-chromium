@@ -8,7 +8,7 @@ Daemon tự động dọn dẹp file tạm do engine tạo ra — file `.ini`, p
 
 Mục đích: engine tạo nhiều file tạm trong quá trình hoạt động (settings.ini, process tracking). Nếu không dọn, thư mục engine phình to theo thời gian — đặc biệt khi chạy nhiều session.
 
-Source: `src/plugin/cleaner.ts` (118 dòng).
+Source: `src/plugin/cleaner.ts` (105 dòng).
 
 ## Yêu cầu
 
@@ -98,7 +98,7 @@ await cleaner.stop();
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/cleaner.ts` | `SettingsCleaner` class + singleton export | 118 |
+| `src/plugin/cleaner.ts` | `SettingsCleaner` class + singleton export | 105 |
 
 ## Xử lý lỗi
 

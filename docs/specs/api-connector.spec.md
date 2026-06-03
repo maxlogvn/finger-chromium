@@ -8,7 +8,7 @@ API Connector (class `Connector`) là lớp trung gian giữa `FingerprintPlugin
 
 PCAP server là singleton dùng chung cho cả process, lazy init ở lần gọi API đầu tiên.
 
-Source: `src/plugin/connector/index.ts` (khoảng 130 dòng).
+Source: `src/plugin/connector/index.ts` (khoảng 123 dòng).
 
 ## Yêu cầu
 
@@ -91,7 +91,7 @@ await connector.cleanup();
 | File | Vai trò | Dòng |
 |---|---|---|
 | `src/plugin/connector/index.ts` | API Connector — class Connector với api(), cleanup() | ~130 |
-| `src/plugin/connector/engine.ts` | RemoteEngine — download, extract, IPC | 386 |
+| `src/plugin/connector/engine.ts` | RemoteEngine — download, extract, IPC | 378 |
 | `src/plugin/connector/pcapServer/index.ts` | PCAP TCP server — mock PCAP interface | 71 |
 
 ## Events

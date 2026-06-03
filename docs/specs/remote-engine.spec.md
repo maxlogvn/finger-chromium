@@ -8,7 +8,7 @@
 
 Không có `RemoteEngine`, các lớp trên (`API Connector`, `FingerprintPlugin`) không thể gửi lệnh setup fingerprint hay nhận kết quả.
 
-Source: `src/plugin/connector/engine.ts` (386 dòng).
+Source: `src/plugin/connector/engine.ts` (378 dòng).
 
 ## Yêu cầu
 
@@ -114,8 +114,8 @@ engine.kill();
 
 | File | Vai trò | Dòng |
 |---|---|---|
-| `src/plugin/connector/engine.ts` | RemoteEngine class | 386 |
-| `src/plugin/connector/index.ts` | Singleton + cleanup | 99 |
+| `src/plugin/connector/engine.ts` | RemoteEngine class | 378 |
+| `src/plugin/connector/index.ts` | class `Connector` — mỗi instance sở hữu `RemoteEngine` riêng | 123 |
 
 ## API methods
 
@@ -154,9 +154,9 @@ engine.kill();
 
 | Tình huống | Hành vi |
 |---|---|
-| `package.json` không tìm thấy (resolvePackageRoot) | Throw `Error('Không tìm thấy thư mục gốc...')` |
-| `project.xml` không đọc được | Throw Error từ `fs.readFile` |
-| `project.xml` không có EngineVersion | Throw `Error('Không thể đọc phiên bản Engine...')` |
+| `package.json` không tìm thấy (resolvePackageRoot) | Throw `PluginError('[RemoteEngine] Không tìm thấy thư mục gốc...')` |
+| `project.xml` không đọc được | Throw `PluginError` từ `fs.readFile` |
+| `project.xml` không có EngineVersion | Throw `InvalidEngineError('Không thể đọc phiên bản Engine...')` |
 | Checksum không khớp | Xoá engine cũ (`fs.rm`), tải lại |
 | Download thất bại | Axios throw — propagate lên connector |
 | Extract thất bại | extract-zip throw — propagate |
