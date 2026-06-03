@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 1 issue — xem section OPEN bên dưới
-- **FIXED:** 23 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
+- **OPEN:** 0 issue — xem section OPEN bên dưới
+- **FIXED:** 25 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
 
@@ -51,14 +51,7 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 
 > **Ghi chú:** Không dùng local numbering. Mỗi entry chỉ có mô tả + số GitHub issue tương ứng.
 
-### OPEN
-
-**Process không tự động thoát sau khi quit()**
-- **File:** `src/plugin/connector/pcapServer/index.ts:61`, `src/plugin/connector/index.ts:142-144`, `src/plugin/index.ts:286-296`
-- **Issue:** `net.Server` thiếu `unref()`, không đóng được sau cleanup.
-- **GitHub:** [#21](https://github.com/maxlogvn/finger-chromium/issues/21)
-
----
+_Không có OPEN issue nào._
 
 ### FIXED
 
@@ -302,3 +295,12 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
   3. `FingerprintPlugin` tạo `#configManager = new ConfigManager()` riêng.
 - **Tài liệu:** [Design](designs/bug-022-asynclock-per-instance.design.md) | [Spec](specs/bug-022-asynclock-per-instance.spec.md) | [Plan](plans/bug-022-asynclock-per-instance.plan.md) | [Overview](overviews/bug-022-asynclock-per-instance.overview.md)
 - **GitHub:** [#22](https://github.com/maxlogvn/finger-chromium/issues/22) (closed)
+
+---
+
+**Process không tự động thoát sau khi quit()**
+- **File:** `src/plugin/connector/pcapServer/index.ts:48-55`
+- **Vấn đề:** `net.Server` thiếu `unref()` trong callback `onListening` — TCP server giữ event loop alive sau khi cleanup, process không tự động thoát.
+- **Fix:** Thêm `svr.unref()` trong callback `onListening` — server không giữ event loop, process thoát tự nhiên khi không còn tác vụ nào.
+- **Tài liệu:** [Design](designs/bug-021-pcap-unref.design.md) | [Spec](specs/bug-021-pcap-unref.spec.md) | [Plan](plans/bug-021-pcap-unref.plan.md) | [Overview](overviews/bug-021-pcap-unref.overview.md)
+- **GitHub:** [#21](https://github.com/maxlogvn/finger-chromium/issues/21) (closed)

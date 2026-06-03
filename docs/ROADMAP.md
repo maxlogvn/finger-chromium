@@ -106,7 +106,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Minimal TCP server mô phỏng PCAP interface
   - Xử lý 2 lệnh binary: `0x01` (request ID), `0x07` (heartbeat)
   - Retry port khi EADDRINUSE (fix promise hang)
-  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #5 -- lazy init, Issue #8 -- promise hang retry)
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #5 -- lazy init, Issue #8 -- promise hang retry, Issue #21 -- pcap unref)
 
 ---
 
@@ -382,6 +382,19 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - `RemoteEngine.kill()` fire-and-forget gây EBUSY khi cleaner xoá file lúc process còn ghi.
   - Fix: chuyển `kill()` và `cleanup()` sang async, await process exit với timeout + SIGKILL fallback.
   - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #23).
+
+---
+
+### Process không tự động thoát sau khi quit() — PCAP server thiếu unref() (Bug fix #21)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-021-pcap-unref.design.md) | [Spec](specs/bug-021-pcap-unref.spec.md) | [Plan](plans/bug-021-pcap-unref.plan.md) | [Overview](overviews/bug-021-pcap-unref.overview.md)
+- **Ghi chú:**
+  - `net.Server` thiếu `unref()` — PCAP server giữ event loop sau khi cleanup.
+  - Fix: thêm `svr.unref()` trong callback `onListening` của PCAP server.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #21).
 
 ---
 

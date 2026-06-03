@@ -47,6 +47,7 @@ export const listen = once((port = 0, host = '127.0.0.1'): Promise<number> => {
       if (address && typeof address === 'object') {
         resolve(address.port);
       }
+      svr.unref();
     };
 
     svr.on('error', (error: NodeJS.ErrnoException) => {
