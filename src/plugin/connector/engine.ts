@@ -321,6 +321,21 @@ export default class RemoteEngine extends EventEmitter {
   }
 
   /**
+   * Kiểm tra tiến trình engine còn sống hay không.
+   * Dùng signal 0 (không gửi signal thật) để kiểm tra PID tồn tại.
+   */
+  #isProcessAlive(proc?: ChildProcess): boolean {
+    if (!proc) return false;
+    if (proc.killed) return false;
+    try {
+      process.kill(proc.pid!, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Kill engine process -- dừng FastExecuteScript.exe.
    * An toàn khi gọi nhiều lần (kiểm tra #process trước khi kill).
    */
@@ -332,9 +347,16 @@ export default class RemoteEngine extends EventEmitter {
   }
 
   /**
-   * startProcess với timeout -- throw EngineTimeoutError nếu quá thời gian.
+   * Lấy tiến trình engine đang chạy, hoặc spawn mới nếu chưa có.
+   * Cache process để tránh spawn lại mỗi lần gọi API.
+   * Chỉ áp dụng timeout khi thực sự spawn process mới.
    */
   async #startProcess(timeout?: number): Promise<ChildProcess> {
+    if (this.#isProcessAlive(this.#process)) {
+      debug('Tái sử dụng tiến trình engine hiện tại');
+      return this.#process!;
+    }
+
     if (!timeout) return await this.#startProcessInternal();
 
     let timer: NodeJS.Timeout | null = null;

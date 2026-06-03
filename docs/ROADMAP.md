@@ -91,6 +91,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Singleton RemoteEngine với async-lock đồng bộ
   - `api(name, params)` -- wrapper error normalization
   - Auto-start PCAP server
+  - **Bug fix (2026-06-03):** Cache engine process giữa các API calls — tránh spawn `FastExecuteScript.exe` mới mỗi lần. Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #18.
 
 ---
 

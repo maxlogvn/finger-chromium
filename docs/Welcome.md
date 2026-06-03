@@ -83,7 +83,7 @@ Issue được theo dõi song song ở hai nơi:
 | **Local** | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | Entry point chính -- đọc để biết tình trạng |
 | **GitHub** | [Issues](https://github.com/maxlogvn/finger-chromium/issues) | Lưu trữ vĩnh viễn, traceable |
 
-Hiện có **13 issue OPEN** — đang chờ xử lý. Chi tiết và mapping local-GitHub tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+Hiện có **7 issue OPEN** — đang chờ xử lý. Chi tiết và mapping local-GitHub tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ---
 

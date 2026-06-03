@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#8, #11, #13-#15, #18-#20): GitHub issues [#3](https://github.com/maxlogvn/finger-chromium/issues/3)-[#4](https://github.com/maxlogvn/finger-chromium/issues/4), [#6](https://github.com/maxlogvn/finger-chromium/issues/6)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#11](https://github.com/maxlogvn/finger-chromium/issues/11)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
-- **FIXED** (#1-#7, #9-#10, #12, #16-#17): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#2](https://github.com/maxlogvn/finger-chromium/issues/2), [#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#10](https://github.com/maxlogvn/finger-chromium/issues/10), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
+- **OPEN** (#8, #11, #13-#15, #19, #20): GitHub issues [#3](https://github.com/maxlogvn/finger-chromium/issues/3)-[#4](https://github.com/maxlogvn/finger-chromium/issues/4), [#6](https://github.com/maxlogvn/finger-chromium/issues/6)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
+- **FIXED** (#1-#7, #9-#10, #12, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#2](https://github.com/maxlogvn/finger-chromium/issues/2), [#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
 
@@ -79,12 +79,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **Fix:** Trong error handler EADDRINUSE, reject promise cũ và tạo promise mới cho lần retry.
 - **GitHub:** [#8](https://github.com/maxlogvn/finger-chromium/issues/8)
 
-**#18 — Mỗi lần gọi API spawn một process engine mới, không tái sử dụng**
-- **File:** `src/plugin/connector/engine.ts:270-321`
-- **Vấn đề:** `runFunction()` gọi `#startProcess()` mỗi lần, không kiểm tra process cũ còn sống. Mỗi API call spawn `FastExecuteScript.exe` mới — tốn tài nguyên và chậm.
-- **Fix:** Cache engine process — kiểm tra `this.#process` còn alive không, chỉ spawn lại nếu process đã chết.
-- **GitHub:** [#11](https://github.com/maxlogvn/finger-chromium/issues/11)
-
 **#19 — `isBrowser` type guard dùng string check fragile**
 - **File:** `src/adapter/playwright/utils.ts:19-23`
 - **Vấn đề:** Phân biệt `Browser` vs `BrowserContext` bằng cách check method `version()` tồn tại. Nếu Playwright thay đổi API, type guard sai.
@@ -100,6 +94,15 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 ---
 
 ### FIXED
+
+**#18 — Mỗi lần gọi API spawn một process engine mới, không tái sử dụng**
+- **File:** `src/plugin/connector/engine.ts:337-353`
+- **Vấn đề:** `runFunction()` gọi `#startProcess()` mỗi lần, không kiểm tra process cũ còn sống. Mỗi API call spawn `FastExecuteScript.exe` mới — tốn tài nguyên và chậm.
+- **Fix:** Cache engine process — kiểm tra `this.#process` còn alive không, chỉ spawn lại nếu process đã chết.
+- **Tài liệu:** [Design](designs/bug-018-engine-process-cache.design.md) | [Spec](specs/bug-018-engine-process-cache.spec.md) | [Plan](plans/bug-018-engine-process-cache.plan.md) | [Overview](overviews/bug-018-engine-process-cache.overview.md)
+- **GitHub:** [#11](https://github.com/maxlogvn/finger-chromium/issues/11) (closed)
+
+---
 
 **#1 — `notify()` dead code**
 - **File:** `src/plugin/connector/utils.ts`, `src/plugin/connector/index.ts`
