@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { describe, it } from 'mocha';
-import { strictEqual, ok, match, rejects } from 'node:assert';
+import { strictEqual, ok, rejects, throws, doesNotThrow } from 'node:assert';
 
 import {
   PluginError,
@@ -218,18 +218,18 @@ describe('Utils', () => {
 
   describe('validateConfig()', () => {
     it('nên không throw với value string và options object', () => {
-      ok(() => validateConfig('fingerprint', 'data', { key: 'val' }));
+      doesNotThrow(() => validateConfig('fingerprint', 'data', { key: 'val' }));
     });
 
     it('nên throw PluginError khi value không phải string', () => {
-      ok.throws(
+      throws(
         () => validateConfig('fp', null, {}),
         PluginError
       );
     });
 
     it('nên throw PluginError khi options là null', () => {
-      ok.throws(
+      throws(
         () => validateConfig('fp', 'data', null),
         PluginError
       );
@@ -240,23 +240,23 @@ describe('Utils', () => {
 
   describe('validateLauncher()', () => {
     it('nên không throw với launcher hợp lệ (có launch function)', () => {
-      ok(() => validateLauncher({ launch: () => {} }));
+      doesNotThrow(() => validateLauncher({ launch: () => {} }));
     });
 
     it('nên throw PluginError khi launcher là null', () => {
-      ok.throws(() => validateLauncher(null), PluginError);
+      throws(() => validateLauncher(null), PluginError);
     });
 
     it('nên throw PluginError khi launcher là undefined', () => {
-      ok.throws(() => validateLauncher(undefined), PluginError);
+      throws(() => validateLauncher(undefined), PluginError);
     });
 
     it('nên throw PluginError khi launcher không phải object', () => {
-      ok.throws(() => validateLauncher('not-an-object'), PluginError);
+      throws(() => validateLauncher('not-an-object'), PluginError);
     });
 
     it('nên throw PluginError khi launcher thiếu method launch', () => {
-      ok.throws(() => validateLauncher({}), PluginError);
+      throws(() => validateLauncher({}), PluginError);
     });
   });
 });
@@ -296,7 +296,7 @@ describe('Loader', () => {
     });
 
     it('nên throw PluginError khi không tìm thấy package nào', () => {
-      ok.throws(
+      throws(
         () => Loader.import(['nonexistent-pkg-xyz-123']),
         PluginError
       );
