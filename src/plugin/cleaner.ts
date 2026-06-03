@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import fg from 'fast-glob';
-import { posix as path } from 'path';
+import path from 'node:path';
 import { rm } from 'fs/promises';
 import lock from 'proper-lockfile';
 import createDebug from 'debug';

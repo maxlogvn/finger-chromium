@@ -73,10 +73,10 @@ export const synchronize = async (
       if (!reset) {
         await Promise.resolve(action());
       }
-      for (const key of ['availWidth', 'availHeight'] as const) {
-        configContent = configContent.replace(new RegExp(`${key}=(.+)`), (): string => {
-          const value = reset ? 'BAS_NOT_SET' : (bounds[key] ?? 'BAS_NOT_SET');
-          return `${key}=${value}`;
+      for (const [iniKey, boundsKey] of [['availWidth', 'width'], ['availHeight', 'height']] as const) {
+        configContent = configContent.replace(new RegExp(`${iniKey}=(.+)`), (): string => {
+          const value = reset ? 'BAS_NOT_SET' : (bounds[boundsKey] ?? 'BAS_NOT_SET');
+          return `${iniKey}=${value}`;
         });
       }
       await writeFile(configPath, configContent);
