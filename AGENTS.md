@@ -25,8 +25,8 @@ Dự án đồng bộ issue giữa local (`docs/KNOWN_ISSUES.md`) và GitHub Iss
 
 **Quy tắc cho AI agent:**
 - Trước khi fix bug, đọc KNOWN_ISSUES.md để biết trạng thái hiện tại.
-- Khi fix xong, cập nhật KNOWN_ISSUES.md theo template [`docs/templates/known-issue.template.md`](docs/templates/known-issue.template.md) và đồng bộ lên GitHub issue tương ứng.
-- Comment trên GitHub issue phải theo template [`docs/templates/github-closing-comment.template.md`](docs/templates/github-closing-comment.template.md).
+- Khi fix xong, cập nhật KNOWN_ISSUES.md và đồng bộ lên GitHub issue tương ứng. Dùng template [`docs/templates/known-issue.template.md`](docs/templates/known-issue.template.md) khi tạo GitHub issue mới.
+- Comment trên GitHub issue: dùng nội dung từ `docs/overviews/<bug>.overview.md` làm closing comment.
 - **Cảnh báo:** Template yêu cầu "Đầy đủ dấu: Phải có dấu tiếng Việt đầy đủ. Không viết kiểu 'khong dau'." — **đọc kỹ template trước khi post**, kiểm tra lại nội dung để tránh lặp lại lỗi cũ.
 - Khi tạo issue mới, thêm entry vào KNOWN_ISSUES.md (theo template) và tạo GitHub issue tương ứng.
 
