@@ -2,15 +2,6 @@
 
 > Issues này đã được ghi nhận và cần xử lý. Khi fix xong, cập nhật trạng thái tại đây.
 
-### OPEN — cần fix
-
-**#2 — Error classes không export trong public API**
-- **File:** `src/index.ts`
-- **Vấn đề:** `PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError` (trong `src/plugin/errors.ts`) không được re-export ra public API.
-- **Tác động:** Người dùng không thể `import { PluginError } from 'fingerprint-chromium-engine'` để catch lỗi đúng type.
-
----
-
 ### FIXED
 
 **#1 — `notify()` dead code**
@@ -18,6 +9,14 @@
 - **Vấn đề cũ:** `notify()` được định nghĩa và export nhưng không có file nào import. `notifyTimer` được khai báo, `clearTimeout(notifyTimer)` có trong `finally`, nhưng `notifyTimer` không bao giờ được gán giá trị.
 - **Fix:** Import `notify()` vào `connector/index.ts` và gọi trong `api()` khi engine trả lỗi "key is missing". Sửa kiểu `notifyTimer` cho tương thích.
 - **Tài liệu:** [Design](designs/bug-001-notify-dead-code.design.md) | [Spec](specs/bug-001-notify-dead-code.spec.md) | [Plan](plans/bug-001-notify-dead-code.plan.md) | [Overview](overviews/bug-001-notify-dead-code.overview.md)
+
+---
+
+**#2 — Error classes không export trong public API**
+- **File:** `src/index.ts`
+- **Vấn đề cũ:** `PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError` (trong `src/plugin/errors.ts`) không được re-export ra public API.
+- **Fix:** Thêm export block 5 error class từ `./plugin/errors` vào `src/index.ts`.
+- **Tài liệu:** [Design](designs/bug-002-export-error-classes.design.md) | [Spec](specs/bug-002-export-error-classes.spec.md) | [Plan](plans/bug-002-export-error-classes.plan.md) | [Overview](overviews/bug-002-export-error-classes.overview.md)
 
 ---
 

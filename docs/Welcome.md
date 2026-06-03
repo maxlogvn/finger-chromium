@@ -74,4 +74,4 @@ src/
 
 ## Known Issues
 
-Hiện có **1 issue OPEN** đang cần xử lý. (Xem [KNOWN_ISSUES.md](KNOWN_ISSUES.md) #2) Xem chi tiết tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+Hiện có **0 issue OPEN** — tất cả issue đã được fix. Xem [KNOWN_ISSUES.md](KNOWN_ISSUES.md). Xem chi tiết tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
