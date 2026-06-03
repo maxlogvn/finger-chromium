@@ -11,7 +11,7 @@
 import path from 'path';
 import crypto from 'crypto';
 import * as mutex from './mutex';
-import cleaner from './cleaner';
+import { SettingsCleaner } from './cleaner';
 import type { Browser, LaunchOptions as SpawnOptions } from './launcher';
 import { launch } from './launcher';
 import { api, engine, cleanup as connectorCleanup } from './connector';
@@ -72,6 +72,7 @@ export default class FingerprintPlugin {
   protected fingerprint?: PluginConfig;
   protected profile?: PluginConfig;
   protected proxy?: PluginConfig;
+  #cleaner = new SettingsCleaner();
   protected browser?: Browser;
   protected processId?: string;
 
@@ -251,7 +252,7 @@ export default class FingerprintPlugin {
     this.processId = pid;
 
     // --- Bước 3: Đăng ký cleaner + tạo mutex -- dọn dẹp khi process kết thúc
-    await cleaner.watch(pwd).ignore(pwd, pid, id);
+    await this.#cleaner.watch(pwd).ignore(pwd, pid, id);
     mutex.create(`BASProcess${pid}`);
 
     // --- Bước 4: Chọn launcher -- mặc định (spawn) hoặc custom (plugin bridge)
@@ -272,7 +273,7 @@ export default class FingerprintPlugin {
 
     // --- Bước 6: Cấu hình và đồng bộ -- inject fingerprint, proxy vào browser
     const configFn = useDefaultLauncher ? configure : this.configure.bind(this);
-    await configFn(() => cleaner.include(pwd, pid, id), browser, bounds, synchronize.bind(null, id, pwd, bounds));
+    await configFn(() => this.#cleaner.include(pwd, pid, id), browser, bounds, synchronize.bind(null, id, pwd, bounds));
     return browser;
   }
 
@@ -289,7 +290,7 @@ export default class FingerprintPlugin {
     if (this.processId) {
       mutex.release(`BASProcess${this.processId}`);
     }
-    await cleaner.stop();
+    await this.#cleaner.stop();
   }
 }
 

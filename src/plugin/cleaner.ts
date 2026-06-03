@@ -27,7 +27,7 @@ const LOCKABLE_ITEMS = (pid: string, id: string): string[] => [`t/${pid}`, `s/${
  * Quản lý lock/unlock file tạm của engine để tránh xoá nhầm khi còn dùng.
  * Khởi động timer 15s quét và dọn dẹp các file không còn process sở hữu.
  */
-class SettingsCleaner {
+export class SettingsCleaner {
   #timer: ReturnType<typeof setInterval> | null = null;
   #folders: string[] = [];
 

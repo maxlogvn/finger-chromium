@@ -296,6 +296,19 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Bug #13 — Cleaner singleton dùng chung giữa các BrowserEngine instance
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-013-cleaner-singleton.design.md) | [Spec](specs/bug-013-cleaner-singleton.spec.md) | [Plan](plans/bug-013-cleaner-singleton.plan.md) | [Overview](overviews/bug-013-cleaner-singleton.overview.md)
+- **Ghi chú:**
+  - `export default new SettingsCleaner()` -- singleton global
+  - Instance A cleanup file của instance B (race condition)
+  - Fix: export class, mỗi FingerprintPlugin có cleaner riêng
+
+---
+
 ### Tăng test coverage cho core modules
 
 - **Trạng thái:** [-] Sắp làm

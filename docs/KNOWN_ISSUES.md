@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#13-#15, #19, #20): GitHub issues [#6](https://github.com/maxlogvn/finger-chromium/issues/6)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
-- **FIXED** (#1-#12, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
+- **OPEN** (#14-#15, #19, #20): GitHub issues [#7](https://github.com/maxlogvn/finger-chromium/issues/7)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
+- **FIXED** (#1-#13, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#6](https://github.com/maxlogvn/finger-chromium/issues/6), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
 
@@ -50,12 +50,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 ### OPEN
 
 ---
-
-**#13 — `cleaner` singleton dùng chung giữa các `BrowserEngine` instance**
-- **File:** `src/plugin/cleaner.ts:118`
-- **Vấn đề:** `export default new SettingsCleaner()` — tất cả instance đều dùng chung một cleaner. Instance A có thể cleanup file của instance B (race condition).
-- **Fix:** Cho phép tạo `SettingsCleaner` instance riêng, không dùng singleton global.
-- **GitHub:** [#6](https://github.com/maxlogvn/finger-chromium/issues/6)
 
 **#14 — `RemoteEngine` singleton dùng chung giữa các instance**
 - **File:** `src/plugin/connector/index.ts:49`
@@ -224,3 +218,15 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **Fix:** Chuyển `pcapServer.listen()` vào lazy init trong `api()` — dùng module-level promise `ensureInit()` để chỉ chạy một lần ở lần gọi API đầu tiên.
 - **Tài liệu:** [Design](designs/bug-012-pcap-side-effect.design.md) | [Spec](specs/bug-012-pcap-side-effect.spec.md) | [Plan](plans/bug-012-pcap-side-effect.plan.md)
 - **GitHub:** [#5](https://github.com/maxlogvn/finger-chromium/issues/5) (closed)
+
+---
+
+**#13 — Cleaner singleton dùng chung giữa các BrowserEngine instance**
+- **File:** `src/plugin/cleaner.ts:30`, `src/plugin/index.ts:69-76`
+- **Vấn đề:** `export default new SettingsCleaner()` — tất cả instance đều dùng chung một cleaner. Instance A có thể cleanup file của instance B (race condition).
+- **Fix:**
+  1. Thêm `export` vào `class SettingsCleaner` để consumer có thể tạo instance riêng.
+  2. `FingerprintPlugin` tạo `#cleaner = new SettingsCleaner()` riêng, không dùng singleton.
+  3. Giữ `export default new SettingsCleaner()` cho backward compatibility.
+- **Tài liệu:** [Design](designs/bug-013-cleaner-singleton.design.md) | [Spec](specs/bug-013-cleaner-singleton.spec.md) | [Plan](plans/bug-013-cleaner-singleton.plan.md)
+- **GitHub:** [#6](https://github.com/maxlogvn/finger-chromium/issues/6) (closed)
