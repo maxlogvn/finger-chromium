@@ -55,11 +55,6 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 ### OPEN
 
-**Thiếu test coverage cho `runFunction()` — IPC core giao tiếp với engine binary**
-- **File:** `src/plugin/connector/engine.ts:234-314`, `tests/connector.test.ts`
-- **Vấn đề:** `runFunction()` là phương thức IPC duy nhất giao tiếp với engine binary (file-based IPC qua chokidar). Hoàn toàn không có test coverage — không có regression guard cho critical path này. Zero coverage trên toàn bộ flow: tạo request file, watch response, parse JSON, timeout handling.
-- **GitHub:** [#28](https://github.com/maxlogvn/finger-chromium/issues/28) (open)
-
 ---
 
 **Thiếu test coverage cho EADDRINUSE retry logic trong PCAP server listen()**
@@ -282,3 +277,11 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 - **Vấn đề:** `net.Server` thiếu `unref()` trong callback `onListening` — TCP server giữ event loop alive sau khi cleanup, process không tự động thoát.
 - **Tài liệu:** [Design](designs/bug-021-pcap-unref.design.md) | [Spec](specs/bug-021-pcap-unref.spec.md) | [Plan](plans/bug-021-pcap-unref.plan.md) | [Overview](overviews/bug-021-pcap-unref.overview.md)
 - **GitHub:** [#21](https://github.com/maxlogvn/finger-chromium/issues/21) (closed)
+
+---
+
+**Thiếu test coverage cho `runFunction()` — IPC core giao tiếp với engine binary**
+- **File:** `tests/connector.test.ts`
+- **Vấn đề:** Đã thêm 6 test cases cho `RemoteEngine.runFunction()` dùng cơ chế `RemoteEngine._execFile` mock + `_closeTimeout` override. Test đầy đủ: parse response, timeout, invalid JSON, process đóng, dọn file rác, requestTimeout=0.
+- **Tài liệu:** [Design](designs/test-runfunction-ipc-core.design.md) | [Spec](specs/test-runfunction-ipc-core.spec.md) | [Plan](plans/test-runfunction-ipc-core.plan.md) | [Overview](overviews/test-runfunction-ipc-core.overview.md)
+- **GitHub:** [#28](https://github.com/maxlogvn/finger-chromium/issues/28) (closed)

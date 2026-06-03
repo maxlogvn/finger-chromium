@@ -462,16 +462,17 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Test coverage: `runFunction()` IPC core (Issue #28)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** [Design](designs/test-runfunction-ipc-core.design.md) | [Spec](specs/test-runfunction-ipc-core.spec.md) | [Plan](plans/test-runfunction-ipc-core.plan.md) | [Overview](overviews/test-runfunction-ipc-core.overview.md)
 - **Ghi chú:**
-  - `runFunction()` là phương thức IPC duy nhất giao tiếp với engine binary qua chokidar + JSON request/response.
-  - Hiện tại không có test nào gọi `runFunction()` dù trực tiếp hay gián tiếp — zero coverage trên critical path.
-  - Cần mock IPC flow: request file -> chokidar -> response -> parse.
-  - Liên quan: Test Connector (đã hoàn thành).
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #28).
+  - Đã thêm 6 test cases cho `RemoteEngine.runFunction()` trong `tests/connector.test.ts`.
+  - Dùng `RemoteEngine._execFile` mock (static property) thay vì `child_process.execFile` override (ESM live binding immutable).
+  - Thêm `RemoteEngine._closeTimeout` static để test process đóng nhanh.
+  - Thêm `raw` flag trong `simulateResponse` helper cho invalid JSON test.
+  - Tất cả 162 tests pass.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #28).
 
 ---
 

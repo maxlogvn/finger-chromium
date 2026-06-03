@@ -17,7 +17,7 @@ import extract from 'extract-zip';
 import EventEmitter from 'node:events';
 import { pipeline } from 'node:stream/promises';
 import { createHash, randomUUID } from 'node:crypto';
-import { type ChildProcess, execFile } from 'node:child_process';
+import { type ChildProcess, execFile as nodeExecFile } from 'node:child_process';
 import { createReadStream, createWriteStream } from 'node:fs';
 import debugFactory from 'debug';
 import { EngineTimeoutError, InvalidEngineError, PluginError, RequestTimeoutError } from '../errors';
@@ -190,6 +190,12 @@ export async function fetchWithFallback<T = unknown>(url: string, options?: Reco
  * Tự động tải, verify checksum, giải nén engine khi cần.
  */
 export default class RemoteEngine extends EventEmitter {
+  /** @internal For testing — override để mock child_process.execFile. */
+  static _execFile = nodeExecFile;
+
+  /** @internal For testing — override để rút ngắn CLOSE_TIMEOUT. */
+  static _closeTimeout = CLOSE_TIMEOUT;
+
   #meta: EngineMeta | null = null;
   #cwd: string | null = null;
   #args: string[] = [];
@@ -283,7 +289,7 @@ export default class RemoteEngine extends EventEmitter {
           closeTimer = setTimeout(() => {
             debug('Tiến trình engine đã đóng trong lúc chờ phản hồi');
             resolve('');
-          }, CLOSE_TIMEOUT);
+          }, RemoteEngine._closeTimeout);
         };
 
         requestWatcher.on('change', async () => {
@@ -355,7 +361,7 @@ export default class RemoteEngine extends EventEmitter {
 
     // --- Bước 5: Spawn FastExecuteScript.exe
     return new Promise<ChildProcess>((resolve, reject) => {
-      const proc = execFile(
+      const proc = RemoteEngine._execFile(
         path.join(scriptDir, 'FastExecuteScript.exe'),
         ['--silent', ...this.#args],
         { cwd: scriptDir },

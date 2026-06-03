@@ -18,6 +18,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import crypto from 'node:crypto';
+import EventEmitter from 'node:events';
 import RemoteEngine, {
   exists,
   checksum,
@@ -227,6 +228,190 @@ describe('RemoteEngine', () => {
         const tmpExists = await exists(tmpPath);
         strictEqual(tmpExists, false);
       });
+    });
+  });
+
+  // ─── runFunction() ──────────────────────────────────────────────────────
+
+  describe('runFunction()', () => {
+    let tmpDir: string;
+    let scriptDir: string;
+    let mockProc: EventEmitter & {
+      pid: number;
+      spawnfile: string;
+      killed: boolean;
+      exitCode: number | null;
+      kill: () => void;
+    };
+    let origExecFile: typeof RemoteEngine._execFile;
+    let origCloseTimeout: typeof RemoteEngine._closeTimeout;
+    const FAKE_PID = 99_999;
+
+    beforeEach(async () => {
+      tmpDir = await fs.mkdtemp(path.join(process.cwd(), '.tmp', 'runfunc-test-'));
+      const version = '29.9.2';
+      const arch = process.arch.includes('32') ? '32' : '64';
+
+      // --- Tao meta cache de bypass #updateMeta()
+      await fs.writeFile(
+        path.join(tmpDir, `${version}_${arch}.json`),
+        JSON.stringify({ checksum: 'fake', url: 'http://fake/fake.zip', version })
+      );
+
+      // --- Tao cay thu muc engine gia de bypass #startProcessInternal()
+      scriptDir = path.join(tmpDir, 'script', version);
+      const engineDir = path.join(tmpDir, 'engine', version);
+      await fs.mkdir(scriptDir, { recursive: true });
+      await fs.mkdir(engineDir, { recursive: true });
+      await fs.writeFile(path.join(scriptDir, 'FastExecuteScript.exe'), '');
+
+      // --- Tao mock ChildProcess
+      mockProc = Object.assign(new EventEmitter(), {
+        pid: FAKE_PID,
+        spawnfile: path.join(scriptDir, 'FastExecuteScript.exe'),
+        killed: false,
+        exitCode: null,
+        kill: function () { (this as any).killed = true; },
+      });
+
+      // --- Override RemoteEngine._execFile
+      origExecFile = RemoteEngine._execFile;
+      origCloseTimeout = RemoteEngine._closeTimeout;
+      RemoteEngine._execFile = ((...args: any[]) => {
+        const cb = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : null;
+        if (cb) cb(null, '', '');
+        return mockProc;
+      }) as typeof RemoteEngine._execFile;
+    });
+
+    afterEach(async () => {
+      RemoteEngine._execFile = origExecFile;
+      RemoteEngine._closeTimeout = origCloseTimeout;
+      await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+    });
+
+    function simulateResponse(responseData: unknown, timeoutMs = 5000, raw = false): Promise<void> {
+      const requestDir = path.join(scriptDir, 'r');
+      const start = Date.now();
+
+      return new Promise<void>((resolve, reject) => {
+        const poll = async () => {
+          if (Date.now() - start > timeoutMs) {
+            return reject(new Error('Timeout cho request file'));
+          }
+          try {
+            const files = await fs.readdir(requestDir);
+            const reqFile = files.find(f => f.startsWith(`${FAKE_PID}_`));
+            if (reqFile) {
+              const content = raw ? String(responseData) : JSON.stringify(responseData);
+              await fs.writeFile(path.join(requestDir, reqFile), content);
+              resolve();
+              return;
+            }
+          } catch {
+            // Thu muc chua ton tai -- tiep tuc poll
+          }
+          setTimeout(poll, 30);
+        };
+        poll();
+      });
+    }
+
+    // --- Test case: thanh cong ---
+
+    it('nên parse response JSON thành công', async () => {
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 5000 });
+
+      const [result] = await Promise.all([
+        engine.runFunction('testFunc', { foo: 'bar' }),
+        simulateResponse({ response: { ok: true } }),
+      ]);
+
+      strictEqual((result as any).response?.ok, true);
+    });
+
+    // --- Test case: timeout ---
+
+    it('nên throw RequestTimeoutError khi hết thời gian chờ', async () => {
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 100 });
+
+      await rejects(
+        () => engine.runFunction('testFunc', { foo: 'bar' }),
+        (err: Error) => {
+          strictEqual(err.name, 'RequestTimeoutError');
+          ok(err.message.includes('Hết thời gian chờ'));
+          return true;
+        }
+      );
+    });
+
+    // --- Test case: requestTimeout=0 ---
+
+    it('nên không set timeout khi requestTimeout=0 (chờ đến khi có response)', async () => {
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 0 });
+
+      const [result] = await Promise.all([
+        engine.runFunction('testFunc', { foo: 'bar' }),
+        simulateResponse({ response: { ok: true } }),
+      ]);
+
+      strictEqual((result as any).response?.ok, true);
+    });
+
+    // --- Test case: invalid JSON ---
+
+    it('nên trả về error khi response không phải JSON hợp lệ', async () => {
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 5000 });
+
+      const [result] = await Promise.all([
+        engine.runFunction('testFunc', { foo: 'bar' }),
+        simulateResponse('not-json-content', 5000, true),
+      ]);
+
+      strictEqual(result.error, 'Invalid response format from engine');
+    });
+
+    // --- Test case: process dong ---
+
+    it('nên trả về lỗi khi engine process đóng trước khi response', async () => {
+      RemoteEngine._closeTimeout = 100;
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 0 });
+
+      // Emit 'close' sau 50ms de kich hoat close handler
+      setTimeout(() => mockProc.emit('close'), 50);
+
+      const [result] = await Promise.all([
+        engine.runFunction('testFunc', { foo: 'bar' }),
+        // Poll sẽ không tìm thấy request file — chỉ emit 'close' là đủ
+        new Promise<void>(resolve => setTimeout(resolve, 300)),
+      ]);
+
+      strictEqual(result.error, 'Engine process closed unexpectedly');
+    });
+
+    // --- Test case: don file rac ---
+
+    it('nên xoá file request cũ không còn process sở hữu', async () => {
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 5000 });
+
+      // Pre-create thu muc r/ voi file rac
+      const requestDir = path.join(scriptDir, 'r');
+      await fs.mkdir(requestDir, { recursive: true });
+      await fs.writeFile(
+        path.join(requestDir, '88888_old-request.json'),
+        JSON.stringify({ name: 'old', params: {} })
+      );
+
+      // Goi runFunction -- no se don file rac truoc khi tao request moi
+      await Promise.all([
+        engine.runFunction('testFunc', { foo: 'bar' }),
+        simulateResponse({ response: { ok: true } }),
+      ]);
+
+      // Verify file rac da bi xoa
+      const remainingFiles = await fs.readdir(requestDir);
+      const oldFileExists = remainingFiles.some(f => f.includes('88888'));
+      strictEqual(oldFileExists, false, 'File rac phai duoc xoa');
     });
   });
 
