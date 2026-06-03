@@ -11,7 +11,12 @@ Sau khi viewport đã set, `page.setViewportSize()` bị chặn — tránh thay 
 Viewport tự động set khi gọi `launch()` và `newContext()` — không cần cấu hình thủ công:
 
 ```ts
-const context = await Chromium
+import { BrowserEngine } from 'fingerprint-chromium-engine';
+
+const engine = new BrowserEngine();
+const fingerprintData = await engine.newFingerprint();
+
+const context = await engine
   .useFingerprint(fingerprintData)
   .launch()
   .newContext();
@@ -21,7 +26,7 @@ const context = await Chromium
 Nếu không có fingerprint, dùng kích thước từ `defaultViewport` option:
 
 ```ts
-const context = await Chromium
+const context = await engine
   .launch({ viewport: { width: 1920, height: 1080 } })
   .newContext();
 ```

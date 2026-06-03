@@ -68,8 +68,10 @@ npx playwright install chromium
 import {BrowserEngine} from 'fingerprint-chromium-engine';
 
 const engine = new BrowserEngine();
+const fingerprintData = await engine.newFingerprint({tags: ['Chrome', 'Desktop', 'Windows 10']});
+
 const chromium = engine
-    .useFingerprint(fingerprintData, {usePerfectCanvas: true})
+    .useFingerprint(fingerprintData!, {usePerfectCanvas: true})
     .useProxy('http://user:pass@host:port', {changeTimezone: true})
     .useProfile('./profiles/user_01', {loadFingerprint: true})
     .launch({headless: false})

@@ -16,6 +16,7 @@ import { PlaywrightFingerprintPlugin } from './src/adapter/playwright/engine';
 const plugin = new PlaywrightFingerprintPlugin();
 
 plugin.setServiceKey(process.env.BABLOSOFT_KEY ?? '');
+const fingerprintData = await plugin.fetch();
 plugin.useFingerprint(fingerprintData);
 plugin.useProfile('./profiles/user_01', {
   loadProxy: true,
