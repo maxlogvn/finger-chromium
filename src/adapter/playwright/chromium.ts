@@ -207,8 +207,8 @@ export class BrowserEngine implements PWChromium {
     // --- Bước 3: Dọn dẹp engine -- kill worker.exe, engine process, PCAP server, cleaner, mutex
     await this.engine.cleanup();
 
-    // --- Bước 4: Unmap thư mục tạm
-    this.dataManager.unmap(BROWSER_RUNNING_DIR);
+    // --- Bước 4: Dọn dẹp thư mục tạm của instance hiện tại
+    this.dataManager.dispose();
   }
 }
 

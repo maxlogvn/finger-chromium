@@ -87,6 +87,7 @@ Tất cả tài liệu (design, spec, plan, product, overview) và code comment 
 npm run lint       # ESLint
 npm test           # Mocha tests
 npm run build      # tsup bundle
+npm run typecheck  # TypeScript type check (tsc --noEmit)
 ```
 
 ---

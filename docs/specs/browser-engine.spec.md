@@ -44,7 +44,7 @@ Tham chiếu design doc: `docs/designs/browser-engine.design.md`.
 3. `launch()` hợp nhất options từ 3 nguồn: mặc định < config trước < tham số launch.
 4. `launch()` đẩy key, working folder, profile xuống engine. Gọi `useProxy`/`useFingerprint` nếu đã đăng ký.
 5. `newContext()` hợp nhất options lần cuối, gọi `engine.launchPersistentContext(profilePath, options)`.
-6. `quit()` đóng context → lưu profile (nếu có save path) → cleanup engine → unmap temp dir.
+6. `quit()` đóng context → lưu profile (nếu có save path) → cleanup engine → dispose temp dir (chỉ xoá instanceTempDir của instance hiện tại, không xoá thư mục gốc BROWSER_RUNNING_DIR).
 
 ### Guard một lần
 

@@ -12,6 +12,7 @@ import * as pcapServer from './pcapServer';
 import AsyncLock from 'async-lock';
 import { MissingKeyError, PluginError } from '../errors';
 import debugFactory from 'debug';
+import { notify } from './utils';
 
 const debug = debugFactory('browser-with-fingerprints:connector');
 
@@ -71,14 +72,18 @@ pcapServer.listen().then((port: number) => {
  * Lock 'client' đảm bảo chỉ một request được xử lý tại một thời điểm.
  */
 export const api = async (name: string, params: ApiParams = {}): Promise<unknown> => {
-  let notifyTimer: ReturnType<typeof setTimeout> | undefined;
+  let notifyTimer: Parameters<typeof clearTimeout>[0] | undefined;
   return lock.acquire('client', async () => {
     try {
       const { error, ...result } = (await engine.runFunction(name, params, {
         requestTimeout: params?.options?.perfectCanvasRequest ? 0 : engine.requestTimeout,
       } as RunFunctionOptions)) as EngineResult;
       if (error) {
-        throw error.includes('key is missing') ? new MissingKeyError(error) : new PluginError(error);
+        if (error.includes('key is missing')) {
+          notifyTimer = notify(params.key);
+          throw new MissingKeyError(error);
+        }
+        throw new PluginError(error);
       }
       return result.response ?? result;
     } finally {

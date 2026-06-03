@@ -11,15 +11,6 @@
 
 ---
 
-**#3 — `quit()` xoá toàn bộ `BROWSER_RUNNING_DIR` thay vì chỉ xoá temp dir của instance**
-- **File:** `src/adapter/playwright/chromium.ts:quit()`
-- **Vấn đề:** `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc `.tmp/browser/running/`, không chỉ temp dir của instance hiện tại.
-- **Tác động:** Nếu có nhiều instance đang chạy song song, instance khác bị ảnh hưởng khi một instance gọi `quit()`.
-
-> **Lưu ý:** Task [`quit-handle-cleanup`](plans/quit-handle-cleanup.plan.md) **không** xử lý issue này — cần tạo task riêng để fix.
-
----
-
 **#4 — JSDoc trong `PWChromium.ts` tham chiếu method không tồn tại**
 - **File:** `src/types/PWChromium.ts:17,25`
 - **Vấn đề:** JSDoc example gọi `usePrivateKey()` — method này không tồn tại trong interface. Method thật là `setServiceKey(key)` trong `FingerprintPlugin`.
@@ -34,6 +25,14 @@
 - **Vấn đề cũ:** `notify()` được định nghĩa và export nhưng không có file nào import. `notifyTimer` được khai báo, `clearTimeout(notifyTimer)` có trong `finally`, nhưng `notifyTimer` không bao giờ được gán giá trị.
 - **Fix:** Import `notify()` vào `connector/index.ts` và gọi trong `api()` khi engine trả lỗi "key is missing". Sửa kiểu `notifyTimer` cho tương thích.
 - **Tài liệu:** [Design](designs/bug-001-notify-dead-code.design.md) | [Spec](specs/bug-001-notify-dead-code.spec.md) | [Plan](plans/bug-001-notify-dead-code.plan.md) | [Overview](overviews/bug-001-notify-dead-code.overview.md)
+
+---
+
+**#3 — `quit()` xoá toàn bộ `BROWSER_RUNNING_DIR` thay vì chỉ xoá temp dir của instance**
+- **File:** `src/adapter/playwright/chromium.ts:quit()`
+- **Vấn đề cũ:** `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc `.tmp/browser/running/`, không chỉ temp dir của instance hiện tại.
+- **Fix:** Đổi `this.dataManager.unmap(BROWSER_RUNNING_DIR)` thành `this.dataManager.dispose()` — chỉ xoá `instanceTempDir` của instance hiện tại.
+- **Tài liệu:** [Design](designs/bug-003-quit-unmap-root.design.md) | [Spec](specs/bug-003-quit-unmap-root.spec.md) | [Plan](plans/bug-003-quit-unmap-root.plan.md) | [Overview](overviews/bug-003-quit-unmap-root.overview.md)
 
 ---
 

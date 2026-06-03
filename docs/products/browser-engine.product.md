@@ -55,7 +55,7 @@ await Chromium.quit();
 
 `newContext()` mới là bước tạo `BrowserContext`. Bên trong, method này gọi `engine.launchPersistentContext()`. `launchPersistentContext` là API Playwright dùng thư mục profile cố định, nên phù hợp với profile bền vững.
 
-`quit()` đóng context, lưu profile nếu có, rồi gọi `engine.cleanup()`. Cần gọi cleanup vì đóng context chưa chắc dọn hết worker process, engine process, PCAP server, cleaner và mutex.
+`quit()` đóng context, lưu profile nếu có, rồi gọi `engine.cleanup()`. Cần gọi cleanup vì đóng context chưa chắc dọn hết worker process, engine process, PCAP server, cleaner và mutex. Cuối cùng, `quit()` xoá thư mục tạm của instance hiện tại — không ảnh hưởng đến instance khác.
 
 ## Giới hạn và điều kiện
 

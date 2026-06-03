@@ -101,11 +101,12 @@ Kiểm tra spec và plan trước khi bắt đầu code. Phát hiện sớm các
 - **Output:** Xác nhận spec và plan nhất quán với nhau, sẵn sàng để code.
 - **Người:** Quyết định duyệt hoặc yêu cầu sửa.
 - **AI:** Trước khi trình người duyệt, tự chạy checklist sau:
-  - [ ] Mọi yêu cầu trong spec đều có bước tương ứng trong plan?
-  - [ ] Không có bước nào trong plan mâu thuẫn với spec?
-  - [ ] Xử lý lỗi trong spec đã được phản ánh vào plan?
-  - [ ] Các bước trong plan đủ nhỏ để thực hiện độc lập?
-  - [ ] Có dependency nào giữa các bước chưa được ghi rõ?
+    - [ ] Spec có nhất quán với design đã duyệt không?
+    - [ ] Mọi yêu cầu trong spec đều có bước tương ứng trong plan?
+    - [ ] Không có bước nào trong plan mâu thuẫn với spec?
+    - [ ] Xử lý lỗi trong spec đã được phản ánh vào plan?
+    - [ ] Các bước trong plan đủ nhỏ để thực hiện độc lập?
+    - [ ] Có dependency nào giữa các bước chưa được ghi rõ?
 
 > **Gate:** Kết quả bước này **phải được người duyệt** trước khi sang bước 6.
 
@@ -129,8 +130,10 @@ Thực hiện code theo đúng plan đã duyệt. Tuân thủ các quy ước tr
 Chạy các kiểm tra chất lượng trước khi xem xét hoàn thành.
 
 ```bash
-npm run lint   # kiểm tra ESLint + Prettier
-npm test       # chạy Mocha tests
+npm run lint       # kiểm tra ESLint + Prettier
+npm run typecheck  # kiểm tra TypeScript types (tsc --noEmit)
+npm run build      # kiểm tra tsup bundle (ESM + CJS)
+npm test           # chạy Mocha tests
 ```
 
 Kiểm tra thủ công nếu tính năng phức tạp hoặc có UI.
@@ -170,7 +173,9 @@ Bước 2 — Với từng file, đối chiếu nội dung với tính năng v�
 | `CONVENTIONS.md` | Tính năng giới thiệu pattern, quy ước, hoặc cấu trúc code mới |
 | `STACK.md` | Tính năng thêm hoặc thay thế thư viện, công nghệ |
 | `Welcome.md` | Tính năng thay đổi cách onboard hoặc tổng quan dự án |
-| `specs/*.spec.md` | Spec tính năng khác có mô tả hành vi này đã thay đổi |
+| `ROADMAP.md` | Scope, trạng thái hoặc tiến độ tính năng thay đổi |
+| `KNOWN_ISSUES.md` | Bug được fix trong tính năng này |
+| `specs/*.spec.md` | Spec tính năng khác có mô tả hành vi nay đã thay đổi |
 | `products/*.product.md` | Product doc tính năng khác bị ảnh hưởng về luồng hoặc API |
 
 Bước 3 — Với mỗi file cần cập nhật: thực hiện chỉnh sửa, ghi rõ lý do thay đổi.
@@ -192,12 +197,12 @@ Viết tài liệu dựa trên loại task:
 
 - **Input:** Code đã pass kiểm tra và tài liệu liên quan đã được cập nhật ở bước 8.
 - **Output:**
-  - `docs/products/<tên>.product.md` — tài liệu tính năng (chỉ cho feature task).
-  - `docs/overviews/<tên>.overview.md` — báo cáo kết quả thực hiện plan (mọi task).
+    - `docs/products/<tên>.product.md` — tài liệu tính năng (chỉ cho feature task).
+    - `docs/overviews/<tên>.overview.md` — báo cáo kết quả thực hiện plan (mọi task).
 - **Người:** Kiểm tra nội dung tài liệu.
 - **AI:**
-  - Feature task: viết product doc dựa trên design, spec và code. Dùng [product.template.md](templates/product.template.md). Viết overview báo cáo quá trình. Dùng [overview.template.md](templates/overview.template.md).
-  - Non-feature task: chỉ viết overview, so sánh kế hoạch với thực tế, ghi lại sai lệch nếu có. Dùng [overview.template.md](templates/overview.template.md).
+    - Feature task: viết product doc dựa trên design, spec và code. Dùng [product.template.md](templates/product.template.md). Viết overview báo cáo quá trình. Dùng [overview.template.md](templates/overview.template.md).
+    - Non-feature task: chỉ viết overview, so sánh kế hoạch với thực tế, ghi lại sai lệch nếu có. Dùng [overview.template.md](templates/overview.template.md).
 
 ---
 
@@ -208,7 +213,33 @@ Khi tính năng hoàn thành, cập nhật Roadmap.
 - **Input:** Tính năng đã pass kiểm tra, tài liệu liên quan đã cập nhật, và tài liệu tính năng đã hoàn chỉnh.
 - **Output:** `docs/ROADMAP.md` được cập nhật: trạng thái chuyển thành "Hoàn thành", ghi lại bước đã làm và tài liệu liên quan.
 - **Người:** Duyệt kết quả cuối cùng.
-- **AI:** Cập nhật Roadmap.
+- **AI:** Cập nhật Roadmap, đánh dấu "Hoàn thành". Bổ sung đường dẫn đến tất cả tài liệu liên quan (design, spec, plan, product, overview) vào trường `Tài liệu` trong Roadmap.
+
+---
+
+## Xử lý khi bị từ chối ở gate
+
+Khi người duyệt từ chối ở bất kỳ gate nào (bước 2-5, 8), áp dụng quy trình sau:
+
+1. **Ghi nhận phản hồi:** AI ghi lại lý do từ chối và yêu cầu cụ thể từ người duyệt.
+2. **Xác định phạm vi sửa:**
+   - Nếu từ chối ở **bước 2 (design)**: Sửa design, không cần động đến spec hay plan.
+   - Nếu từ chối ở **bước 3 (spec)**: Sửa spec và kiểm tra design có cần cập nhật theo không. Plan chưa viết nên không ảnh hưởng.
+   - Nếu từ chối ở **bước 4 (plan)**: Sửa plan, kiểm tra spec có cần cập nhật theo không.
+   - Nếu từ chối ở **bước 5 (review tổng thể)**: Sửa spec và/hoặc plan tùy theo lỗi. Nếu lỗi từ design, cập nhật luôn design.
+   - Nếu từ chối ở **bước 8 (rà soát tài liệu)**: Sửa các file tài liệu theo yêu cầu.
+3. **Trình lại:** Sau khi sửa, trình người duyệt kiểm tra lại. Chỉ cần review phần đã thay đổi, không cần review toàn bộ lại từ đầu.
+4. **Cập nhật file liên quan:** Nếu sửa nội dung ở bước X, kiểm tra các file đã tạo ở bước X-1 có cần cập nhật không (ví dụ sửa spec thì kiểm tra design).
+
+## Hủy tính năng giữa chừng
+
+Nếu tính năng bị hủy ở bất kỳ bước nào:
+
+1. **Cập nhật Roadmap:** Chuyển trạng thái thành "Hủy" hoặc xóa mục khỏi Roadmap.
+2. **Dọn file tạm:**
+   - Nếu đã tạo design/spec/plan: giữ lại và thêm ghi chú "Đã hủy" ở đầu file kèm lý do.
+   - Nếu đã code: revert commit (nếu có) hoặc tạo commit riêng để lưu code hủy (nếu cần tham khảo sau).
+3. **Không tạo tài liệu** product hay overview cho tính năng đã hủy.
 
 ---
 
@@ -227,7 +258,6 @@ docs/
 │   ├── plan.template.md
 │   ├── overview.template.md
 │   └── product.template.md
-├── KNOWN_ISSUES.md — danh sách bug và vấn đề đã biết
 ├── ROADMAP.md     — theo dõi tiến độ tất cả tính năng
 ├── CONVENTIONS.md — quy ước code
 ├── STACK.md       — công nghệ sử dụng

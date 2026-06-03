@@ -312,6 +312,19 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Bug #3 — `quit()` xoá toàn bộ `BROWSER_RUNNING_DIR` thay vì chỉ xoá temp dir của instance
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-003-quit-unmap-root.design.md) | [Spec](specs/bug-003-quit-unmap-root.spec.md) | [Plan](plans/bug-003-quit-unmap-root.plan.md) | [Overview](overviews/bug-003-quit-unmap-root.overview.md)
+- **Ghi chú:**
+  - `this.dataManager.unmap(BROWSER_RUNNING_DIR)` trong `quit()` xoá cả thư mục gốc `.tmp/browser/running/`
+  - Fix: đổi thành `this.dataManager.dispose()` — chỉ xoá temp dir của instance hiện tại
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #3
+
+---
+
 ### Bug #7 — Singleton `Chromium` không hỗ trợ launch nhiều profile song song
 
 - **Trạng thái:** [X] Hoàn thành

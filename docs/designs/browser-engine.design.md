@@ -88,7 +88,7 @@ Chromium.quit()
   -> context.close()
   -> AdapterDataManager.map(runtimeProfile, targetProfile)
   -> engine.cleanup()
-  -> AdapterDataManager.unmap(BROWSER_RUNNING_DIR)
+  -> AdapterDataManager.dispose()              // chỉ xoá temp dir của instance
 ```
 
 Thứ tự này quan trọng. Context cần đóng trước để dữ liệu profile ngừng thay đổi. Sau đó mới lưu profile và dọn engine nền.
