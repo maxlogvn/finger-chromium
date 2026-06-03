@@ -20,7 +20,7 @@ import * as pcapServer from '../src/plugin/connector/pcapServer';
 import cleaner from '../src/plugin/cleaner';
 import * as mutex from '../src/plugin/mutex';
 import FingerprintPlugin from '../src/plugin';
-import { Chromium } from '../src/adapter/playwright/chromium';
+import { BrowserEngine } from '../src/adapter/playwright/chromium';
 
 // ─── Module-level cleanup methods ────────────────────────────────────────────
 
@@ -90,20 +90,23 @@ describe('FingerprintPlugin cleanup', () => {
   });
 });
 
-// ─── BrowserEngine (Chromium) quit ───────────────────────────────────────────
+// ─── BrowserEngine quit ──────────────────────────────────────────────────────
 
 describe('BrowserEngine.quit()', () => {
   it('quit() không throw khi chưa launch', async () => {
-    await Chromium.quit();
+    const engine = new BrowserEngine();
+    await engine.quit();
   });
 
   it('quit() không throw khi gọi 2 lần (idempotent)', async () => {
-    await Chromium.quit();
-    await Chromium.quit();
+    const engine = new BrowserEngine();
+    await engine.quit();
+    await engine.quit();
   });
 
   it('engine.cleanup() không throw khi chưa khởi tạo engine', async () => {
-    await Chromium.engine.cleanup();
+    const engine = new BrowserEngine();
+    await engine.engine.cleanup();
   });
 });
 
@@ -112,7 +115,7 @@ describe('BrowserEngine.quit()', () => {
 describe('PWChromium interface', () => {
   it('quit() là async function', () => {
     const desc = Object.getOwnPropertyDescriptor(
-      Object.getPrototypeOf(Chromium),
+      BrowserEngine.prototype,
       'quit'
     );
     ok(desc, 'quit() phải tồn tại trên prototype');

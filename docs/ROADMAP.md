@@ -295,5 +295,35 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+---
+
+### Bug #1 — `notify()` dead code
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-001-notify-dead-code.design.md) | [Spec](specs/bug-001-notify-dead-code.spec.md) | [Plan](plans/bug-001-notify-dead-code.plan.md) | [Overview](overviews/bug-001-notify-dead-code.overview.md)
+- **Ghi chú:**
+  - `notify()` trong `utils.ts` không được import bởi bất kỳ file nào
+  - `notifyTimer` + `clearTimeout(notifyTimer)` trong `index.ts` là dead code
+  - Cần quyết định: xoá hoặc tích hợp đúng luồng
+
+---
+
+---
+
+### Bug #7 — Singleton `Chromium` không hỗ trợ launch nhiều profile song song
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-007-multi-profile-singleton.design.md) | [Spec](specs/bug-007-multi-profile-singleton.spec.md) | [Plan](plans/bug-007-multi-profile-singleton.plan.md) | [Overview](overviews/bug-007-multi-profile-singleton.overview.md)
+- **Ghi chú:**
+  - `BrowserEngine` là singleton — `launch()` chỉ cho phép gọi một lần
+  - Test `multi_context.ts` gọi launch cho 2 profile khác nhau trên cùng instance, lỗi "Phuong thuc launch() chi duoc goi mot lan."
+  - Nguyên nhân gốc: design singleton không phù hợp với use case multi-profile
+
+---
+
 <!-- Hết feature tasks -- các non-feature tasks (format code, fix quit, build config, known issues, documentation rewrite/correction) đã được dọn khỏi roadmap vì đã hoàn thành và không cần theo dõi tiến độ. -->
 

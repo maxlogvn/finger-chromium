@@ -4,13 +4,6 @@
 
 ### OPEN — cần fix
 
-**#1 — `notify()` dead code**
-- **File:** `src/plugin/connector/utils.ts`, `src/plugin/connector/index.ts`
-- **Vấn đề:** `notify()` được định nghĩa và export nhưng không có file nào import. `notifyTimer` được khai báo, `clearTimeout(notifyTimer)` có trong `finally`, nhưng `notifyTimer` không bao giờ được gán giá trị.
-- **Tác động:** Code thừa, gây confusion khi đọc.
-
----
-
 **#2 — Error classes không export trong public API**
 - **File:** `src/index.ts`
 - **Vấn đề:** `PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError` (trong `src/plugin/errors.ts`) không được re-export ra public API.
@@ -34,18 +27,15 @@
 
 ---
 
-**#7 — Singleton `Chromium` không hỗ trợ launch nhiều profile song song**
-- **File:** `src/adapter/playwright/chromium.ts` (singleton `BrowserEngine`), `tests/multi_context.ts`
-- **Vấn đề:** `BrowserEngine` là singleton — `launch()` chỉ cho phép gọi một lần (kiểm tra `isLaunched`). Test `multi_context.ts` gọi `launchBrowserWithProfile()` cho 2 profile khác nhau trên cùng một instance, dẫn đến lỗi `"Phuong thuc launch() chi duoc goi mot lan."`.
-- **Nguyên nhân gốc:** `Chromium` được design như singleton (một browser session duy nhất), nhưng test `multi_context.ts` kỳ vọng có thể chạy nhiều profile độc lập đồng thời trên cùng một instance.
-- **Tác động:** Không thể chạy nhiều profile song song với API hiện tại.
-- **Hướng xử lý gợi ý:**
-  1. Tạo factory method (`BrowserEngine.create()`) trả về instance mới, giữ `Chromium` làm convenience singleton.
-  2. Hoặc sửa test chạy tuần tự (quit profile 1 trước, launch profile 2 sau).
+### FIXED
+
+**#1 — `notify()` dead code**
+- **File:** `src/plugin/connector/utils.ts`, `src/plugin/connector/index.ts`
+- **Vấn đề cũ:** `notify()` được định nghĩa và export nhưng không có file nào import. `notifyTimer` được khai báo, `clearTimeout(notifyTimer)` có trong `finally`, nhưng `notifyTimer` không bao giờ được gán giá trị.
+- **Fix:** Import `notify()` vào `connector/index.ts` và gọi trong `api()` khi engine trả lỗi "key is missing". Sửa kiểu `notifyTimer` cho tương thích.
+- **Tài liệu:** [Design](designs/bug-001-notify-dead-code.design.md) | [Spec](specs/bug-001-notify-dead-code.spec.md) | [Plan](plans/bug-001-notify-dead-code.plan.md) | [Overview](overviews/bug-001-notify-dead-code.overview.md)
 
 ---
-
-### FIXED
 
 **#5 — `npm run clean` không tương thích Windows**
 - **File:** `package.json`
@@ -59,3 +49,11 @@
 - **Vấn đề cũ:** Hardcoded `../../../` trong path resolve bị sai sau khi tsup bundle.
 - **Fix:** Walk-up algorithm tìm package root (`resolvePackageRoot`).
 - **Tài liệu:** [Design](designs/mutex-path-resolution.design.md) | [Spec](specs/mutex-path-resolution.spec.md) | [Plan](plans/mutex-path-resolution.plan.md) | [Overview](overviews/mutex-path-resolution.overview.md)
+
+---
+
+**#7 — Singleton `Chromium` không hỗ trợ launch nhiều profile song song**
+- **File:** `src/adapter/playwright/chromium.ts`, `tests/multi_context.ts`
+- **Vấn đề cũ:** `BrowserEngine` là singleton — `launch()` chỉ cho phép gọi một lần. Test `multi_context.ts` gọi launch cho 2 profile khác nhau trên cùng instance, lỗi `"Phuong thuc launch() chi duoc goi mot lan."`.
+- **Fix:** Xoá singleton `Chromium`, export class `BrowserEngine` trực tiếp. Mỗi `new BrowserEngine()` là instance độc lập, có thể launch riêng. Giữ alias `Chromium = BrowserEngine` cho backward compatibility.
+- **Tài liệu:** [Design](designs/bug-007-multi-profile-singleton.design.md) | [Spec](specs/bug-007-multi-profile-singleton.spec.md) | [Plan](plans/bug-007-multi-profile-singleton.plan.md) | [Overview](overviews/bug-007-multi-profile-singleton.overview.md)

@@ -1,7 +1,7 @@
 // ─── File: adapter/playwright/chromium.ts ──────────────────────────────────
 // Namespace điều khiển trình duyệt Chromium với hỗ trợ fingerprint, proxy và profile.
 //
-//   1. Khởi tạo engine (PlaywrightFingerprintPlugin + AdapterDataManager)
+//   1. Tạo instance mới: `new BrowserEngine()` — mỗi instance độc lập
 //   2. Đăng ký cấu hình (fingerprint, proxy, profile) qua Fluent API
 //   3. Khởi động engine -- launch()
 //   4. Tạo Playwright BrowserContext -- newContext()
@@ -50,9 +50,9 @@ export const DEFAULT_CONTEXT_OPTIONS: PluginLaunchOptions = {
 
 /**
  * Engine điều khiển Chromium -- tích hợp fingerprint, proxy, profile.
- * Instance được export qua biến `Chromium` (singleton).
+ * Dùng `new BrowserEngine()` để tạo instance riêng cho mỗi session.
  */
-class BrowserEngine implements PWChromium {
+export class BrowserEngine implements PWChromium {
   public engine: PlaywrightFingerprintPlugin;
 
   private options: PluginLaunchOptions;
@@ -215,17 +215,14 @@ class BrowserEngine implements PWChromium {
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 /**
- * Singleton instance Chromium -- dùng Fluent API để cấu hình và launch.
- * Là public API chính của thư viện.
+ * Alias backward compatibility cho code cũ import `Chromium`.
+ * Giờ là class, không phải instance — dùng `new BrowserEngine()` hoặc `new Chromium()`.
  *
  * @example
- * const context = await Chromium
+ * const engine = new BrowserEngine();
+ * const context = await engine
  *   .useFingerprint(fp)
- *   .useProxy('http://user:pass@host:port')
- *   .useProfile('./profiles/user_01')
  *   .launch()
  *   .newContext();
  */
-const Chromium: PWChromium = new BrowserEngine();
-
-export { Chromium };
+export const Chromium = BrowserEngine;
