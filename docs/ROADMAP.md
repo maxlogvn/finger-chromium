@@ -312,6 +312,30 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Bug #2 — Error classes không export trong public API
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-002-export-error-classes.design.md) | [Spec](specs/bug-002-export-error-classes.spec.md) | [Plan](plans/bug-002-export-error-classes.plan.md) | [Overview](overviews/bug-002-export-error-classes.overview.md)
+- **Ghi chú:**
+  - Fix: them export block 5 error class tu `./plugin/errors` vao `src/index.ts`
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #2
+
+---
+
+### Bug #4 — JSDoc trong `PWChromium.ts` tham chiếu method không tồn tại
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-004-jsdoc-privatekey.design.md) | [Spec](specs/bug-004-jsdoc-privatekey.spec.md) | [Plan](plans/bug-004-jsdoc-privatekey.plan.md) | [Overview](overviews/bug-004-jsdoc-privatekey.overview.md)
+- **Ghi chú:**
+  - Fix: xoá `usePrivateKey()` khỏi JSDoc, thay bằng hướng dẫn set env `BABLOSOFT_KEY`
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #4
+
+---
+
 ### Bug #3 — `quit()` xoá toàn bộ `BROWSER_RUNNING_DIR` thay vì chỉ xoá temp dir của instance
 
 - **Trạng thái:** [X] Hoàn thành

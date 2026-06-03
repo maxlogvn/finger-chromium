@@ -14,15 +14,16 @@ import type { FetchOptions, PluginLaunchOptions } from '../adapter/playwright/ch
 /**
  * Interface điều khiển trình duyệt Chromium với hỗ trợ fingerprint, proxy và profile.
  *
- * Các method cấu hình (`useFingerprint`, `useProxy`, `useProfile`, `usePrivateKey`)
+ * Key bảo mật được đọc từ biến môi trường `BABLOSOFT_KEY` — set trước khi chạy.
+ * Các method cấu hình (`useFingerprint`, `useProxy`, `useProfile`)
  * phải được gọi trước `launch()`. Sau khi `launch()` được gọi, cấu hình sẽ không thể thay đổi.
  *
  * @example
  * ```ts
+ * // Set biến môi trường BABLOSOFT_KEY trước khi chạy
  * const browser: PWChromium = new BrowserEngine();
  *
  * const context = await browser
- *   .usePrivateKey('your-private-key')
  *   .useFingerprint(fingerprintData, { usePerfectCanvas: true })
  *   .useProxy('http://user:pass@host:port', { changeTimezone: true })
  *   .useProfile('./profiles/user_01', { loadFingerprint: true })

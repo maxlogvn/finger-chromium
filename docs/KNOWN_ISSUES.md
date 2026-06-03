@@ -11,13 +11,6 @@
 
 ---
 
-**#4 — JSDoc trong `PWChromium.ts` tham chiếu method không tồn tại**
-- **File:** `src/types/PWChromium.ts:17,25`
-- **Vấn đề:** JSDoc example gọi `usePrivateKey()` — method này không tồn tại trong interface. Method thật là `setServiceKey(key)` trong `FingerprintPlugin`.
-- **Tác động:** Developer đọc JSDoc bị mislead.
-
----
-
 ### FIXED
 
 **#1 — `notify()` dead code**
@@ -33,6 +26,14 @@
 - **Vấn đề cũ:** `this.dataManager.unmap(BROWSER_RUNNING_DIR)` xoá cả thư mục gốc `.tmp/browser/running/`, không chỉ temp dir của instance hiện tại.
 - **Fix:** Đổi `this.dataManager.unmap(BROWSER_RUNNING_DIR)` thành `this.dataManager.dispose()` — chỉ xoá `instanceTempDir` của instance hiện tại.
 - **Tài liệu:** [Design](designs/bug-003-quit-unmap-root.design.md) | [Spec](specs/bug-003-quit-unmap-root.spec.md) | [Plan](plans/bug-003-quit-unmap-root.plan.md) | [Overview](overviews/bug-003-quit-unmap-root.overview.md)
+
+---
+
+**#4 — JSDoc trong `PWChromium.ts` tham chiếu method không tồn tại**
+- **File:** `src/types/PWChromium.ts:17,25`
+- **Vấn đề cũ:** JSDoc example gọi `usePrivateKey()` — method không tồn tại trong interface.
+- **Fix:** Xoá tham chiếu `usePrivateKey()`, thay bằng hướng dẫn set biến môi trường `BABLOSOFT_KEY`.
+- **Tài liệu:** [Design](designs/bug-004-jsdoc-privatekey.design.md) | [Spec](specs/bug-004-jsdoc-privatekey.spec.md) | [Plan](plans/bug-004-jsdoc-privatekey.plan.md) | [Overview](overviews/bug-004-jsdoc-privatekey.overview.md)
 
 ---
 

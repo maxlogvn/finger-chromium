@@ -14,27 +14,26 @@ PluginError (base)
 
 ## Cách sử dụng
 
-Hiện tại errors chưa được export public (xem KNOWN_ISSUES.md #2). Dùng `err.name` để phân biệt:
+Import trực tiếp error class từ package:
 
 ```ts
+import {
+  PluginError,
+  MissingKeyError,
+  InvalidEngineError,
+  EngineTimeoutError,
+  RequestTimeoutError,
+} from 'fingerprint-chromium-engine';
+
 try {
-  await Chromium.launch();
+  const context = await Chromium.launch().newContext();
 } catch (err: unknown) {
-  if (err instanceof Error) {
-    switch (err.name) {
-      case 'MissingKeyError':
-        console.error('Thiếu key:', err.message);
-        break;
-      case 'InvalidEngineError':
-        console.error('Engine lỗi:', err.message);
-        break;
-      case 'EngineTimeoutError':
-      case 'RequestTimeoutError':
-        console.error('Timeout:', err.message);
-        break;
-      default:
-        console.error('Lỗi engine:', err.message);
-    }
+  if (err instanceof MissingKeyError) {
+    console.error('Thiếu key — cần set BABLOSOFT_KEY:', err.message);
+  } else if (err instanceof InvalidEngineError) {
+    console.error('Engine lỗi — xoá thư mục engine và chạy lại:', err.message);
+  } else if (err instanceof PluginError) {
+    console.error('Lỗi engine khác:', err.message);
   }
 }
 ```
@@ -62,8 +61,7 @@ Cho phép `Object.prototype.toString.call(err)` trả về `[object MissingKeyEr
 
 ## Giới hạn và điều kiện
 
-- Chưa thể import errors từ package (KNOWN_ISSUES.md #2). Dùng `err.name` thay thế.
-- `instanceof PluginError` hiện không hoạt động nếu import từ package.
+- Error class đã được export public từ bản fix #2. Có thể import trực tiếp từ `fingerprint-chromium-engine`.
 - Tất cả message lỗi viết bằng tiếng Việt.
 
 ## Tài liệu kỹ thuật liên quan
