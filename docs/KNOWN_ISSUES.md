@@ -42,6 +42,69 @@
 
 ---
 
+**#12 — PCAP server `listen()` khởi động ở module scope (side effect)**
+- **File:** `src/plugin/connector/index.ts:63-66`
+- **Vấn đề cũ:** `pcapServer.listen()` được gọi ngay khi import module. Chỉ cần `import` file này (dù chỉ để lấy type) cũng mở một TCP server — rất nguy hiểm trong unit test.
+- **Fix:** Chuyển `pcapServer.listen()` vào trong method khởi tạo (constructor hoặc `api()`), không gọi ở module scope.
+
+---
+
+**#13 — `cleaner` singleton dùng chung giữa các `BrowserEngine` instance**
+- **File:** `src/plugin/cleaner.ts:118`
+- **Vấn đề cũ:** `export default new SettingsCleaner()` — tất cả instance đều dùng chung một cleaner. Instance A có thể cleanup file của instance B (race condition).
+- **Fix:** Cho phép tạo `SettingsCleaner` instance riêng, không dùng singleton global.
+
+---
+
+**#14 — `RemoteEngine` singleton dùng chung giữa các instance**
+- **File:** `src/plugin/connector/index.ts:49`
+- **Vấn đề cũ:** `engine` là singleton với `#cwd`, `#process` là private state dùng chung. Mỗi `BrowserEngine` mới vẫn dùng chung engine process. `kill()` trên một instance ảnh hưởng instance khác.
+- **Fix:** Factory pattern — mỗi `FingerprintPlugin` instance tạo `RemoteEngine` riêng, không dùng singleton global.
+
+---
+
+**#15 — PCAP server retry EADDRINUSE nhưng promise gốc không bao giờ resolve**
+- **File:** `src/plugin/connector/pcapServer/index.ts:42-46`
+- **Vấn đề cũ:** Khi port bận, error handler gọi `server.listen()` lại, nhưng promise từ `listen()` gốc không resolve. Caller treo vĩnh viễn.
+- **Fix:** Trong error handler EADDRINUSE, reject promise cũ và tạo promise mới cho lần retry.
+
+---
+
+**#16 — `cleaner` dùng `posix` path trên Windows**
+- **File:** `src/plugin/cleaner.ts:12`
+- **Vấn đề cũ:** `import { posix as path } from 'path'` — forward slash dùng với `proper-lockfile` trên Windows có thể gây lỗi lock/unlock file.
+- **Fix:** Dùng `path` mặc định (Windows native) — `import path from 'node:path'`.
+
+---
+
+**#17 — `synchronize` ghi `BAS_NOT_SET` cho `availWidth/availHeight` vì sai tên key**
+- **File:** `src/plugin/config.ts:77`
+- **Vấn đề cũ:** `synchronize` tìm key `availWidth`/`availHeight` trong `.ini`, nhưng `bounds` từ API setup chứa `width`/`height`. Kết quả: luôn ghi `BAS_NOT_SET` (không sync được kích thước thật).
+- **Fix:** Map `bounds.width → availWidth`, `bounds.height → availHeight` trước khi ghi vào `.ini`.
+
+---
+
+**#18 — Mỗi lần gọi API spawn một process engine mới, không tái sử dụng**
+- **File:** `src/plugin/connector/engine.ts:270-321`
+- **Vấn đề cũ:** `runFunction()` gọi `#startProcess()` mỗi lần, không kiểm tra process cũ còn sống. Mỗi API call spawn `FastExecuteScript.exe` mới — tốn tài nguyên và chậm.
+- **Fix:** Cache engine process — kiểm tra `this.#process` còn alive không, chỉ spawn lại nếu process đã chết.
+
+---
+
+**#19 — `isBrowser` type guard dùng string check fragile**
+- **File:** `src/adapter/playwright/utils.ts:19-23`
+- **Vấn đề cũ:** Phân biệt `Browser` vs `BrowserContext` bằng cách check method `version()` tồn tại. Nếu Playwright thay đổi API, type guard sai.
+- **Fix:** Dùng `instanceof` hoặc check duck-typing với nhiều property hơn (`isConnected`, `contexts`...).
+
+---
+
+**#20 — Hardcoded `await setTimeout(2000)` bên trong async-lock**
+- **File:** `src/plugin/config.ts:83`
+- **Vấn đề cũ:** Mỗi lần synchronize tốn 4 giây (2 giây x 2 iteration) bên trong `lock.acquire`, block các instance khác chờ lock.
+- **Fix:** Giảm timeout xuống, hoặc chuyển thành polling interval configurable.
+
+---
+
 ### FIXED
 
 **#1 — `notify()` dead code**

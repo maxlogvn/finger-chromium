@@ -74,7 +74,7 @@ src/
 
 ## Known Issues
 
-Hiện có **4 issue OPEN** — đang chờ xử lý. Chi tiết tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+Hiện có **13 issue OPEN** — đang chờ xử lý. Chi tiết tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ---
 
