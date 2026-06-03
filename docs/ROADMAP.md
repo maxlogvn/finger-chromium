@@ -350,15 +350,16 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Test Cleanup (SettingsCleaner + ConfigManager + Mutex)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
-- **Cập nhật:** 2026-06-03
-- **Tài liệu:**
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/test-cleanup.design.md) | [Spec](specs/test-cleanup.spec.md) | [Plan](plans/test-cleanup.plan.md) | [Overview](overviews/test-cleanup.overview.md) -- `tests/cleanup.test.ts`
 - **Ghi chú:**
-  - File test: `tests/cleanup.test.ts`
-  - Module cần test: `cleaner.ts`, `config.ts`, `mutex/index.ts`
-  - Unit test: mock proper-lockfile, fs
-  - Integration test (nếu có): synchronize với file .ini thật
+  - File test: `tests/cleanup.test.ts` — 19 test cases mới
+  - Module đã test: `cleaner.ts`, `config.ts`, `mutex/index.ts`
+  - Manual stub (CJS property mutation) + integration (temp file thật) + sinon global spies
+  - Tất cả 104 tests pass (19 mới + 85 cũ)
+  - Sai lệch: proxyquire → manual stub (ESM incompatibility), bỏ test `#cleanup` private method, sinon chỉ dùng cho global spies
 
 ---
 
