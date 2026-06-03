@@ -64,20 +64,18 @@ npx playwright install chromium
 
 ## Sử dụng nhanh
 
-
 ```ts
-import { BrowserEngine } from 'fingerprint-chromium-engine';
+import {BrowserEngine} from 'fingerprint-chromium-engine';
 
 const engine = new BrowserEngine();
-const context = await engine
-  .useFingerprint(fingerprintData, { usePerfectCanvas: true })
-  .useProxy('http://user:pass@host:port', { changeTimezone: true })
-  .useProfile('./profiles/user_01', { loadFingerprint: true })
-  .launch({ headless: false })
-  .newContext();
-
+const chromium = engine
+    .useFingerprint(fingerprintData, {usePerfectCanvas: true})
+    .useProxy('http://user:pass@host:port', {changeTimezone: true})
+    .useProfile('./profiles/user_01', {loadFingerprint: true})
+    .launch({headless: false})
+const context = await chromium.newContext();
 const page = await context.newPage();
-await page.goto('https://google.com', { waitUntil: 'domcontentloaded' });
+await page.goto('https://google.com', {waitUntil: 'domcontentloaded'});
 await page.waitForTimeout(10_000);
 await page.close();
 await engine.quit();

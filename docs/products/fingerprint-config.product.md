@@ -9,13 +9,15 @@ Tất cả fingerprint được inject ở tầng C/C++ trước khi Chromium kh
 ## Cách sử dụng
 
 ```ts
-import { Chromium } from 'fingerprint-chromium-engine';
+import { BrowserEngine } from 'fingerprint-chromium-engine';
 
-const fingerprintData = await Chromium.newFingerprint({
+const engine = new BrowserEngine();
+
+const fingerprintData = await engine.newFingerprint({
   tags: ['Microsoft Windows', 'Chrome'],
 });
 
-await Chromium
+const context = await engine
   .useFingerprint(fingerprintData, {
     usePerfectCanvas: true,       // canvas chính xác (mạnh nhất)
     safeWebGL: true,              // nhiễu WebGL

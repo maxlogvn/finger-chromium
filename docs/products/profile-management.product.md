@@ -7,9 +7,11 @@ Tính năng profile cho phép lưu và tái sử dụng dữ liệu trình duy�
 ## Cách sử dụng
 
 ```ts
-import { Chromium } from 'fingerprint-chromium-engine';
+import { BrowserEngine } from 'fingerprint-chromium-engine';
 
-const context = await Chromium
+const engine = new BrowserEngine();
+
+const context = await engine
   .useProfile('./profiles/user_01', {
     loadProxy: true,        // tự động load proxy từ profile cũ
     loadFingerprint: true,  // tự động load fingerprint từ profile cũ
@@ -20,10 +22,10 @@ const context = await Chromium
 // ... dùng browser ...
 
 // Tự động lưu profile khi quit
-await Chromium.quit();
+await engine.quit();
 
 // Hoặc lưu vào đường dẫn khác
-await Chromium.quit('./backup/profile_backup');
+await engine.quit('./backup/profile_backup');
 ```
 
 ## Hành vi chi tiết

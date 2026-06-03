@@ -19,13 +19,15 @@ npx playwright install chromium
 ### Ví dụ nhanh
 
 ```ts
-import { Chromium } from 'fingerprint-chromium-engine';
+import { BrowserEngine } from 'fingerprint-chromium-engine';
 
-const fingerprintData = await Chromium.newFingerprint({
+const engine = new BrowserEngine();
+
+const fingerprintData = await engine.newFingerprint({
   tags: ['Microsoft Windows', 'Chrome'],
 });
 
-const context = await Chromium
+const context = await engine
   .useFingerprint(fingerprintData, { safeWebGL: true })
   .launch({ headless: false })
   .newContext();
@@ -33,7 +35,7 @@ const context = await Chromium
 const page = await context.newPage();
 await page.goto('https://example.com');
 
-await Chromium.quit();
+await engine.quit();
 ```
 
 ### Các lệnh phát triển

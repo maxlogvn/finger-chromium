@@ -2,7 +2,7 @@
 
 ## Mô tả
 
-`BrowserEngine` là API chính mà user dùng qua singleton `Chromium`. Nó gom các cấu hình thường dùng như fingerprint, proxy, profile, rồi tạo `BrowserContext` để user thao tác bằng Playwright.
+`BrowserEngine` là API chính mà user dùng. Mỗi `new BrowserEngine()` là một session độc lập, có cấu hình riêng. Nó gom các cấu hình thường dùng như fingerprint, proxy, profile, rồi tạo `BrowserContext` để user thao tác bằng Playwright.
 
 Nói ngắn gọn: `BrowserEngine` là lớp "điều phối bên ngoài". Nó không tự inject fingerprint. Nó chuẩn bị cấu hình đúng thứ tự và chuyển việc launch thật cho `PlaywrightFingerprintPlugin`.
 
@@ -11,13 +11,15 @@ Nói ngắn gọn: `BrowserEngine` là lớp "điều phối bên ngoài". Nó k
 Key bảo mật được đọc từ biến môi trường `BABLOSOFT_KEY`.
 
 ```ts
-import { Chromium } from 'fingerprint-chromium-engine';
+import { BrowserEngine } from 'fingerprint-chromium-engine';
 
-const fingerprintData = await Chromium.newFingerprint({
+const engine = new BrowserEngine();
+
+const fingerprintData = await engine.newFingerprint({
   tags: ['Microsoft Windows', 'Chrome'],
 });
 
-const context = await Chromium
+const context = await engine
   .useFingerprint(fingerprintData, {
     safeWebGL: true,
     usePerfectCanvas: true,
@@ -39,7 +41,7 @@ const context = await Chromium
 const page = await context.newPage();
 await page.goto('https://example.com');
 
-await Chromium.quit();
+await engine.quit();
 ```
 
 ## Hành vi chi tiết
@@ -59,7 +61,7 @@ await Chromium.quit();
 
 ## Giới hạn và điều kiện
 
-- `Chromium` là singleton. Thiết kế này giúp tránh nhiều engine instance tranh chấp cùng thư mục runtime.
+- `BrowserEngine` là class — mỗi `new BrowserEngine()` tạo instance độc lập. `Chromium` là alias cho backward compatibility.
 - `launch()` chỉ gọi được một lần cho mỗi vòng đời. Muốn chạy phiên mới thì gọi `quit()` trước.
 - Mỗi vòng đời chỉ có một `BrowserContext`.
 - `useProfile()` không ghi trực tiếp vào thư mục profile gốc khi browser đang chạy. Profile được map sang thư mục tạm để giảm nguy cơ corrupt dữ liệu.
@@ -67,7 +69,7 @@ await Chromium.quit();
 
 ## Khi nào dùng
 
-Dùng `Chromium` khi muốn flow đơn giản nhất:
+Dùng `new BrowserEngine()` khi muốn flow đơn giản nhất:
 
 ```txt
 cấu hình fingerprint/proxy/profile

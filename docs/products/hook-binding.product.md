@@ -9,7 +9,9 @@ Hook Binding intercept (chặn và can thiệp) các method Playwright để t�
 Hook Binding tích hợp sẵn vào `PlaywrightFingerprintPlugin`:
 
 ```ts
-const context = await Chromium.newContext();
+import { BrowserEngine } from 'fingerprint-chromium-engine';
+const engine = new BrowserEngine();
+const context = await engine.launch().newContext();
 const page = await context.newPage();
 // Page tự động resize về kích thước fingerprint
 ```

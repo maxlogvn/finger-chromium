@@ -8,7 +8,7 @@ Hệ thống 5 file TypeScript types cung cấp interface và option types cho t
 
 ```ts
 import {
-  Chromium,
+  BrowserEngine,
   type PWChromium,
   type FingerprintOptions,
   type ProxyOptions,
@@ -16,14 +16,16 @@ import {
   type FetchOptions,
 } from 'fingerprint-chromium-engine';
 
+const engine = new BrowserEngine();
+
 // Dùng FingerprintOptions với satisfies
-Chromium.useFingerprint(data, {
+engine.useFingerprint(data, {
   usePerfectCanvas: true,
   safeWebGL: true,
 } satisfies FingerprintOptions);
 
 // Dùng ProxyOptions
-Chromium.useProxy('http://user:pass@host:8080', {
+engine.useProxy('http://user:pass@host:8080', {
   changeTimezone: true,
   changeWebRTC: 'replace',
 } satisfies ProxyOptions);
@@ -31,8 +33,8 @@ Chromium.useProxy('http://user:pass@host:8080', {
 
 ## Hành vi chi tiết
 
-- `PWChromium` là **interface** — không thể `new PWChromium()`. Dùng singleton `Chromium`.
-- `Chromium.newFingerprint()` nhận `FetchOptions`, trả về `Promise<string | undefined>`.
+- `PWChromium` là **interface** — không thể `new PWChromium()`. Dùng `new BrowserEngine()` để tạo instance.
+- `BrowserEngine.newFingerprint()` nhận `FetchOptions`, trả về `Promise<string | undefined>`.
 - `IPString = string & {}` là branded type — đảm bảo giá trị truyền vào là string nhưng TypeScript vẫn nhận dạng được là IP string.
 - Các field có `@default` trong JSDoc — nếu không truyền, engine dùng giá trị mặc định.
 - 5 file types được export public từ `src/index.ts`. Internal types không được re-export.

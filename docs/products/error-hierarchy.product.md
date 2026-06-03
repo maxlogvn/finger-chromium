@@ -18,6 +18,7 @@ Import trực tiếp error class từ package:
 
 ```ts
 import {
+  BrowserEngine,
   PluginError,
   MissingKeyError,
   InvalidEngineError,
@@ -26,7 +27,8 @@ import {
 } from 'fingerprint-chromium-engine';
 
 try {
-  const context = await Chromium.launch().newContext();
+  const engine = new BrowserEngine();
+  const context = await engine.launch().newContext();
 } catch (err: unknown) {
   if (err instanceof MissingKeyError) {
     console.error('Thiếu key — cần set BABLOSOFT_KEY:', err.message);
