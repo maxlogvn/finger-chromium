@@ -66,28 +66,63 @@ npx playwright install chromium
 
 
 ```ts
-import {Chromium, PluginLaunchOptions} from 'fingerprint-chromium-engine';
-// Mở chế độ GUI để kiểm tra
-const CONTEXT_OPTIONS = {headless: false} as PluginLaunchOptions;
-(async () => {
-    const browser = Chromium.launch();
-    const context = await browser.newContext(CONTEXT_OPTIONS);
-    const page = await context.newPage();
-    await page.goto("https://google.com", {waitUntil: "domcontentloaded"});
-    // Chờ 10s để xác nhận kết quả
-    await page.waitForTimeout(10_000);
-    await page.close();
-    await browser.quit();
-})();
+import { BrowserEngine } from 'fingerprint-chromium-engine';
+
+const engine = new BrowserEngine();
+const context = await engine
+  .useFingerprint(fingerprintData, { usePerfectCanvas: true })
+  .useProxy('http://user:pass@host:port', { changeTimezone: true })
+  .useProfile('./profiles/user_01', { loadFingerprint: true })
+  .launch({ headless: false })
+  .newContext();
+
+const page = await context.newPage();
+await page.goto('https://google.com', { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(10_000);
+await page.close();
+await engine.quit();
 ```
 
 ## API
 
 Chi tiết đầy đủ tại [BrowserEngine product doc](docs/products/browser-engine.product.md).
 
-### `Chromium`
+### Error classes
 
-Instance singleton của `BrowserEngine`. Các method gọi chain được, **phải gọi trước `launch()`**.
+Có thể import và catch lỗi theo type:
+
+```ts
+import {
+  PluginError,
+  MissingKeyError,
+  InvalidEngineError,
+  EngineTimeoutError,
+  RequestTimeoutError,
+} from 'fingerprint-chromium-engine';
+
+try {
+  await engine.launch().newContext();
+} catch (err) {
+  if (err instanceof MissingKeyError) {
+    console.error('Thiếu key — cần set BABLOSOFT_KEY:', err.message);
+  }
+}
+```
+
+Xem thêm: [Error Hierarchy product doc](docs/products/error-hierarchy.product.md)
+
+### `BrowserEngine`
+
+Class chính để tạo instance. Mỗi `new BrowserEngine()` là một session độc lập, có cấu hình riêng.
+`Chromium` là alias của `BrowserEngine` (giữ cho backward compatibility).
+
+```ts
+import { BrowserEngine, Chromium } from 'fingerprint-chromium-engine';
+const engine = new BrowserEngine();
+// Hoặc: const engine = new Chromium();
+```
+
+Các method gọi chain được, **phải gọi trước `launch()`**.
 
 #### `useFingerprint(data: string, options?: FingerprintOptions): this`
 
@@ -141,7 +176,7 @@ Xem thêm: [Profile Management product doc](docs/products/profile-management.pro
 Khởi tạo engine. Chỉ được gọi **một lần**. Ném lỗi nếu gọi lại.
 
 ```ts
-Chromium.launch({ headless: false, hasTouch: true })
+engine.launch({ headless: false, hasTouch: true })
 ```
 
 #### `newContext(options?: PluginLaunchOptions): Promise<BrowserContext>`
@@ -149,7 +184,7 @@ Chromium.launch({ headless: false, hasTouch: true })
 Tạo `BrowserContext` Playwright. Phải gọi `launch()` trước. Chỉ cho phép một context tại một thời điểm.
 
 ```ts
-const context = await Chromium.newContext()
+const context = await engine.newContext()
 ```
 
 #### `newFingerprint(options?: FetchOptions): Promise<string | undefined>`
@@ -157,7 +192,7 @@ const context = await Chromium.newContext()
 Lấy fingerprint mới từ service, có thể lọc theo tag, thời gian, kích thước màn hình, phiên bản trình duyệt.
 
 ```ts
-const fp = await Chromium.newFingerprint({
+const fp = await engine.newFingerprint({
   tags: ['Chrome', 'Desktop', 'Windows 10'],
   timeLimit: '30 days',
   minWidth: 1280,
@@ -172,8 +207,8 @@ Xem thêm: [Type System product doc](docs/products/type-system.product.md) (Fetc
 Đóng trình duyệt, giải phóng tài nguyên và lưu profile. Có thể ghi đè đường dẫn lưu profile.
 
 ```ts
-await Chromium.quit()
-await Chromium.quit('./profiles/user_backup')
+await engine.quit()
+await engine.quit('./profiles/user_backup')
 ```
 
 ## Biến môi trường
