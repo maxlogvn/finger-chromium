@@ -1,9 +1,10 @@
 // ─── File: connector/index.ts ─────────────────────────────────────────────
 // API Connector -- giao tiếp với RemoteEngine qua file-based IPC.
-// Singleton engine instance với async-lock đồng bộ.
+// Mỗi Connector instance sở hữu RemoteEngine riêng, không dùng chung.
 //
-//   1. Khởi tạo RemoteEngine với cwd và timeout từ env
+//   1. Constructor tạo RemoteEngine mới + đăng ký event listeners
 //   2. api() -- lazy init PCAP server ở lần gọi đầu, wrapper error normalization, lock đồng bộ
+//   3. cleanup() -- chỉ kill engine của instance đó, không đóng PCAP server (dùng chung)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import RemoteEngine from './engine';
@@ -41,77 +42,104 @@ interface EngineResult {
   [key: string]: unknown;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const lock = new AsyncLock();
-
-const engine = new RemoteEngine({
-  cwd: process.env.FINGERPRINT_CWD,
-  engineTimeout: process.env.FINGERPRINT_TIMEOUT,
-  requestTimeout: process.env.FINGERPRINT_TIMEOUT,
-} as EngineOptions);
-
-engine.on('beforeExtract', () => {
-  console.log('Đang cài đặt browser -- quá trình này có thể mất một chút thời gian.');
-});
-
-engine.on('beforeDownload', () => {
-  console.log('Đang tải browser -- quá trình này có thể mất một chút thời gian.');
-});
-
-// ─── Lazy Init ─────────────────────────────────────────────────────────────────
+// ─── PCAP Server Singleton ────────────────────────────────────────────────────
 
 /**
- * Đảm bảo PCAP server được khởi động trước lần gọi API đầu tiên.
- * Dùng module-level promise để chỉ init một lần (safe pattern thay vì side-effect ở module scope).
+ * Module-level init promise cho PCAP server (một TCP server cho cả process).
+ * Mỗi Connector lấy port từ promise này và set args riêng cho engine của mình.
  */
-let initPromise: Promise<void> | undefined;
+let initPromise: Promise<number> | undefined;
 
-async function ensureInit(): Promise<void> {
-  if (!initPromise) {
-    initPromise = pcapServer.listen().then((port: number) => {
-      debug(`PCAP server đang lắng nghe tại port ${port}`);
-      engine.setArgs([`--mock-pcap-port=${port}`]);
+// ─── Connector ────────────────────────────────────────────────────────────────
+
+/**
+ * Mỗi instance sở hữu RemoteEngine riêng, AsyncLock riêng.
+ * PCAP server dùng chung ở module-level (singleton).
+ */
+export default class Connector {
+  #engine: RemoteEngine;
+  #lock = new AsyncLock();
+
+  constructor(options?: EngineOptions) {
+    this.#engine = new RemoteEngine({
+      cwd: process.env.FINGERPRINT_CWD,
+      engineTimeout: process.env.FINGERPRINT_TIMEOUT,
+      requestTimeout: process.env.FINGERPRINT_TIMEOUT,
+      ...options,
+    } as EngineOptions);
+
+    this.#engine.on('beforeExtract', () => {
+      console.log('Dang cai dat browser -- qua trinh nay co the mat mot chut thoi gian.');
+    });
+
+    this.#engine.on('beforeDownload', () => {
+      console.log('Dang tai browser -- qua trinh nay co the mat mot chut thoi gian.');
     });
   }
-  return initPromise;
-}
 
-// ─── API ──────────────────────────────────────────────────────────────────────
-
-/**
- * Gọi API engine -- wrapper error normalization với async-lock.
- * Lock 'client' đảm bảo chỉ một request được xử lý tại một thời điểm.
- */
-export const api = async (name: string, params: ApiParams = {}): Promise<unknown> => {
-  await ensureInit();
-  let notifyTimer: Parameters<typeof clearTimeout>[0] | undefined;
-  return lock.acquire('client', async () => {
-    try {
-      const { error, ...result } = (await engine.runFunction(name, params, {
-        requestTimeout: params?.options?.perfectCanvasRequest ? 0 : engine.requestTimeout,
-      } as RunFunctionOptions)) as EngineResult;
-      if (error) {
-        if (error.includes('key is missing')) {
-          notifyTimer = notify(params.key);
-          throw new MissingKeyError(error);
-        }
-        throw new PluginError(error);
-      }
-      return result.response ?? result;
-    } finally {
-      clearTimeout(notifyTimer);
+  /**
+   * Dam bao PCAP server duoc khoi dong truoc lan goi API dau tien.
+   * Tra ve port de set args cho engine.
+   */
+  async #ensurePcapPort(): Promise<number> {
+    if (!initPromise) {
+      initPromise = pcapServer.listen().then((port: number) => {
+        debug(`PCAP server dang lang nghe tai port ${port}`);
+        return port;
+      });
     }
-  });
-};
+    return initPromise;
+  }
 
-/**
- * Dọn dẹp connector -- kill engine process và close PCAP server.
- * Gọi khi kết thúc session để giải phóng tài nguyên nền.
- */
-export const cleanup = async (): Promise<void> => {
-  engine.kill();
-  await pcapServer.close();
-};
+  get requestTimeout(): number {
+    return this.#engine.requestTimeout;
+  }
 
-export { engine };
+  setCwd(value: string): void {
+    this.#engine.setCwd(value);
+  }
+
+  setRequestTimeout(value: number): void {
+    this.#engine.setRequestTimeout(value);
+  }
+
+  setEngineTimeout(value: number): void {
+    this.#engine.setEngineTimeout(value);
+  }
+
+  /**
+   * Goi API engine -- wrapper error normalization voi async-lock.
+   * Lock 'client' dam bao chi mot request duoc xu ly tai mot thoi diem.
+   */
+  async api(name: string, params: ApiParams = {}): Promise<unknown> {
+    const port = await this.#ensurePcapPort();
+    this.#engine.setArgs([`--mock-pcap-port=${port}`]);
+
+    let notifyTimer: Parameters<typeof clearTimeout>[0] | undefined;
+    return this.#lock.acquire('client', async () => {
+      try {
+        const { error, ...result } = (await this.#engine.runFunction(name, params, {
+          requestTimeout: params?.options?.perfectCanvasRequest ? 0 : this.requestTimeout,
+        } as RunFunctionOptions)) as EngineResult;
+        if (error) {
+          if (error.includes('key is missing')) {
+            notifyTimer = notify(params.key);
+            throw new MissingKeyError(error);
+          }
+          throw new PluginError(error);
+        }
+        return result.response ?? result;
+      } finally {
+        clearTimeout(notifyTimer);
+      }
+    });
+  }
+
+  /**
+   * Don dep connector -- chi kill engine process cua instance nay.
+   * Khong dong PCAP server vi cac instance khac co the dang dung.
+   */
+  cleanup(): void {
+    this.#engine.kill();
+  }
+}

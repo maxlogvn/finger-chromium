@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#14-#15, #19, #20): GitHub issues [#7](https://github.com/maxlogvn/finger-chromium/issues/7)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
-- **FIXED** (#1-#13, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#6](https://github.com/maxlogvn/finger-chromium/issues/6), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
+- **OPEN** (#15, #19, #20): GitHub issues [#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
+- **FIXED** (#1-#14, #16-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#7](https://github.com/maxlogvn/finger-chromium/issues/7), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
 
@@ -51,12 +51,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 
 ---
 
-**#14 — `RemoteEngine` singleton dùng chung giữa các instance**
-- **File:** `src/plugin/connector/index.ts:49`
-- **Vấn đề:** `engine` là singleton với `#cwd`, `#process` là private state dùng chung. Mỗi `BrowserEngine` mới vẫn dùng chung engine process. `kill()` trên một instance ảnh hưởng instance khác.
-- **Fix:** Factory pattern — mỗi `FingerprintPlugin` instance tạo `RemoteEngine` riêng, không dùng singleton global.
-- **GitHub:** [#7](https://github.com/maxlogvn/finger-chromium/issues/7)
-
 **#15 — PCAP server retry EADDRINUSE nhưng promise gốc không bao giờ resolve**
 - **File:** `src/plugin/connector/pcapServer/index.ts:42-46`
 - **Vấn đề:** Khi port bận, error handler gọi `server.listen()` lại, nhưng promise từ `listen()` gốc không resolve. Caller treo vĩnh viễn.
@@ -78,6 +72,18 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 ---
 
 ### FIXED
+
+**#14 — `RemoteEngine` singleton dùng chung giữa các instance**
+- **File:** `src/plugin/connector/index.ts`, `src/plugin/index.ts`
+- **Vấn đề:** `RemoteEngine` là singleton global — tất cả `FingerprintPlugin` instance dùng chung một engine process. `kill()` trên một instance giết process của tất cả instance khác.
+- **Fix:**
+  1. Xoá singleton `engine` khỏi `connector/index.ts`, thay bằng class `Connector` (mỗi instance sở hữu `RemoteEngine` riêng + `AsyncLock` riêng).
+  2. `FingerprintPlugin` tạo `#connector` riêng, dùng `this.#connector.api()` thay vì `api()` module-level.
+  3. PCAP server giữ nguyên module-level singleton (dùng chung cho cả process).
+- **Tài liệu:** [Design](designs/bug-014-remote-engine-factory.design.md) | [Spec](specs/bug-014-remote-engine-factory.spec.md) | [Plan](plans/bug-014-remote-engine-factory.plan.md) | [Overview](overviews/bug-014-remote-engine-factory.overview.md)
+- **GitHub:** [#7](https://github.com/maxlogvn/finger-chromium/issues/7) (closed)
+
+---
 
 **#11 — `defaultLauncher` mutable state gây khó unit test**
 - **File:** `src/adapter/playwright/engine.ts:30-36`, `src/adapter/playwright/chromium.ts:75`

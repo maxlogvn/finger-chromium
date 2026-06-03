@@ -14,7 +14,7 @@ import * as mutex from './mutex';
 import { SettingsCleaner } from './cleaner';
 import type { Browser, LaunchOptions as SpawnOptions } from './launcher';
 import { launch } from './launcher';
-import { api, engine, cleanup as connectorCleanup } from './connector';
+import Connector from './connector';
 import { configure, synchronize } from './config';
 import { defaultArgs, getProfilePath, validateConfig, validateLauncher } from './utils';
 import type { Version } from 'chrome-remote-interface';
@@ -73,6 +73,7 @@ export default class FingerprintPlugin {
   protected profile?: PluginConfig;
   protected proxy?: PluginConfig;
   #cleaner = new SettingsCleaner();
+  #connector = new Connector();
   protected browser?: Browser;
   protected processId?: string;
 
@@ -158,7 +159,7 @@ export default class FingerprintPlugin {
    * @param folder - Đường dẫn tuyệt đối
    */
   setWorkingFolder(folder: string): void {
-    engine.setCwd(path.resolve(folder));
+    this.#connector.setCwd(path.resolve(folder));
   }
 
   /**
@@ -167,7 +168,7 @@ export default class FingerprintPlugin {
    * @param timeout - Thời gian timeout (ms)
    */
   setRequestTimeout(timeout: number): void {
-    engine.setRequestTimeout(timeout || 0);
+    this.#connector.setRequestTimeout(timeout || 0);
   }
 
   /**
@@ -176,7 +177,7 @@ export default class FingerprintPlugin {
    * @param timeout - Thời gian timeout (ms)
    */
   setEngineTimeout(timeout: number): void {
-    engine.setEngineTimeout(timeout || 0);
+    this.#connector.setEngineTimeout(timeout || 0);
   }
 
   /**
@@ -197,7 +198,7 @@ export default class FingerprintPlugin {
    * @returns JSON string fingerprint
    */
   async fetch(options: FetchOptions = {}): Promise<string> {
-    return (await api('fetch', {
+    return (await this.#connector.api('fetch', {
       key: serviceKey,
       options,
       version: this.version,
@@ -213,7 +214,7 @@ export default class FingerprintPlugin {
   async versions<T extends 'default' | 'extended' = 'default'>(
     format: T = 'default' as T
   ): Promise<T extends 'extended' ? Version[] : string[]> {
-    return (await api('versions', { format })) as any;
+    return (await this.#connector.api('versions', { format })) as any;
   }
 
   // ─── Lifecycle Methods ────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ export default class FingerprintPlugin {
     this.setProxyFromArguments(options.args || []);
 
     // --- Bước 2: Gọi API setup -- engine khởi tạo profile, fingerprint, proxy
-    const setupData = (await api('setup', {
+    const setupData = (await this.#connector.api('setup', {
       proxy: this.proxy,
       fingerprint: this.fingerprint,
       version: this.version,
@@ -278,15 +279,16 @@ export default class FingerprintPlugin {
   }
 
   /**
-   * Dọn dẹp tài nguyên -- kill browser process, engine, PCAP server, cleaner, mutex.
-   * Thứ tự: browser trước (worker.exe), connector (engine + PCAP) sau, cleaner cuối cùng.
+   * Dọn dẹp tài nguyên -- kill browser process, engine, cleaner, mutex.
+   * Thứ tự: browser trước (worker.exe), connector (engine) sau, cleaner cuối cùng.
+   * PCAP server không bị đóng vì là singleton dùng chung cho cả process.
    */
   async cleanup(): Promise<void> {
     if (this.browser) {
       await this.browser.close().catch(() => {});
       this.browser = undefined;
     }
-    await connectorCleanup();
+    this.#connector.cleanup();
     if (this.processId) {
       mutex.release(`BASProcess${this.processId}`);
     }
