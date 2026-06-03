@@ -16,7 +16,7 @@ export const MAX_RESIZE_RETRIES = 3;
 
 // ─── Runtime ──────────────────────────────────────────────────────────────────
 
-const isBrowser = (target: unknown): target is Browser =>
+export const isBrowser = (target: unknown): target is Browser =>
   typeof target === 'object' &&
   target !== null &&
   'isConnected' in target &&

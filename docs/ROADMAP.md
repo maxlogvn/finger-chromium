@@ -365,15 +365,16 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Test Browser (Launcher + BrowserEngine + PlaywrightBridge)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
-- **Cập nhật:** 2026-06-03
-- **Tài liệu:**
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/test-browser.design.md) | [Spec](specs/test-browser.spec.md) | [Plan](plans/test-browser.plan.md) | [Overview](overviews/test-browser.overview.md) -- `tests/browser.test.ts`
 - **Ghi chú:**
-  - File test: `tests/browser.test.ts`
-  - Module cần test: `launcher/index.ts`, `adapter/playwright/chromium.ts`, `adapter/playwright/engine.ts`, `adapter/playwright/utils.ts`
-  - Unit test: constructor, fluent API, guard logic, option validation
-  - Integration test: spawn với executablePath thật (nếu có engine)
+  - File test: `tests/browser.test.ts` -- 40 test cases mới
+  - Module đã test: `launcher/index.ts`, `adapter/playwright/chromium.ts`, `adapter/playwright/engine.ts`, `adapter/playwright/utils.ts`
+  - Integration test với Playwright Chromium thật (skip nếu không có binary)
+  - Tất cả 156 tests pass (40 mới + 116 cũ)
+  - Sai lệch: Tạo `TestPlugin` subclass để bypass `_launch()` (engine API không khả dụng). Export `isBrowser` từ `utils.ts`. setViewport headless không chính xác.
 
 ---
 
