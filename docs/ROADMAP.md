@@ -403,5 +403,19 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Bug #20 — Hardcoded `await setTimeout(2000)` bên trong async-lock
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-020-setTimeout-async-lock.design.md) | [Spec](specs/bug-020-setTimeout-async-lock.spec.md) | [Plan](plans/bug-020-setTimeout-async-lock.plan.md) | [Overview](overviews/bug-020-setTimeout-async-lock.overview.md)
+- **Ghi chú:**
+  - `synchronize()` trong `config.ts` dùng `await setTimeout(2000)` hai lần trong lock — giảm xuống 500ms mặc định
+  - Fix: thêm tham số `pollInterval` (mặc định 500ms, clamp min 100ms)
+  - Backward compatible, không break API hiện tại
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #20
+
+---
+
 <!-- Hết feature tasks -- các non-feature tasks (format code, fix quit, build config, known issues, documentation rewrite/correction) đã được dọn khỏi roadmap vì đã hoàn thành và không cần theo dõi tiến độ. -->
 

@@ -15,7 +15,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#19, #20): GitHub issues [#12](https://github.com/maxlogvn/finger-chromium/issues/12)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
+- **OPEN** (#19): GitHub issues [#12](https://github.com/maxlogvn/finger-chromium/issues/12) (đang mở)
 - **FIXED** (#1-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#7](https://github.com/maxlogvn/finger-chromium/issues/7), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
@@ -57,15 +57,20 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **Fix:** Dùng `instanceof` hoặc check duck-typing với nhiều property hơn (`isConnected`, `contexts`...).
 - **GitHub:** [#12](https://github.com/maxlogvn/finger-chromium/issues/12)
 
-**#20 — Hardcoded `await setTimeout(2000)` bên trong async-lock**
-- **File:** `src/plugin/config.ts:83`
-- **Vấn đề:** Mỗi lần synchronize tốn 4 giây (2 giây x 2 iteration) bên trong `lock.acquire`, block các instance khác chờ lock.
-- **Fix:** Giảm timeout xuống, hoặc chuyển thành polling interval configurable.
-- **GitHub:** [#13](https://github.com/maxlogvn/finger-chromium/issues/13)
-
 ---
 
 ### FIXED
+
+**#20 — Hardcoded `await setTimeout(2000)` bên trong async-lock**
+- **File:** `src/plugin/config.ts:83`
+- **Vấn đề:** `synchronize()` dùng `await setTimeout(2000)` hai lần bên trong `lock.acquire` — mỗi lần 4 giây chờ vô ích.
+- **Fix:**
+  1. Thêm tham số `pollInterval?: number` (mặc định 500ms, clamp tối thiểu 100ms).
+  2. `await setTimeout(2000)` → `await setTimeout(pollInterval)`.
+- **Tài liệu:** [Design](designs/bug-020-setTimeout-async-lock.design.md) | [Spec](specs/bug-020-setTimeout-async-lock.spec.md) | [Plan](plans/bug-020-setTimeout-async-lock.plan.md)
+- **GitHub:** [#13](https://github.com/maxlogvn/finger-chromium/issues/13) (closed)
+
+---
 
 **#14 — `RemoteEngine` singleton dùng chung giữa các instance**
 - **File:** `src/plugin/connector/index.ts`, `src/plugin/index.ts`

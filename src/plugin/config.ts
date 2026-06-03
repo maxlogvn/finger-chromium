@@ -33,7 +33,22 @@ interface ConfigureOptions {
 
 const lock = new AsyncLock();
 
+const DEFAULT_POLL_INTERVAL = 500;
+const MIN_POLL_INTERVAL = 100;
+
 // ─── Runtime ──────────────────────────────────────────────────────────────────
+
+/**
+ * Validate và clamp pollInterval về giá trị hợp lệ.
+ * Âm hoặc NaN → default 500ms, < 100ms → clamp lên 100ms.
+ * Dùng interval ngắn hơn giúp synchronize nhanh hơn (4s → 1s mặc định).
+ */
+const getValidPollInterval = (interval: number | undefined): number => {
+  if (typeof interval !== 'number' || Number.isNaN(interval) || interval < 0) {
+    return DEFAULT_POLL_INTERVAL;
+  }
+  return Math.max(interval, MIN_POLL_INTERVAL);
+};
 
 /**
  * Cấu hình browser sau spawn -- đăng ký cleanup handler và resize viewport.
@@ -64,9 +79,11 @@ export const synchronize = async (
   id: string,
   pwd: string,
   bounds: ViewportBounds = {},
-  action: ActionFn = async () => {}
+  action: ActionFn = async () => {},
+  pollInterval?: number
 ): Promise<void> => {
   const configPath = `${pwd}/s/${id}1.ini`;
+  const actualPollInterval = getValidPollInterval(pollInterval);
   await lock.acquire(id, async () => {
     let configContent = await readFile(configPath, 'utf8');
     for (const reset of [true, false]) {
@@ -80,7 +97,7 @@ export const synchronize = async (
         });
       }
       await writeFile(configPath, configContent);
-      await setTimeout(2000);
+      await setTimeout(actualPollInterval);
     }
   });
 };
