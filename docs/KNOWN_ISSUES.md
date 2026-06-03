@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 2 issues — xem section OPEN bên dưới
-- **FIXED:** 22 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
+- **OPEN:** 1 issue — xem section OPEN bên dưới
+- **FIXED:** 23 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
 
@@ -57,11 +57,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **File:** `src/plugin/connector/pcapServer/index.ts:61`, `src/plugin/connector/index.ts:142-144`, `src/plugin/index.ts:286-296`
 - **Issue:** `net.Server` thiếu `unref()`, không đóng được sau cleanup.
 - **GitHub:** [#21](https://github.com/maxlogvn/finger-chromium/issues/21)
-
-**AsyncLock module-level gây contention giữa các instance**
-- **File:** `src/plugin/config.ts:34,87`
-- **Issue:** `AsyncLock` module-level bị sót sau refactor per-instance.
-- **GitHub:** [#22](https://github.com/maxlogvn/finger-chromium/issues/22)
 
 ---
 
@@ -295,3 +290,15 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **Fix:** Chuyển sang cơ chế temp file + rename — ghi vào file `.tmp`, `rename()` thành file đích sau khi pipeline thành công, xoá `.tmp` trong catch khi lỗi. Fallback `copyFile` + `unlink` nếu cross-device rename.
 - **Tài liệu:** [Design](designs/bug-024-download-cleanup.design.md) | [Spec](specs/bug-024-download-cleanup.spec.md) | [Plan](plans/bug-024-download-cleanup.plan.md) | [Overview](overviews/bug-024-download-cleanup.overview.md)
 - **GitHub:** [#24](https://github.com/maxlogvn/finger-chromium/issues/24) (closed)
+
+---
+
+**AsyncLock module-level gây contention giữa các instance**
+- **File:** `src/plugin/config.ts:34,87`, `src/plugin/index.ts:234,277-278`
+- **Vấn đề:** `const lock = new AsyncLock()` ở module scope — tất cả `FingerprintPlugin` instance chia sẻ một lock, gây contention khi chạy song song.
+- **Fix:**
+  1. Tạo class `ConfigManager` trong `config.ts` sở hữu `#lock` riêng (per-instance).
+  2. Chuyển `configure()` và `synchronize()` từ module-level function thành method của `ConfigManager`.
+  3. `FingerprintPlugin` tạo `#configManager = new ConfigManager()` riêng.
+- **Tài liệu:** [Design](designs/bug-022-asynclock-per-instance.design.md) | [Spec](specs/bug-022-asynclock-per-instance.spec.md) | [Plan](plans/bug-022-asynclock-per-instance.plan.md) | [Overview](overviews/bug-022-asynclock-per-instance.overview.md)
+- **GitHub:** [#22](https://github.com/maxlogvn/finger-chromium/issues/22) (closed)

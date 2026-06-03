@@ -150,7 +150,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - `fetch()` -- lấy fingerprint từ service
   - `versions()` -- danh sách browser version có sẵn
   - `_launch()` -- core: gọi api('setup'), spawn worker.exe, cleanup/configure/sync
-  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #6 -- cleaner singleton, Issue #7 -- Connector factory)
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #6 -- cleaner singleton, Issue #7 -- Connector factory, Issue #22 -- AsyncLock per-instance)
 
 ---
 
@@ -234,7 +234,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - CDP-based resize với retries (max 3 lần)
   - Sync availWidth/availHeight vào engine .ini file
   - bindHooks -- proxy viewport qua newPage/setViewportSize
-  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #10 -- synchronize key name, Issue #12 -- isBrowser type guard, Issue #13 -- pollInterval timeout)
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #10 -- synchronize key name, Issue #12 -- isBrowser type guard, Issue #13 -- pollInterval timeout, Issue #22 -- AsyncLock per-instance)
 
 ---
 
@@ -356,6 +356,19 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Cập nhật template known-issue.template.md: bỏ LOCAL_NUM, chỉ dùng GitHub number.
   - Fix KNOWN_ISSUES.md: link hỏng #6, thiếu Overview 8 entries, header mapping.
   - Fix ROADMAP.md: feature entries outdated (singleton descriptions), chuyển local # sang GitHub Issue #, thêm bug fix ghi chú, xoá bug entries, format lỗi.
+
+---
+
+### AsyncLock module-level gây contention giữa các instance (Bug fix #22)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-022-asynclock-per-instance.design.md) | [Spec](specs/bug-022-asynclock-per-instance.spec.md) | [Plan](plans/bug-022-asynclock-per-instance.plan.md) | [Overview](overviews/bug-022-asynclock-per-instance.overview.md)
+- **Ghi chú:**
+  - `const lock = new AsyncLock()` trong `src/plugin/config.ts:34` là module-level — tất cả `FingerprintPlugin` instance chia sẻ một lock.
+  - Fix: chuyển thành per-instance bằng cách refactor `config.ts` thành class `ConfigManager`.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #22).
 
 ---
 

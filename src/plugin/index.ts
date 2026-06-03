@@ -15,7 +15,7 @@ import { SettingsCleaner } from './cleaner';
 import type { Browser, LaunchOptions as SpawnOptions } from './launcher';
 import { launch } from './launcher';
 import Connector from './connector';
-import { configure, synchronize } from './config';
+import { ConfigManager } from './config';
 import { defaultArgs, getProfilePath, validateConfig, validateLauncher } from './utils';
 import type { Version } from 'chrome-remote-interface';
 import type { FingerprintOptions } from '../types/fingerprint';
@@ -74,6 +74,7 @@ export default class FingerprintPlugin {
   protected proxy?: PluginConfig;
   #cleaner = new SettingsCleaner();
   #connector = new Connector();
+  #configManager = new ConfigManager();
   protected browser?: Browser;
   protected processId?: string;
 
@@ -230,7 +231,7 @@ export default class FingerprintPlugin {
   }
 
   protected async configure(..._args: any[]): Promise<void> {
-    if (typeof configure === 'function') return (configure as any)(..._args);
+    if (typeof this.#configManager.configure === 'function') return (this.#configManager.configure as any)(..._args);
   }
 
   protected async _launch(useDefaultLauncher: boolean, options: BaseLaunchOptions = {}): Promise<Browser> {
@@ -273,8 +274,8 @@ export default class FingerprintPlugin {
     this.browser = browser;
 
     // --- Bước 6: Cấu hình và đồng bộ -- inject fingerprint, proxy vào browser
-    const configFn = useDefaultLauncher ? configure : this.configure.bind(this);
-    await configFn(() => this.#cleaner.include(pwd, pid, id), browser, bounds, synchronize.bind(null, id, pwd, bounds));
+    const configFn = useDefaultLauncher ? this.#configManager.configure.bind(this.#configManager) : this.configure.bind(this);
+    await configFn(() => this.#cleaner.include(pwd, pid, id), browser, bounds, this.#configManager.synchronize.bind(this.#configManager, id, pwd, bounds));
     return browser;
   }
 
