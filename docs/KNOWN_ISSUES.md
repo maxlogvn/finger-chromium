@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#8-#20): GitHub issues [#4](https://github.com/maxlogvn/finger-chromium/issues/4)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
-- **FIXED** (#1-#17): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1), [#9](https://github.com/maxlogvn/finger-chromium/issues/9), [#10](https://github.com/maxlogvn/finger-chromium/issues/10), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
+- **OPEN** (#8, #10, #11, #13-#15, #18-#20): GitHub issues [#2](https://github.com/maxlogvn/finger-chromium/issues/2)-[#8](https://github.com/maxlogvn/finger-chromium/issues/8), [#11](https://github.com/maxlogvn/finger-chromium/issues/11)-[#13](https://github.com/maxlogvn/finger-chromium/issues/13) (đang mở)
+- **FIXED** (#1-#7, #9, #12, #16-#17): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1), [#5](https://github.com/maxlogvn/finger-chromium/issues/5), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#10](https://github.com/maxlogvn/finger-chromium/issues/10), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
 
@@ -65,12 +65,6 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **Vấn đề:** `defaultLauncher` là object khởi tạo ở module scope — là global mutable state. Khi test với launcher mock, state này ảnh hưởng đến các test khác trong cùng process.
 - **Fix:** Chuyển thành getter hoặc factory function, cho phép inject launcher trong constructor (không dùng default).
 - **GitHub:** [#3](https://github.com/maxlogvn/finger-chromium/issues/3)
-
-**#12 — PCAP server `listen()` khởi động ở module scope (side effect)**
-- **File:** `src/plugin/connector/index.ts:63-66`
-- **Vấn đề:** `pcapServer.listen()` được gọi ngay khi import module. Chỉ cần `import` file này (dù chỉ để lấy type) cũng mở một TCP server — rất nguy hiểm trong unit test.
-- **Fix:** Chuyển `pcapServer.listen()` vào trong method khởi tạo (constructor hoặc `api()`), không gọi ở module scope.
-- **GitHub:** [#5](https://github.com/maxlogvn/finger-chromium/issues/5)
 
 **#13 — `cleaner` singleton dùng chung giữa các `BrowserEngine` instance**
 - **File:** `src/plugin/cleaner.ts:118`
@@ -200,3 +194,12 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 - **Fix:** Map `availWidth → width`, `availHeight → height` trong loop key.
 - **Tài liệu:** [Design](designs/bug-017-synchronize-key.design.md) | [Spec](specs/bug-017-synchronize-key.spec.md) | [Plan](plans/bug-017-synchronize-key.plan.md)
 - **GitHub:** [#10](https://github.com/maxlogvn/finger-chromium/issues/10) (closed)
+
+---
+
+**#12 — PCAP server `listen()` khởi động ở module scope (side effect)**
+- **File:** `src/plugin/connector/index.ts:63-66`
+- **Vấn đề:** `pcapServer.listen()` được gọi ngay khi import module. Chỉ cần `import` file này (dù chỉ để lấy type) cũng mở một TCP server — rất nguy hiểm trong unit test.
+- **Fix:** Chuyển `pcapServer.listen()` vào lazy init trong `api()` — dùng module-level promise `ensureInit()` để chỉ chạy một lần ở lần gọi API đầu tiên.
+- **Tài liệu:** [Design](designs/bug-012-pcap-side-effect.design.md) | [Spec](specs/bug-012-pcap-side-effect.spec.md) | [Plan](plans/bug-012-pcap-side-effect.plan.md)
+- **GitHub:** [#5](https://github.com/maxlogvn/finger-chromium/issues/5) (closed)

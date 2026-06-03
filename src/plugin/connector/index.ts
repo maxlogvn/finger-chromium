@@ -3,8 +3,7 @@
 // Singleton engine instance với async-lock đồng bộ.
 //
 //   1. Khởi tạo RemoteEngine với cwd và timeout từ env
-//   2. Khởi động PCAP server
-//   3. api() -- wrapper error normalization, lock đồng bộ
+//   2. api() -- lazy init PCAP server ở lần gọi đầu, wrapper error normalization, lock đồng bộ
 // ─────────────────────────────────────────────────────────────────────────────
 
 import RemoteEngine from './engine';
@@ -60,10 +59,23 @@ engine.on('beforeDownload', () => {
   console.log('Đang tải browser -- quá trình này có thể mất một chút thời gian.');
 });
 
-pcapServer.listen().then((port: number) => {
-  debug(`PCAP server đang lắng nghe tại port ${port}`);
-  engine.setArgs([`--mock-pcap-port=${port}`]);
-});
+// ─── Lazy Init ─────────────────────────────────────────────────────────────────
+
+/**
+ * Đảm bảo PCAP server được khởi động trước lần gọi API đầu tiên.
+ * Dùng module-level promise để chỉ init một lần (safe pattern thay vì side-effect ở module scope).
+ */
+let initPromise: Promise<void> | undefined;
+
+async function ensureInit(): Promise<void> {
+  if (!initPromise) {
+    initPromise = pcapServer.listen().then((port: number) => {
+      debug(`PCAP server đang lắng nghe tại port ${port}`);
+      engine.setArgs([`--mock-pcap-port=${port}`]);
+    });
+  }
+  return initPromise;
+}
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
@@ -72,6 +84,7 @@ pcapServer.listen().then((port: number) => {
  * Lock 'client' đảm bảo chỉ một request được xử lý tại một thời điểm.
  */
 export const api = async (name: string, params: ApiParams = {}): Promise<unknown> => {
+  await ensureInit();
   let notifyTimer: Parameters<typeof clearTimeout>[0] | undefined;
   return lock.acquire('client', async () => {
     try {
