@@ -19,6 +19,8 @@ export const MAX_RESIZE_RETRIES = 3;
 const isBrowser = (target: unknown): target is Browser =>
   typeof target === 'object' &&
   target !== null &&
+  'isConnected' in target &&
+  'contexts' in target &&
   'version' in target &&
   typeof (target as Browser).version === 'function';
 

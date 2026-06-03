@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN** (#19): GitHub issues [#12](https://github.com/maxlogvn/finger-chromium/issues/12) (đang mở)
-- **FIXED** (#1-#18): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#7](https://github.com/maxlogvn/finger-chromium/issues/7), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#11](https://github.com/maxlogvn/finger-chromium/issues/11), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
+- **OPEN:** (không có)
+- **FIXED** (#1-#20): GitHub issues [#1](https://github.com/maxlogvn/finger-chromium/issues/1)-[#7](https://github.com/maxlogvn/finger-chromium/issues/7), [#9](https://github.com/maxlogvn/finger-chromium/issues/9)-[#12](https://github.com/maxlogvn/finger-chromium/issues/12), [#14](https://github.com/maxlogvn/finger-chromium/issues/14)-[#20](https://github.com/maxlogvn/finger-chromium/issues/20) (đã đóng)
 
 ### Quy trình fix một issue
 
@@ -49,17 +49,20 @@ Entry trong KNOWN_ISSUES.md phải theo template [`docs/templates/known-issue.te
 
 ### OPEN
 
----
-
-**#19 — `isBrowser` type guard dùng string check fragile**
-- **File:** `src/adapter/playwright/utils.ts:19-23`
-- **Vấn đề:** Phân biệt `Browser` vs `BrowserContext` bằng cách check method `version()` tồn tại. Nếu Playwright thay đổi API, type guard sai.
-- **Fix:** Dùng `instanceof` hoặc check duck-typing với nhiều property hơn (`isConnected`, `contexts`...).
-- **GitHub:** [#12](https://github.com/maxlogvn/finger-chromium/issues/12)
+*(Không có issue nào đang mở.)*
 
 ---
 
 ### FIXED
+
+**#19 — `isBrowser` type guard dùng string check fragile**
+- **File:** `src/adapter/playwright/utils.ts:19-23`
+- **Vấn đề:** Phân biệt `Browser` vs `BrowserContext` bằng cách check method `version()` tồn tại. Nếu Playwright thay đổi API, type guard sai.
+- **Fix:** Kiểm tra đồng thời 3 method: `version`, `isConnected`, `contexts` — giảm false positive.
+- **Tài liệu:** [Design](designs/bug-019-isbrowser-typeguard.design.md) | [Spec](specs/bug-019-isbrowser-typeguard.spec.md) | [Plan](plans/bug-019-isbrowser-typeguard.plan.md)
+- **GitHub:** [#12](https://github.com/maxlogvn/finger-chromium/issues/12) (closed)
+
+---
 
 **#20 — Hardcoded `await setTimeout(2000)` bên trong async-lock**
 - **File:** `src/plugin/config.ts:83`

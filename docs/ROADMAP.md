@@ -417,5 +417,18 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Bug #19 — `isBrowser` type guard dùng string check fragile
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/bug-019-isbrowser-typeguard.design.md) | [Spec](specs/bug-019-isbrowser-typeguard.spec.md) | [Plan](plans/bug-019-isbrowser-typeguard.plan.md) | [Overview](overviews/bug-019-isbrowser-typeguard.overview.md)
+- **Ghi chú:**
+  - `isBrowser()` ở `src/adapter/playwright/utils.ts:19-23` dùng duck-typing single-property (`'version'`) — rủi ro false positive nếu Playwright đổi API.
+  - Fix: kiểm tra đồng thời `version`, `isConnected`, `contexts` — 3 method chỉ có trên Browser.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) #19
+
+---
+
 <!-- Hết feature tasks -- các non-feature tasks (format code, fix quit, build config, known issues, documentation rewrite/correction) đã được dọn khỏi roadmap vì đã hoàn thành và không cần theo dõi tiến độ. -->
 
