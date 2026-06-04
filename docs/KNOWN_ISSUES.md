@@ -15,7 +15,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 7 issues — xem section OPEN bên dưới
+- **OPEN:** 6 issues — xem section OPEN bên dưới
 - **FIXED:** 25 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
@@ -79,14 +79,7 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 ---
 
-**EADDRINUSE retry logic trong PCAP server không test được trên Windows**
-- **File:** `src/plugin/connector/pcapServer/index.ts:23-64`, `tests/connector.test.ts`
-- **Thay đổi:** `once()` wrapper đã được thay bằng `startPromise` module-level caching. `close()` reset `startPromise` để cho phép restart server. Đã thêm 2 test cases mới: idempotent listen + restart after close. Tuy nhiên, EADDRINUSE retry logic không thể test trên Windows do `net.Server` dùng `SO_REUSEADDR` mặc định.
-- **Windows limitation:** `net.Server` không throw EADDRINUSE trên Windows vì `SO_REUSEADDR` được bật mặc định. EADDRINUSE retry test chỉ chạy được trên Linux/macOS.
-- **Tài liệu:** [Design](designs/bug-029-eaddrInuse-retry-test.design.md) | [Spec](specs/bug-029-eaddrInuse-retry-test.spec.md) | [Plan](plans/bug-029-eaddrInuse-retry-test.plan.md) | [Overview](overviews/bug-029-eaddrInuse-retry-test.overview.md)
-- **GitHub:** [#29](https://github.com/maxlogvn/finger-chromium/issues/29) (open)
 
----
 
 **Thiếu test coverage cho HTTPS fallback và fetchWithFallback() trong download()**
 - **File:** `src/plugin/connector/engine.ts:130-183`, `tests/connector.test.ts`
@@ -109,6 +102,15 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 - **Vấn đề:** 162 tests hiện tại đều là unit/hybrid. Không có test nào gọi engine thật (`FastExecuteScript.exe`). Engine API có thể fail hoàn toàn mà dev không biết.
 - **Tài liệu:** [Design](designs/test-integration-engine-binary.design.md) | [Spec](specs/test-integration-engine-binary.spec.md) | [Plan](plans/test-integration-engine-binary.plan.md) | [Overview](overviews/test-integration-engine-binary.overview.md)
 - **GitHub:** [#33](https://github.com/maxlogvn/finger-chromium/issues/33) (closed)
+
+---
+
+**EADDRINUSE retry logic trong PCAP server không test được trên Windows**
+- **File:** `src/plugin/connector/pcapServer/index.ts:23-64`, `tests/connector.test.ts`
+- **Thay đổi:** `once()` wrapper đã được thay bằng `startPromise` module-level caching. `close()` reset `startPromise` để cho phép restart server. Đã thêm 2 test cases mới: idempotent listen + restart after close. Tuy nhiên, EADDRINUSE retry logic không thể test trên Windows do `net.Server` dùng `SO_REUSEADDR` mặc định.
+- **Windows limitation:** `net.Server` không throw EADDRINUSE trên Windows vì `SO_REUSEADDR` được bật mặc định. EADDRINUSE retry test chỉ chạy được trên Linux/macOS.
+- **Tài liệu:** [Design](designs/bug-029-eaddrInuse-retry-test.design.md) | [Spec](specs/bug-029-eaddrInuse-retry-test.spec.md) | [Plan](plans/bug-029-eaddrInuse-retry-test.plan.md) | [Overview](overviews/bug-029-eaddrInuse-retry-test.overview.md)
+- **GitHub:** [#29](https://github.com/maxlogvn/finger-chromium/issues/29) (closed)
 
 ---
 
