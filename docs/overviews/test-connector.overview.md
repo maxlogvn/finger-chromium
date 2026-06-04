@@ -35,5 +35,5 @@
 ## Ghi chú
 
 - Task này là non-feature task (chỉ viết test), không cần product doc.
-- Khi implement integration test với engine thật sau này, cần refactor RemoteEngine để hỗ trợ dependency injection hoặc dùng proxyquire.
+- Integration test với engine thật đã được triển khai tại `tests/integration-connector.test.ts` (xem [overview](overviews/test-integration-engine-binary.overview.md)).
 - `runFunction()` vẫn chưa được test trực tiếp — chỉ test qua Connector mock. Integration test sẽ fill gap này.

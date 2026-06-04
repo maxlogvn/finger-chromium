@@ -55,12 +55,7 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 ### OPEN
 
-**Thiếu integration test với engine binary thật `FastExecuteScript.exe` (P0)**
-- **File:** `tests/connector.test.ts`, `src/plugin/connector/engine.ts`
-- **Vấn đề:** 162 tests hiện tại đều là unit/hybrid. Không có test nào gọi engine thật (`FastExecuteScript.exe`). Engine API có thể fail hoàn toàn mà dev không biết. Luồng download -> extract -> spawn -> runFunction('ping') chưa bao giờ được verify.
-- **GitHub:** [#33](https://github.com/maxlogvn/finger-chromium/issues/33) (open)
 
----
 
 **Static property `_execFile`/`_closeTimeout` expose ra public cho testing (P1)**
 - **File:** `src/plugin/connector/engine.ts:194,197`
@@ -106,6 +101,14 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 ---
 
 ### FIXED
+
+**Thiếu integration test với engine binary thật `FastExecuteScript.exe` (P0)**
+- **File:** `tests/integration-connector.test.ts`, `tests/connector.test.ts`, `src/plugin/connector/engine.ts`
+- **Vấn đề:** 162 tests hiện tại đều là unit/hybrid. Không có test nào gọi engine thật (`FastExecuteScript.exe`). Engine API có thể fail hoàn toàn mà dev không biết.
+- **Tài liệu:** [Design](designs/test-integration-engine-binary.design.md) | [Spec](specs/test-integration-engine-binary.spec.md) | [Plan](plans/test-integration-engine-binary.plan.md) | [Overview](overviews/test-integration-engine-binary.overview.md)
+- **GitHub:** [#33](https://github.com/maxlogvn/finger-chromium/issues/33) (closed)
+
+---
 
 **`isBrowser` type guard dùng string check fragile**
 - **File:** `src/adapter/playwright/utils.ts:19-23`

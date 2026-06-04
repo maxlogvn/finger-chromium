@@ -15,7 +15,7 @@ Tham chiếu design: `docs/designs/test-connector.design.md`
 - Connector: test `api()` với error normalization (MissingKeyError, PluginError), lazy init PCAP, `cleanup()`.
 - Test dùng `mocha` + `node:assert`, không thêm thư viện mock (sinon, proxyquire).
 - Mock thủ công: override module-level dependencies qua dynamic `import()` — ESM không hỗ trợ `require.cache`.
-- Integration test với engine thật `it.skip` — triển khai sau.
+- Integration test với engine thật tại `tests/integration-connector.test.ts` — chạy khi `BABLOSOFT_KEY` được set.
 
 ## Thiết kế
 

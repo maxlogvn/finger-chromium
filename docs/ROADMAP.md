@@ -35,16 +35,15 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Integration test với engine binary thật `FastExecuteScript.exe` (P0)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** [Design](designs/test-integration-engine-binary.design.md) | [Spec](specs/test-integration-engine-binary.spec.md) | [Plan](plans/test-integration-engine-binary.plan.md) | [Overview](overviews/test-integration-engine-binary.overview.md)
 - **Ghi chú:**
-  - Hiện tại 100% test là unit/hybrid, không test với engine thật.
-  - Nguy cơ: engine API thay đổi, code vẫn pass 162 tests nhưng fail hoàn toàn khi chạy thật.
-  - Cần test luồng cơ bản: download -> extract -> spawn -> runFunction('ping', {}).
-  - CI condition: chạy khi `BABLOSOFT_KEY` được set.
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+  - Đã tạo `tests/integration-connector.test.ts` với 3 test cases (ping với key, ping không key, nhiều IPC call).
+  - Chạy khi `BABLOSOFT_KEY` được set, skip (pending) khi không có key.
+  - 162 unit tests + 3 integration tests (pending) đều pass.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#33](https://github.com/maxlogvn/finger-chromium/issues/33).
 
 ---
 
@@ -108,15 +107,14 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Thiếu kiểm thử tích hợp với engine nhị phân thật `FastExecuteScript.exe` (P0)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** [Design](designs/test-integration-engine-binary.design.md) | [Spec](specs/test-integration-engine-binary.spec.md) | [Plan](plans/test-integration-engine-binary.plan.md) | [Overview](overviews/test-integration-engine-binary.overview.md)
 - **Ghi chú:**
-  - Hiện tại 100% test là unit/hybrid, không test với engine thật.
-  - Nguy cơ: engine API thay đổi, code vẫn pass 162 tests nhưng fail hoàn toàn khi chạy thật.
-  - Cần test luồng cơ bản: download -> extract -> spawn -> runFunction('ping', {}).
-  - CI condition: chạy khi `BABLOSOFT_KEY` được set.
+  - Đã tạo `tests/integration-connector.test.ts` với 3 test cases (ping với key, ping không key, nhiều IPC call).
+  - Chạy khi `BABLOSOFT_KEY` được set, skip (pending) khi không có key.
+  - 162 unit tests + 3 integration tests (pending) đều pass.
   - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#33](https://github.com/maxlogvn/finger-chromium/issues/33).
 
 ---
