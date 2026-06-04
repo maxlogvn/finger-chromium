@@ -10,7 +10,7 @@ Tham chiếu design: `docs/designs/test-connector.design.md`
 
 ## Yêu cầu
 
-- PCAP server: test listen/close, xử lý lệnh binary. EADDRINUSE retry không test được vì `listen()` dùng `once()` — chỉ chạy một lần.
+- PCAP server: test listen/close, xử lý lệnh binary, idempotent listen, restart after close. EADDRINUSE retry không test được trên Windows do `net.Server` dùng `SO_REUSEADDR` mặc định.
 - RemoteEngine: test constructor/setters, helpers (`download`, `checksum`, `exists`), `kill()`. `runFunction()` không test trực tiếp được vì `#process` và `#meta` là JS native private fields — chỉ test gián tiếp qua Connector mock.
 - Connector: test `api()` với error normalization (MissingKeyError, PluginError), lazy init PCAP, `cleanup()`.
 - Test dùng `mocha` + `node:assert`, không thêm thư viện mock (sinon, proxyquire).
@@ -28,7 +28,8 @@ tests/connector.test.ts
 │   ├── close()
 │   ├── request ID (0x01)
 │   ├── heartbeat (0x07)
-│   └── EADDRINUSE retry
+│   ├── idempotent listen (cùng promise)
+│   └── restart after close
 ├── RemoteEngine (describe)
 │   ├── constructor + setters
 │   ├── helpers (exists, checksum, download)
@@ -59,7 +60,7 @@ tests/connector.test.ts
 Vì `initPromise` là `let` ở module scope của `connector/index.ts`, không export được, cách tiếp cận:
 
 1. Import Connector trực tiếp (ESM không hỗ trợ `require.cache`).
-2. PCAP server dùng `once()` nên chỉ init một lần trong cả test suite — không cần reset `initPromise`.
+2. PCAP server dùng `startPromise` caching — gọi nhiều lần trả về cùng promise. `close()` reset để cho phép restart.
 3. Các test Connector dùng mock trên `RemoteEngine.prototype` để không phụ thuộc PCAP.
 
 Pattern cụ thể:
@@ -67,7 +68,7 @@ Pattern cụ thể:
 ```ts
 // Trong describe('Connector')
 // Connector được import trực tiếp — không cần reset cache
-// PCAP listen chỉ gọi một lần nhờ once(), test ở describe riêng
+// PCAP listen dùng startPromise caching (idempotent), test ở describe riêng
 ```
 
 ## API / Data flow
@@ -121,12 +122,12 @@ api(name, params)
 | `api()` trả về error "key is missing" | `MissingKeyError` + `notify()` được gọi |
 | `api()` trả về error khác | `PluginError` |
 | `runFunction()` response parse fail | `{ error: 'Invalid response format from engine' }` |
-| PCAP server port bận (EADDRINUSE) | Retry sau 1s |
+| PCAP server port bận (EADDRINUSE) | Retry sau 1s. **Không test được trên Windows** do `SO_REUSEADDR`. |
 | `kill()` process đã exit | No-op, không throw |
 
 ## Kiểm tra
 
-### PCAP Server (5 test cases)
+### PCAP Server (7 test cases)
 
 | Case | Input | Expected |
 |---|---|---|
@@ -135,8 +136,10 @@ api(name, params)
 | heartbeat (0x07) | Gửi buffer `[0x07]` | Response heartbeat `[0x07, 0x00, 0x00, 0x00, 0x00]` |
 | data rỗng | Gửi buffer rỗng `[]` | Không crash, ignore |
 | close | Gọi `close()` | Server dừng, không listen nữa |
+| idempotent listen | Gọi `listen()` 2 lần | Cùng promise reference, cùng port |
+| restart after close | `close()` -> `listen()` lại | Server mới, port mới (nếu port=0), idempotent sau restart |
 
-> **EADDRINUSE retry:** Không test được. `listen()` dùng `once()` wrapper — chỉ chạy callback một lần, không thể test retry logic. Xem deviation tại overview `test-connector.overview.md`.
+> **EADDRINUSE retry:** Không test được trên Windows do `net.Server` dùng `SO_REUSEADDR` mặc định — EADDRINUSE không thể kích hoạt qua normal means.
 
 ### RemoteEngine (15 test cases)
 

@@ -19,9 +19,9 @@
 ## Sai lệch đáng chú ý
 
 - **Export helper functions:** Để test `exists()`, `checksum()`, `download()`, `fetchWithFallback()`, cần thêm `export` vào 4 function trong `engine.ts`. Đây là thay đổi nhỏ, không ảnh hưởng behavior.
-- **ESM module cache:** Ban đầu định dùng `require.cache` để reset `initPromise` trong Connector, nhưng ESM không hỗ trợ `require.cache`. Giải pháp: import Connector trực tiếp, PCAP server dùng `once()` nên chỉ init một lần trong cả test suite — không ảnh hưởng test.
+- **ESM module cache:** Ban đầu định dùng `require.cache` để reset `initPromise` trong Connector, nhưng ESM không hỗ trợ `require.cache`. Giải pháp: import Connector trực tiếp, PCAP server dùng `startPromise` caching (idempotent) nên init một lần trong cả test suite — không ảnh hưởng test.
 - **JS private fields (`#process`, `#meta`):** Không thể mock hoặc inject giá trị vào private fields từ bên ngoài. Hạn chế khả năng test `runFunction()` và `kill()` với process thật. Các test hiện tại chỉ test hành vi no-op và indirect qua Connector.
-- **Bỏ EADDRINUSE retry test:** Không test được vì `listen()` dùng `once()` — chỉ chạy một lần, không thể test retry logic.
+- **Bỏ EADDRINUSE retry test:** `once()` đã được thay bằng `startPromise` caching (xem issue #29), nhưng EADDRINUSE vẫn không test được trên Windows do `net.Server` dùng `SO_REUSEADDR` mặc định. Đã thay thế bằng 2 test: idempotent listen + restart after close.
 
 ## Tài liệu liên quan
 

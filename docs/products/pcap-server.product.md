@@ -25,8 +25,8 @@ await pcapServer.close();
 - Server chỉ hiểu 2 lệnh binary:
   - `0x01` (Request ID): engine yêu cầu một ID mới — server phản hồi với ID dạng số.
   - `0x07` (Heartbeat): engine kiểm tra server còn sống — server phản hồi xác nhận.
-- `listen()` dùng `once()` — chỉ gọi được một lần, các lần sau ignore.
-- Nếu port đã được dùng (EADDRINUSE), retry sau 1 giây với port mới.
+- `listen()` dùng `startPromise` module-level caching: lần đầu tạo server, các lần sau trả về cùng promise (cùng port). Sau `close()`, có thể gọi `listen()` lại để tạo server mới.
+- Nếu port đã được dùng (EADDRINUSE), retry sau 1 giây. **Lưu ý:** Trên Windows, `SO_REUSEADDR` mặc định khiến EADDRINUSE không thể kích hoạt qua normal means.
 - `close()` kiểm tra server tồn tại trước khi đóng — an toàn khi gọi nhiều lần.
 - Port được dùng để set `--mock-pcap-port=<port>` cho engine args.
 

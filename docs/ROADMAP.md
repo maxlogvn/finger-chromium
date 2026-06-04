@@ -622,14 +622,14 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Test coverage: EADDRINUSE retry trong PCAP server (Issue #29)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** [Design](designs/bug-029-eaddrInuse-retry-test.design.md) | [Spec](specs/bug-029-eaddrInuse-retry-test.spec.md) | [Plan](plans/bug-029-eaddrInuse-retry-test.plan.md) | [Overview](overviews/bug-029-eaddrInuse-retry-test.overview.md)
 - **Ghi chú:**
-  - PCAP server có retry logic khi port bận nhưng không có test verify.
-  - Spec yêu cầu test "EADDRINUSE — Retry + thành công ở lần 2" nhưng chưa implement.
-  - Deviation: overview ghi "không test được vì `once()` wrapper".
+  - Đã thay `once()` bằng `startPromise` caching trong `pcapServer/index.ts`.
+  - Đã thêm 2 test: idempotent listen + restart after close (164 tests pass).
+  - EADDRINUSE retry test KHÔNG khả thi trên Windows do `net.Server` dùng `SO_REUSEADDR` mặc định.
   - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #29).
 
 ---

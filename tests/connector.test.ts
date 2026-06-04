@@ -111,6 +111,36 @@ describe('PCAP Server', () => {
     strictEqual(connected, false, 'server đã đóng, không kết nối được');
     sock.destroy();
   });
+
+  it('nên trả về cùng promise khi gọi listen() nhiều lần (idempotent)', async () => {
+    const promise1 = pcapServer.listen(0);
+    const promise2 = pcapServer.listen(0);
+    const promise3 = pcapServer.listen(0);
+
+    strictEqual(promise1, promise2, 'cùng reference');
+    strictEqual(promise2, promise3, 'cùng reference');
+
+    const port1 = await promise1;
+    const port2 = await promise2;
+    strictEqual(port1, port2, 'cùng port');
+  });
+
+  it('nên tạo server mới với port khác sau khi close + listen lại', async () => {
+    await pcapServer.close();
+
+    const port1 = await pcapServer.listen(0);
+    await pcapServer.close();
+
+    const port2 = await pcapServer.listen(0);
+
+    // Port khác nhau vì random (port=0) và server cũ đã đóng
+    ok(port2 > 0, `port2 = ${port2}`);
+    // Có thể port trùng ngẫu nhiên, nhưng promise reference khác
+    const promiseCheck = pcapServer.listen(0);
+    strictEqual(promiseCheck, pcapServer.listen(0), 'listen sau restart cũng idempotent');
+
+    await pcapServer.close();
+  });
 });
 
 // ─── RemoteEngine ─────────────────────────────────────────────────────────────

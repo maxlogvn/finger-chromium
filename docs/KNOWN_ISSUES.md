@@ -79,9 +79,11 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 ---
 
-**Thiếu test coverage cho EADDRINUSE retry logic trong PCAP server listen()**
+**EADDRINUSE retry logic trong PCAP server không test được trên Windows**
 - **File:** `src/plugin/connector/pcapServer/index.ts:23-64`, `tests/connector.test.ts`
-- **Vấn đề:** PCAP server có retry logic khi port bận (`EADDRINUSE`) — nếu lần đầu thất bại, tự động retry sau 1 giây. Không có test nào kiểm tra cơ chế này. `once()` wrapper ngăn test gọi `listen()` nhiều lần. Nếu retry hỏng, `pcapServer.listen()` có thể treo promise vĩnh viễn.
+- **Thay đổi:** `once()` wrapper đã được thay bằng `startPromise` module-level caching. `close()` reset `startPromise` để cho phép restart server. Đã thêm 2 test cases mới: idempotent listen + restart after close. Tuy nhiên, EADDRINUSE retry logic không thể test trên Windows do `net.Server` dùng `SO_REUSEADDR` mặc định.
+- **Windows limitation:** `net.Server` không throw EADDRINUSE trên Windows vì `SO_REUSEADDR` được bật mặc định. EADDRINUSE retry test chỉ chạy được trên Linux/macOS.
+- **Tài liệu:** [Design](designs/bug-029-eaddrInuse-retry-test.design.md) | [Spec](specs/bug-029-eaddrInuse-retry-test.spec.md) | [Plan](plans/bug-029-eaddrInuse-retry-test.plan.md) | [Overview](overviews/bug-029-eaddrInuse-retry-test.overview.md)
 - **GitHub:** [#29](https://github.com/maxlogvn/finger-chromium/issues/29) (open)
 
 ---
