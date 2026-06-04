@@ -81,6 +81,10 @@ export interface EngineOptions {
   engineTimeout?: string | number;
   /** Timeout chờ phản hồi (ms). */
   requestTimeout?: string | number;
+  /** Hàm spawn process -- dùng để inject mock trong test. Mặc định dùng child_process.execFile. */
+  execFile?: typeof nodeExecFile;
+  /** Thời gian chờ process đóng (ms). Mặc định CLOSE_TIMEOUT. */
+  closeTimeout?: number;
 }
 
 /**
@@ -190,21 +194,19 @@ export async function fetchWithFallback<T = unknown>(url: string, options?: Reco
  * Tự động tải, verify checksum, giải nén engine khi cần.
  */
 export default class RemoteEngine extends EventEmitter {
-  /** @internal For testing — override để mock child_process.execFile. */
-  static _execFile = nodeExecFile;
-
-  /** @internal For testing — override để rút ngắn CLOSE_TIMEOUT. */
-  static _closeTimeout = CLOSE_TIMEOUT;
-
   #meta: EngineMeta | null = null;
   #cwd: string | null = null;
   #args: string[] = [];
   #engineTimeout: number = DEFAULT_TIMEOUT;
   #requestTimeout: number = DEFAULT_TIMEOUT;
   #process: ChildProcess | undefined = undefined;
+  #execFile: typeof nodeExecFile;
+  #closeTimeout: number;
 
   constructor(options: EngineOptions = {}) {
     super();
+    this.#execFile = options.execFile ?? nodeExecFile;
+    this.#closeTimeout = options.closeTimeout ?? CLOSE_TIMEOUT;
     this.setCwd(options.cwd);
     this.setArgs(options.args);
     this.setEngineTimeout(options.engineTimeout);
@@ -289,7 +291,7 @@ export default class RemoteEngine extends EventEmitter {
           closeTimer = setTimeout(() => {
             debug('Tiến trình engine đã đóng trong lúc chờ phản hồi');
             resolve('');
-          }, RemoteEngine._closeTimeout);
+          }, this.#closeTimeout);
         };
 
         requestWatcher.on('change', async () => {
@@ -361,7 +363,7 @@ export default class RemoteEngine extends EventEmitter {
 
     // --- Bước 5: Spawn FastExecuteScript.exe
     return new Promise<ChildProcess>((resolve, reject) => {
-      const proc = RemoteEngine._execFile(
+      const proc = this.#execFile(
         path.join(scriptDir, 'FastExecuteScript.exe'),
         ['--silent', ...this.#args],
         { cwd: scriptDir },

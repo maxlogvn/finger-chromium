@@ -15,7 +15,6 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - Cần define interface cụ thể cho từng API call (`FetchParams`, `SetupParams`, `VersionsParams`).
   - File chính: `src/plugin/index.ts:206,218,233,252`, `src/adapter/playwright/engine.ts:76,84`, `src/plugin/connector/engine.ts:206`.
   - Mục tiêu: 0 `as any` trong codebase.
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — quality tasks overview.
 
 ---
 
@@ -121,14 +120,15 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Thuộc tính static `_execFile` và `_closeTimeout` bị lộ ra ngoài chỉ để phục vụ kiểm thử (P1)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** [Design](designs/bug-034-static-property-di.design.md) | [Spec](specs/bug-034-static-property-di.spec.md) | [Plan](plans/bug-034-static-property-di.plan.md) | [Overview](overviews/bug-034-static-property-di.overview.md)
 - **Ghi chú:**
   - `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property expose ra chỉ để test.
-  - Cần chuyển sang DI (pass `execFile` function qua constructor) hoặc dùng `sinon.mock()`.
-  - Liên quan: Issue #28 (test-runfunction-ipc-core).
+  - Fix: chuyển sang DI qua constructor (`EngineOptions.execFile`, `EngineOptions.closeTimeout`).
+  - Xoá 2 static property, thêm private fields `#execFile`, `#closeTimeout`.
+  - 164 tests pass.
   - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#34](https://github.com/maxlogvn/finger-chromium/issues/34).
 
 ---

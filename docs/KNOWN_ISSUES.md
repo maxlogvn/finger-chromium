@@ -57,13 +57,8 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 
 
-**Static property `_execFile`/`_closeTimeout` expose ra public cho testing (P1)**
-- **File:** `src/plugin/connector/engine.ts:194,197`
-- **Vấn đề:** `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property, chỉ dùng để mock trong test. Dev khác có thể vô tình ghi đè, crash toàn bộ engine. `@internal` JSDoc không ngăn được abuse.
-- **Liên quan:** Bug test-runfunction-ipc-core (Issue #28).
-- **GitHub:** [#34](https://github.com/maxlogvn/finger-chromium/issues/34) (open)
 
----
+
 
 **Timer management không đồng nhất (P2)**
 - **File:** `src/plugin/config.ts:109`, `src/plugin/connector/engine.ts:283,419`, `src/plugin/connector/index.ts`
@@ -328,3 +323,12 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 - **Fix:** Chuyển `serviceKey` thành instance private field `#serviceKey`. Xoá module-level `let serviceKey`. Sửa `setServiceKey()`, `fetch()`, `_launch()` dùng `this.#serviceKey`.
 - **Tài liệu:** [Design](designs/bug-032-servicekey-module-scope.design.md) | [Spec](specs/bug-032-servicekey-module-scope.spec.md) | [Plan](plans/bug-032-servicekey-module-scope.plan.md)
 - **GitHub:** [#32](https://github.com/maxlogvn/finger-chromium/issues/32) (closed)
+
+---
+
+**Static property `_execFile`/`_closeTimeout` expose ra public cho testing (P1)**
+- **File:** `src/plugin/connector/engine.ts`
+- **Vấn đề:** `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property, chỉ dùng để mock trong test. Dev khác có thể vô tình ghi đè, crash toàn bộ engine. `@internal` JSDoc không ngăn được abuse.
+- **Fix:** Chuyển sang DI qua constructor. Thêm `execFile` và `closeTimeout` vào `EngineOptions`. Xoá static property. Test inject qua `new RemoteEngine({ execFile: mockFn, closeTimeout: 100 })`.
+- **Tài liệu:** [Design](designs/bug-034-static-property-di.design.md) | [Spec](specs/bug-034-static-property-di.spec.md) | [Plan](plans/bug-034-static-property-di.plan.md) | [Overview](overviews/bug-034-static-property-di.overview.md)
+- **GitHub:** [#34](https://github.com/maxlogvn/finger-chromium/issues/34) (closed)

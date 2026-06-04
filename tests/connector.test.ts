@@ -273,9 +273,13 @@ describe('RemoteEngine', () => {
       exitCode: number | null;
       kill: () => void;
     };
-    let origExecFile: typeof RemoteEngine._execFile;
-    let origCloseTimeout: typeof RemoteEngine._closeTimeout;
     const FAKE_PID = 99_999;
+
+    function mockExecFile(...args: any[]): any {
+      const cb = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : null;
+      if (cb) cb(null, '', '');
+      return mockProc;
+    }
 
     beforeEach(async () => {
       tmpDir = await fs.mkdtemp(path.join(process.cwd(), '.tmp', 'runfunc-test-'));
@@ -304,19 +308,9 @@ describe('RemoteEngine', () => {
         kill: function () { (this as any).killed = true; },
       });
 
-      // --- Override RemoteEngine._execFile
-      origExecFile = RemoteEngine._execFile;
-      origCloseTimeout = RemoteEngine._closeTimeout;
-      RemoteEngine._execFile = ((...args: any[]) => {
-        const cb = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : null;
-        if (cb) cb(null, '', '');
-        return mockProc;
-      }) as typeof RemoteEngine._execFile;
     });
 
     afterEach(async () => {
-      RemoteEngine._execFile = origExecFile;
-      RemoteEngine._closeTimeout = origCloseTimeout;
       await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
     });
 
@@ -350,7 +344,7 @@ describe('RemoteEngine', () => {
     // --- Test case: thanh cong ---
 
     it('nên parse response JSON thành công', async () => {
-      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 5000 });
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 5000, execFile: mockExecFile });
 
       const [result] = await Promise.all([
         engine.runFunction('testFunc', { foo: 'bar' }),
@@ -363,7 +357,7 @@ describe('RemoteEngine', () => {
     // --- Test case: timeout ---
 
     it('nên throw RequestTimeoutError khi hết thời gian chờ', async () => {
-      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 100 });
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 100, execFile: mockExecFile });
 
       await rejects(
         () => engine.runFunction('testFunc', { foo: 'bar' }),
@@ -378,7 +372,7 @@ describe('RemoteEngine', () => {
     // --- Test case: requestTimeout=0 ---
 
     it('nên không set timeout khi requestTimeout=0 (chờ đến khi có response)', async () => {
-      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 0 });
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 0, execFile: mockExecFile });
 
       const [result] = await Promise.all([
         engine.runFunction('testFunc', { foo: 'bar' }),
@@ -391,7 +385,7 @@ describe('RemoteEngine', () => {
     // --- Test case: invalid JSON ---
 
     it('nên trả về error khi response không phải JSON hợp lệ', async () => {
-      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 5000 });
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 5000, execFile: mockExecFile });
 
       const [result] = await Promise.all([
         engine.runFunction('testFunc', { foo: 'bar' }),
@@ -404,8 +398,7 @@ describe('RemoteEngine', () => {
     // --- Test case: process dong ---
 
     it('nên trả về lỗi khi engine process đóng trước khi response', async () => {
-      RemoteEngine._closeTimeout = 100;
-      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 0 });
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 0, execFile: mockExecFile, closeTimeout: 100 });
 
       // Emit 'close' sau 50ms de kich hoat close handler
       setTimeout(() => mockProc.emit('close'), 50);
@@ -422,7 +415,7 @@ describe('RemoteEngine', () => {
     // --- Test case: don file rac ---
 
     it('nên xoá file request cũ không còn process sở hữu', async () => {
-      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 5000 });
+      const engine = new RemoteEngine({ cwd: tmpDir, requestTimeout: 5000, execFile: mockExecFile });
 
       // Pre-create thu muc r/ voi file rac
       const requestDir = path.join(scriptDir, 'r');
