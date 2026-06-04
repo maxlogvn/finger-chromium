@@ -15,7 +15,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 8 issues — xem section OPEN bên dưới
+- **OPEN:** 7 issues — xem section OPEN bên dưới
 - **FIXED:** 27 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
@@ -104,12 +104,7 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 ---
 
-**ROADMAP.md còn template cũ trong HTML comment gây nhầm lẫn**
-- **File:** `docs/ROADMAP.md:1-89`
-- **Vấn đề:** HTML comment `<!-- ... -->` đầu file chứa các mục template cũ với trạng thái "[-] Sắp làm" cho các issue #32, #34, #35, #36 đã hoàn thành. Không render trên GitHub nhưng gây nhầm lẫn khi đọc raw và làm file dài hơn cần thiết (~90 dòng).
-- **GitHub:** [#42](https://github.com/maxlogvn/finger-chromium/issues/42) (open)
 
----
 
 ### FIXED
 
@@ -370,3 +365,11 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 - **Fix:** Tạo `src/common/timer.ts` với `sleep()`, `withTimeout()`, `createTimer()` — centralized API duy nhất cho mọi nhu cầu timer. Chuyển toàn bộ module sang dùng API này.
 - **Tài liệu:** [Design](designs/timer-management-uniform.design.md) | [Spec](specs/timer-management-uniform.spec.md) | [Plan](plans/timer-management-uniform.plan.md) | [Overview](overviews/timer-management-uniform.overview.md)
 - **GitHub:** [#35](https://github.com/maxlogvn/finger-chromium/issues/35) (closed)
+
+---
+
+**ROADMAP.md còn template cũ trong HTML comment gây nhầm lẫn**
+- **File:** `docs/ROADMAP.md:1-89` (đã xoá)
+- **Vấn đề:** HTML comment `<!-- ... -->` đầu file chứa các mục template cũ với trạng thái "[-] Sắp làm" cho các issue #32, #34, #35, #36 đã hoàn thành. Không render trên GitHub nhưng gây nhầm lẫn khi đọc raw và làm file dài hơn cần thiết (~90 dòng).
+- **Fix:** Đã xoá toàn bộ HTML comment (cùng lúc fix 40 link hỏng trong ROADMAP.md).
+- **GitHub:** [#42](https://github.com/maxlogvn/finger-chromium/issues/42) (closed)

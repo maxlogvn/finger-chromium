@@ -1,92 +1,4 @@
-<!-- Template
 
-Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
-
----
-
-### Code quality: Giảm `as any` về 0 (Codebase sweep)
-
-- **Trạng thái:** [X] Hoàn thành
-- **Ngày tạo:** 2026-06-04
-- **Cập nhật:** 2026-06-04
-- **Tài liệu:** [Design](designs/code-quality-no-as-any.design.md) | [Spec](specs/code-quality-no-as-any.spec.md) | [Plan](plans/code-quality-no-as-any.plan.md) | [Overview](overviews/code-quality-no-as-any.overview.md)
-- **Ghi chú:**
-  - Đã loại bỏ hoàn toàn 9 chỗ `as any` trong `src/` và 37 chỗ trong `tests/`.
-  - 0 `as any` trong toàn bộ codebase (src/ + tests/).
-  - Fix gồm: widen `ApiParams.options`, type assertion `as unknown as`, `in` operator thay duck-typing, `@ts-expect-error` cho read-only property, define interface test cụ thể.
-  - 164 tests pass, typecheck pass, build pass.
-
----
-
-### Fix module-level `serviceKey` state (P0)
-
-- **Trạng thái:** [-] Sắp làm
-- **Ngày tạo:** 2026-06-04
-- **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
-- **Ghi chú:**
-  - `let serviceKey` ở `src/plugin/index.ts:61` là module-level state — tất cả instance chia sẻ.
-  - Instance A gọi `setServiceKey(keyA)`, instance B gọi `setServiceKey(keyB)` → A dùng sai key.
-  - Cần đưa `serviceKey` vào instance (`this.#serviceKey`).
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
-
----
-
-### Integration test với engine binary thật `FastExecuteScript.exe` (P0)
-
-- **Trạng thái:** [X] Hoàn thành
-- **Ngày tạo:** 2026-06-04
-- **Cập nhật:** 2026-06-04
-- **Tài liệu:** [Design](designs/test-integration-engine-binary.design.md) | [Spec](specs/test-integration-engine-binary.spec.md) | [Plan](plans/test-integration-engine-binary.plan.md) | [Overview](overviews/test-integration-engine-binary.overview.md)
-- **Ghi chú:**
-  - Đã tạo `tests/integration-connector.test.ts` với 3 test cases (ping với key, ping không key, nhiều IPC call).
-  - Chạy khi `BABLOSOFT_KEY` được set, skip (pending) khi không có key.
-  - 162 unit tests + 3 integration tests (pending) đều pass.
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#33](https://github.com/maxlogvn/finger-chromium/issues/33).
-
----
-
-### Refactor static property testing pattern sang Dependency Injection (P1)
-
-- **Trạng thái:** [-] Sắp làm
-- **Ngày tạo:** 2026-06-04
-- **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
-- **Ghi chú:**
-  - `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property expose ra chỉ để test.
-  - Cần chuyển sang DI (pass `execFile` function qua constructor) hoặc dùng `sinon.mock()`.
-  - Liên quan: Issue #28 (test-runfunction-ipc-core).
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
-
----
-
-### Timer management đồng nhất (P2)
-
-- **Trạng thái:** [-] Sắp làm
-- **Ngày tạo:** 2026-06-04
-- **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
-- **Ghi chú:**
-  - Dùng 2 style: `timers/promises` (config.ts) và `setTimeout().unref()` (connector).
-  - Cần chọn 1 style duy nhất, tạo wrapper nếu cần `unref()`.
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
-
----
-
-### Headless viewport resize fix (P2)
-
-- **Trạng thái:** [-] Sắp làm
-- **Ngày tạo:** 2026-06-04
-- **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
-- **Ghi chú:**
-  - `setViewport()` dùng CDP `Browser.setWindowBounds` không hoạt động trong headless mode.
-  - Cần detect headless, fallback sang `page.setViewportSize()`.
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #36).
-
----
-
--->
 
 ---
 
@@ -169,7 +81,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/project-infrastructure.design.md) | [Spec](specs/project-infrastructure.spec.md) | [Plan](plans/project-infrastructure.plan.md) | [Product](products/project-infrastructure.product.md) | [Overview](overviews/project-infrastructure.overview.md)
+- **Tài liệu:** [Design](designs/project-infrastructure.design.md) | [Spec](specs/project-infrastructure.spec.md) | [Product](products/project-infrastructure.product.md)
 - **Ghi chú:**
   - TypeScript strict mode, target ES2022
   - tsup bundle (ESM + CJS)
@@ -186,7 +98,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/type-system.design.md) | [Spec](specs/type-system.spec.md) | [Plan](plans/type-system.plan.md) | [Product](products/type-system.product.md) | [Overview](overviews/type-system.overview.md) -- `src/types/`
+- **Tài liệu:** [Design](designs/type-system.design.md) | [Spec](specs/type-system.spec.md) | [Product](products/type-system.product.md) -- `src/types/`
 - **Ghi chú:**
   - `PWChromium.ts` -- interface public API của BrowserEngine
   - `fingerprint.ts` -- `FingerprintOptions` (PerfectCanvas, WebGL, Audio, Canvas, Battery, Sensor, HiDPI, FontPack, ElementSize)
@@ -201,7 +113,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** [Design](designs/error-hierarchy.design.md) | [Spec](specs/error-hierarchy.spec.md) | [Plan](plans/error-hierarchy.plan.md) | [Product](products/error-hierarchy.product.md) | [Overview](overviews/error-hierarchy.overview.md) -- `src/plugin/errors.ts`
+- **Tài liệu:** [Design](designs/error-hierarchy.design.md) | [Spec](specs/error-hierarchy.spec.md) | [Product](products/error-hierarchy.product.md) -- `src/plugin/errors.ts`
 - **Ghi chú:**
   - `PluginError` -- base class
   - `MissingKeyError` -- thiếu key bảo mật
@@ -218,7 +130,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/remote-engine.design.md) | [Spec](specs/remote-engine.spec.md) | [Plan](plans/remote-engine.plan.md) | [Product](products/remote-engine.product.md) | [Overview](overviews/remote-engine.overview.md) -- `src/plugin/connector/engine.ts`
+- **Tài liệu:** [Design](designs/remote-engine.design.md) | [Spec](specs/remote-engine.spec.md) | [Product](products/remote-engine.product.md) -- `src/plugin/connector/engine.ts`
 - **Ghi chú:**
   - Download engine từ bablosoft.com, verify SHA1 checksum
   - Extract-zip, copy project.xml, tạo settings.ini, worker_command_line.txt
@@ -232,7 +144,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/api-connector.design.md) | [Spec](specs/api-connector.spec.md) | [Plan](plans/api-connector.plan.md) | [Product](products/api-connector.product.md) | [Overview](overviews/api-connector.overview.md) -- `src/plugin/connector/index.ts`
+- **Tài liệu:** [Design](designs/api-connector.design.md) | [Spec](specs/api-connector.spec.md) | [Product](products/api-connector.product.md) -- `src/plugin/connector/index.ts`
 - **Ghi chú:**
   - Class `Connector` — mỗi `FingerprintPlugin` instance sở hữu Connector riêng (không còn singleton)
   - `api(name, params)` -- wrapper error normalization
@@ -246,7 +158,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/pcap-server.design.md) | [Spec](specs/pcap-server.spec.md) | [Plan](plans/pcap-server.plan.md) | [Product](products/pcap-server.product.md) | [Overview](overviews/pcap-server.overview.md) -- `src/plugin/connector/pcapServer/index.ts`
+- **Tài liệu:** [Design](designs/pcap-server.design.md) | [Spec](specs/pcap-server.spec.md) | [Product](products/pcap-server.product.md) -- `src/plugin/connector/pcapServer/index.ts`
 - **Ghi chú:**
   - Minimal TCP server mô phỏng PCAP interface
   - Xử lý 2 lệnh binary: `0x01` (request ID), `0x07` (heartbeat)
@@ -260,7 +172,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/browser-launcher.design.md) | [Spec](specs/browser-launcher.spec.md) | [Plan](plans/browser-launcher.plan.md) | [Product](products/browser-launcher.product.md) | [Overview](overviews/browser-launcher.overview.md) -- `src/plugin/launcher/index.ts`
+- **Tài liệu:** [Design](designs/browser-launcher.design.md) | [Spec](specs/browser-launcher.spec.md) | [Product](products/browser-launcher.product.md) -- `src/plugin/launcher/index.ts`
 - **Ghi chú:**
   - Spawn Chromium child process
   - Phát hiện DevTools listening URL từ stderr/stdout
@@ -274,7 +186,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:** [Design](designs/native-mutex.design.md) | [Spec](specs/native-mutex.spec.md) | [Plan](plans/native-mutex.plan.md) | [Product](products/native-mutex.product.md) | [Overview](overviews/native-mutex.overview.md) -- `src/plugin/mutex/index.ts`
+- **Tài liệu:** [Design](designs/native-mutex.design.md) | [Spec](specs/native-mutex.spec.md) | [Product](products/native-mutex.product.md) -- `src/plugin/mutex/index.ts`
 - **Ghi chú:**
   - Native C++ addon (`mutex.node`)
   - Hỗ trợ win32 32-bit + 64-bit
@@ -288,7 +200,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/fingerprint-plugin.design.md) | [Spec](specs/fingerprint-plugin.spec.md) | [Plan](plans/fingerprint-plugin.plan.md) | [Product](products/fingerprint-plugin.product.md) | [Overview](overviews/fingerprint-plugin.overview.md) -- `src/plugin/index.ts`
+- **Tài liệu:** [Design](designs/fingerprint-plugin.design.md) | [Spec](specs/fingerprint-plugin.spec.md) | [Product](products/fingerprint-plugin.product.md) -- `src/plugin/index.ts`
 - **Ghi chú:**
   - Lifecycle: setup -> spawn -> configure -> cleanup
   - Fluent config methods: useFingerprint, useProxy, useProfile, useBrowserVersion
@@ -304,7 +216,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/playwright-bridge.design.md) | [Spec](specs/playwright-bridge.spec.md) | [Plan](plans/playwright-bridge.plan.md) | [Product](products/playwright-bridge.product.md) | [Overview](overviews/playwright-bridge.overview.md) -- `src/adapter/playwright/engine.ts`
+- **Tài liệu:** [Design](designs/playwright-bridge.design.md) | [Spec](specs/playwright-bridge.spec.md) | [Product](products/playwright-bridge.product.md) -- `src/adapter/playwright/engine.ts`
 - **Ghi chú:**
   - Bridge giữa FingerprintPlugin và Playwright BrowserType
   - Override launch/launchPersistentContext
@@ -319,7 +231,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/browser-engine.design.md) | [Spec](specs/browser-engine.spec.md) | [Plan](plans/browser-engine.plan.md) | [Product](products/browser-engine.product.md) | [Overview](overviews/browser-engine.overview.md) -- `src/adapter/playwright/chromium.ts`
+- **Tài liệu:** [Design](designs/browser-engine.design.md) | [Spec](specs/browser-engine.spec.md) | [Product](products/browser-engine.product.md) -- `src/adapter/playwright/chromium.ts`
 - **Ghi chú:**
   - Multi-instance — mỗi `new BrowserEngine()` là instance độc lập, có thể launch riêng
   - Fluent API: useFingerprint -> useProxy -> useProfile -> launch -> newContext -> quit
@@ -334,7 +246,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/fingerprint-config.design.md) | [Spec](specs/fingerprint-config.spec.md) | [Plan](plans/fingerprint-config.plan.md) | [Product](products/fingerprint-config.product.md) | [Overview](overviews/fingerprint-config.overview.md)
+- **Tài liệu:** [Design](designs/fingerprint-config.design.md) | [Spec](specs/fingerprint-config.spec.md) | [Product](products/fingerprint-config.product.md)
 - **Ghi chú:**
   - useFingerprint(data, options) -- gắn fingerprint vào browser
   - Hỗ trợ: PerfectCanvas, WebGL noise, Audio noise, Canvas noise, Battery API, Sensor API, HiDPI, FontPack, che giấu element size
@@ -346,7 +258,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/proxy-config.design.md) | [Spec](specs/proxy-config.spec.md) | [Plan](plans/proxy-config.plan.md) | [Product](products/proxy-config.product.md) | [Overview](overviews/proxy-config.overview.md)
+- **Tài liệu:** [Design](designs/proxy-config.design.md) | [Spec](specs/proxy-config.spec.md) | [Product](products/proxy-config.product.md)
 - **Ghi chú:**
   - useProxy(data, options) -- định tuyến traffic qua proxy
   - Hỗ trợ: HTTP/HTTPS/SOCKS4/SOCKS5, timezone sync, geolocation sync, language sync
@@ -361,7 +273,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/profile-management.design.md) | [Spec](specs/profile-management.spec.md) | [Plan](plans/profile-management.plan.md) | [Product](products/profile-management.product.md) | [Overview](overviews/profile-management.overview.md) -- `src/adapter/playwright/data.ts`, `src/plugin/index.ts`
+- **Tài liệu:** [Design](designs/profile-management.design.md) | [Spec](specs/profile-management.spec.md) | [Product](products/profile-management.product.md) -- `src/adapter/playwright/data.ts`, `src/plugin/index.ts`
 - **Ghi chú:**
   - useProfile(dirPath, options) -- liên kết thư mục profile
   - AdapterDataManager: map profile -> temp dir (tránh corrupt), unmap khi quit
@@ -374,7 +286,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/viewport-management.design.md) | [Spec](specs/viewport-management.spec.md) | [Plan](plans/viewport-management.plan.md) | [Product](products/viewport-management.product.md) | [Overview](overviews/viewport-management.overview.md) -- `src/adapter/playwright/utils.ts`, `src/plugin/browser.ts`, `src/plugin/config.ts`
+- **Tài liệu:** [Design](designs/viewport-management.design.md) | [Spec](specs/viewport-management.spec.md) | [Product](products/viewport-management.product.md) -- `src/adapter/playwright/utils.ts`, `src/plugin/browser.ts`, `src/plugin/config.ts`
 - **Ghi chú:**
   - CDP-based resize với retries (max 3 lần)
   - Sync availWidth/availHeight vào engine .ini file
@@ -388,7 +300,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/file-cleanup-daemon.design.md) | [Spec](specs/file-cleanup-daemon.spec.md) | [Plan](plans/file-cleanup-daemon.plan.md) | [Product](products/file-cleanup-daemon.product.md) | [Overview](overviews/file-cleanup-daemon.overview.md) -- `src/plugin/cleaner.ts`
+- **Tài liệu:** [Design](designs/file-cleanup-daemon.design.md) | [Spec](specs/file-cleanup-daemon.spec.md) | [Product](products/file-cleanup-daemon.product.md) -- `src/plugin/cleaner.ts`
 - **Ghi chú:**
   - proper-lockfile để tránh xoá file đang dùng
   - Timer 15s cleanup interval
@@ -402,7 +314,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/hook-binding.design.md) | [Spec](specs/hook-binding.spec.md) | [Plan](plans/hook-binding.plan.md) | [Product](products/hook-binding.product.md) | [Overview](overviews/hook-binding.overview.md) -- `src/adapter/playwright/utils.ts`
+- **Tài liệu:** [Design](designs/hook-binding.design.md) | [Spec](specs/hook-binding.spec.md) | [Product](products/hook-binding.product.md) -- `src/adapter/playwright/utils.ts`
 - **Ghi chú:**
   - onClose -- register close/disconnect handler
   - bindHooks -- proxy newContext/newPage/setViewportSize
@@ -415,7 +327,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/common-scripts.design.md) | [Spec](specs/common-scripts.spec.md) | [Plan](plans/common-scripts.plan.md) | [Product](products/common-scripts.product.md) | [Overview](overviews/common-scripts.overview.md) -- `src/common/index.ts`
+- **Tài liệu:** [Design](designs/common-scripts.design.md) | [Spec](specs/common-scripts.spec.md) | [Product](products/common-scripts.product.md) -- `src/common/index.ts`
 - **Ghi chú:**
   - `waitForResize` -- ResizeObserver + requestAnimationFrame
   - `getViewport` -- window.innerWidth/innerHeight
@@ -427,7 +339,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/playwright-module-loader.design.md) | [Spec](specs/playwright-module-loader.spec.md) | [Plan](plans/playwright-module-loader.plan.md) | [Product](products/playwright-module-loader.product.md) | [Overview](overviews/playwright-module-loader.overview.md) -- `src/loader/index.ts`, `src/adapter/playwright/loader.ts`
+- **Tài liệu:** [Design](designs/playwright-module-loader.design.md) | [Spec](specs/playwright-module-loader.spec.md) | [Product](products/playwright-module-loader.product.md) -- `src/loader/index.ts`, `src/adapter/playwright/loader.ts`
 - **Ghi chú:**
   - Loader class -- resolve package, validate version >= minimum
   - Playwright loader target `>= 1.27.1`, fallback packages: `['playwright-core']`
@@ -439,7 +351,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 - **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-02
 - **Cập nhật:** 2026-06-02
-- **Tài liệu:** [Design](designs/debug-logging.design.md) | [Spec](specs/debug-logging.spec.md) | [Plan](plans/debug-logging.plan.md) | [Product](products/debug-logging.product.md) | [Overview](overviews/debug-logging.overview.md)
+- **Tài liệu:** [Design](designs/debug-logging.design.md) | [Spec](specs/debug-logging.spec.md) | [Product](products/debug-logging.product.md)
 - **Ghi chú:**
   - debug package, namespace theo module
   - `browser-with-fingerprints:connector`
@@ -749,12 +661,13 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### ROADMAP.md còn template cũ trong HTML comment (P3)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** Đã xoá HTML comment template cũ (dòng 1-89) cùng lúc fix 40 link hỏng.
 - **Ghi chú:**
-  - HTML comment `<!-- ... -->` đầu file `docs/ROADMAP.md:1-89` chứa template cũ với trạng thái sai cho các issue đã hoàn thành.
+  - HTML comment `<!-- ... -->` đầu file chứa template cũ với trạng thái sai cho các issue đã hoàn thành.
+  - Đã xoá toàn bộ HTML comment.
   - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#42](https://github.com/maxlogvn/finger-chromium/issues/42).
 
 ---
