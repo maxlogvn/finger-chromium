@@ -9,7 +9,7 @@
 
 import AsyncLock from 'async-lock';
 import { setViewport } from './browser';
-import { setTimeout } from 'timers/promises';
+import { sleep } from '../common/timer';
 import { readFile, writeFile } from 'fs/promises';
 import type { Browser } from './launcher';
 
@@ -106,7 +106,7 @@ export class ConfigManager {
           });
         }
         await writeFile(configPath, configContent);
-        await setTimeout(actualPollInterval);
+        await sleep(actualPollInterval);
       }
     });
   }

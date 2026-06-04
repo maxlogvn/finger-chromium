@@ -21,6 +21,7 @@ import { type ChildProcess, execFile as nodeExecFile } from 'node:child_process'
 import { createReadStream, createWriteStream } from 'node:fs';
 import debugFactory from 'debug';
 import { EngineTimeoutError, InvalidEngineError, PluginError, RequestTimeoutError } from '../errors';
+import { createTimer } from '../../common/timer';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -278,28 +279,30 @@ export default class RemoteEngine extends EventEmitter {
 
     try {
       responseStr = await new Promise<string>((resolve, reject) => {
-        let closeTimer: NodeJS.Timeout | null = null;
-        let requestTimer: NodeJS.Timeout | null = null;
+        let requestTimer: ReturnType<typeof createTimer> | undefined;
+        let closeTimer: ReturnType<typeof createTimer> | undefined;
 
         if (requestTimeout) {
-          requestTimer = setTimeout(() => {
+          requestTimer = createTimer(requestTimeout);
+          requestTimer.promise.then(() => {
             reject(new RequestTimeoutError(`Hết thời gian chờ khi gọi method "${name}".`));
-          }, requestTimeout).unref();
+          });
         }
 
         const closeHandler = () => {
-          closeTimer = setTimeout(() => {
+          closeTimer = createTimer(this.#closeTimeout);
+          closeTimer.promise.then(() => {
             debug('Tiến trình engine đã đóng trong lúc chờ phản hồi');
             resolve('');
-          }, this.#closeTimeout);
+          });
         };
 
         requestWatcher.on('change', async () => {
           const content = await fs.readFile(requestPath, 'utf8');
           debug('Đã nhận kết quả từ engine thành công');
 
-          if (requestTimer) clearTimeout(requestTimer);
-          if (closeTimer) clearTimeout(closeTimer);
+          requestTimer?.clear();
+          closeTimer?.clear();
           engineProcess.off('close', closeHandler);
 
           await fs.unlink(requestPath);
@@ -418,12 +421,13 @@ export default class RemoteEngine extends EventEmitter {
 
     proc.kill();
 
-    const timer = setTimeout(() => {
+    const sigkillTimer = createTimer(timeout);
+    sigkillTimer.promise.then(() => {
       proc.kill('SIGKILL');
-    }, timeout).unref();
+    });
 
     await exitPromise;
-    clearTimeout(timer);
+    sigkillTimer.clear();
     this.#process = undefined;
   }
 

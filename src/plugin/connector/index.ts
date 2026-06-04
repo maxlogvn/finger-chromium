@@ -115,7 +115,7 @@ export default class Connector {
     const port = await this.#ensurePcapPort();
     this.#engine.setArgs([`--mock-pcap-port=${port}`]);
 
-    let notifyTimer: Parameters<typeof clearTimeout>[0] | undefined;
+    let notifyTimer: { clear: () => void } | undefined;
     return this.#lock.acquire('client', async () => {
       try {
         const { error, ...result } = (await this.#engine.runFunction(name, params, {
@@ -130,7 +130,7 @@ export default class Connector {
         }
         return result.response ?? result;
       } finally {
-        clearTimeout(notifyTimer);
+        notifyTimer?.clear();
       }
     });
   }

@@ -135,14 +135,15 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Quản lý bộ đếm thời gian không nhất quán giữa các module (P2)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** [Design](designs/timer-management-uniform.design.md) | [Spec](specs/timer-management-uniform.spec.md) | [Plan](plans/timer-management-uniform.plan.md) | [Overview](overviews/timer-management-uniform.overview.md)
 - **Ghi chú:**
-  - Dùng 2 style: `timers/promises` (config.ts) và `setTimeout().unref()` (connector).
-  - Cần chọn 1 style duy nhất, tạo wrapper nếu cần `unref()`.
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#35](https://github.com/maxlogvn/finger-chromium/issues/35).
+  - Đã tạo `src/common/timer.ts` với `sleep()`, `withTimeout()`, `createTimer()` — centralized API duy nhất.
+  - Đã chuyển toàn bộ 4 module (`config.ts`, `engine.ts`, `index.ts`, `utils.ts`) sang dùng API mới.
+  - 164 tests pass, 0 lỗi lint/typecheck/build.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#35](https://github.com/maxlogvn/finger-chromium/issues/35) (closed).
 
 ---
 

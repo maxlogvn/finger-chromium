@@ -5,10 +5,9 @@
 
 import once from 'once';
 import dedent from 'dedent';
+import { createTimer } from '../../common/timer';
 
-type ClearableTimer = Parameters<typeof clearTimeout>[0];
-
-const printOnce = once(console.log);
+const printOnce = once((msg: string) => console.log(msg));
 
 const notifyOnce = once((): void => {
   console.log(dedent`
@@ -25,16 +24,16 @@ const notifyOnce = once((): void => {
  * Delay 20s trước khi in cảnh báo time-out.
  *
  * @param key - Private key (null/undefined nếu chưa set)
- * @returns Timer handle (có thể clear nếu cần)
+ * @returns Object với `.clear()` để huỷ timer, hoặc undefined nếu có key
  */
-export const notify = (key: string | null | undefined): ClearableTimer => {
+export const notify = (key: string | null | undefined): { clear: () => void } | undefined => {
   if (!key && process.env.NODE_ENV !== 'test') {
     notifyOnce();
-    return setTimeout(
-      printOnce,
-      20_000,
-      'Việc lấy fingerprint có thể tốn nhiều thời gian hơn khi dùng phiên bản miễn phí.'
-    );
+    const timer = createTimer(20_000);
+    timer.promise.then(() => {
+      printOnce('Việc lấy fingerprint có thể tốn nhiều thời gian hơn khi dùng phiên bản miễn phí.');
+    });
+    return { clear: timer.clear };
   }
   return undefined;
 };

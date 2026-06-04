@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 6 issues — xem section OPEN bên dưới
-- **FIXED:** 25 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
+- **OPEN:** 3 issues — xem section OPEN bên dưới
+- **FIXED:** 26 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
 
@@ -55,17 +55,6 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 ### OPEN
 
-
-
-
-
-
-**Timer management không đồng nhất (P2)**
-- **File:** `src/plugin/config.ts:109`, `src/plugin/connector/engine.ts:283,419`, `src/plugin/connector/index.ts`
-- **Vấn đề:** Dùng 2 style timer: `timers/promises` (config.ts) và `setTimeout().unref()` callback style (connector/engine.ts). Khó maintain, khó test. Không có centralized wrapper.
-- **GitHub:** [#35](https://github.com/maxlogvn/finger-chromium/issues/35) (open)
-
----
 
 **Headless viewport resize không chính xác (P2)**
 - **File:** `src/adapter/playwright/utils.ts:82-112`
@@ -332,3 +321,12 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 - **Fix:** Chuyển sang DI qua constructor. Thêm `execFile` và `closeTimeout` vào `EngineOptions`. Xoá static property. Test inject qua `new RemoteEngine({ execFile: mockFn, closeTimeout: 100 })`.
 - **Tài liệu:** [Design](designs/bug-034-static-property-di.design.md) | [Spec](specs/bug-034-static-property-di.spec.md) | [Plan](plans/bug-034-static-property-di.plan.md) | [Overview](overviews/bug-034-static-property-di.overview.md)
 - **GitHub:** [#34](https://github.com/maxlogvn/finger-chromium/issues/34) (closed)
+
+---
+
+**Timer management không đồng nhất (P2)**
+- **File:** `src/common/timer.ts`, `src/plugin/config.ts`, `src/plugin/connector/engine.ts`, `src/plugin/connector/index.ts`, `src/plugin/connector/utils.ts`
+- **Vấn đề:** Dùng 2 style timer: `timers/promises` (config.ts) và `setTimeout().unref()` callback style (connector/engine.ts). Khó maintain, khó test. Không có centralized wrapper.
+- **Fix:** Tạo `src/common/timer.ts` với `sleep()`, `withTimeout()`, `createTimer()` — centralized API duy nhất cho mọi nhu cầu timer. Chuyển toàn bộ module sang dùng API này.
+- **Tài liệu:** [Design](designs/timer-management-uniform.design.md) | [Spec](specs/timer-management-uniform.spec.md) | [Plan](plans/timer-management-uniform.plan.md) | [Overview](overviews/timer-management-uniform.overview.md)
+- **GitHub:** [#35](https://github.com/maxlogvn/finger-chromium/issues/35) (closed)
