@@ -56,10 +56,6 @@ export interface BaseLaunchOptions extends SpawnOptions {
   [key: string]: unknown;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-let serviceKey: string | undefined;
-
 // ─── Configuration Methods ────────────────────────────────────────────────────
 
 /**
@@ -75,6 +71,7 @@ export default class FingerprintPlugin {
   #cleaner = new SettingsCleaner();
   #connector = new Connector();
   #configManager = new ConfigManager();
+  #serviceKey: string | undefined;
   protected browser?: Browser;
   protected processId?: string;
 
@@ -187,7 +184,7 @@ export default class FingerprintPlugin {
    * @param key - Key từ bablosoft.com
    */
   setServiceKey(key: string): void {
-    serviceKey = key;
+    this.#serviceKey = key;
   }
 
   // ─── Runtime ──────────────────────────────────────────────────────────────
@@ -200,7 +197,7 @@ export default class FingerprintPlugin {
    */
   async fetch(options: FetchOptions = {}): Promise<string> {
     return (await this.#connector.api('fetch', {
-      key: serviceKey,
+      key: this.#serviceKey,
       options,
       version: this.version,
     } as any)) as string;
@@ -248,7 +245,7 @@ export default class FingerprintPlugin {
         options: { loadProxy: true, loadFingerprint: true },
       },
       pid: crypto.randomUUID(),
-      key: typeof options.key === 'string' ? options.key : serviceKey,
+      key: typeof options.key === 'string' ? options.key : this.#serviceKey,
     } as any)) as SetupResponse;
     const { id, pid, pwd, path: browserPath, bounds, ...config } = setupData;
     this.processId = pid;

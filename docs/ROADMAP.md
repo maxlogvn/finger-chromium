@@ -94,14 +94,14 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Sửa lỗi biến `serviceKey` ở module scope gây dùng chung key giữa các instance (P0)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** [Design](designs/bug-032-servicekey-module-scope.design.md) | [Spec](specs/bug-032-servicekey-module-scope.spec.md) | [Plan](plans/bug-032-servicekey-module-scope.plan.md) | [Overview](overviews/bug-032-servicekey-module-scope.overview.md)
 - **Ghi chú:**
   - `let serviceKey` ở `src/plugin/index.ts:61` là module-level state — tất cả instance chia sẻ.
   - Instance A gọi `setServiceKey(keyA)`, instance B gọi `setServiceKey(keyB)` dẫn đến A dùng sai key.
-  - Cần đưa `serviceKey` vào instance (`this.#serviceKey`).
+  - Fix: chuyển thành instance private field `#serviceKey`.
   - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#32](https://github.com/maxlogvn/finger-chromium/issues/32).
 
 ---

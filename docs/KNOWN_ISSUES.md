@@ -15,7 +15,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 8 issues — xem section OPEN bên dưới
+- **OPEN:** 7 issues — xem section OPEN bên dưới
 - **FIXED:** 25 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
@@ -54,15 +54,6 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 > **Ghi chú:** Không dùng local numbering. Mỗi entry chỉ có mô tả + số GitHub issue tương ứng.
 
 ### OPEN
-
----
-
-**Module-level `serviceKey` state dùng chung giữa các instance (P0)**
-- **File:** `src/plugin/index.ts:61,189-191`
-- **Vấn đề:** `let serviceKey` ở module scope — tất cả `FingerprintPlugin` instance chia sẻ một key. Instance A set key, instance B có thể ghi đè. Gây sai key khi dùng multi-instance.
-- **GitHub:** [#32](https://github.com/maxlogvn/finger-chromium/issues/32) (open)
-
----
 
 **Thiếu integration test với engine binary thật `FastExecuteScript.exe` (P0)**
 - **File:** `tests/connector.test.ts`, `src/plugin/connector/engine.ts`
@@ -321,3 +312,12 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 - **Vấn đề:** Đã thêm 6 test cases cho `RemoteEngine.runFunction()` dùng cơ chế `RemoteEngine._execFile` mock + `_closeTimeout` override. Test đầy đủ: parse response, timeout, invalid JSON, process đóng, dọn file rác, requestTimeout=0.
 - **Tài liệu:** [Design](designs/test-runfunction-ipc-core.design.md) | [Spec](specs/test-runfunction-ipc-core.spec.md) | [Plan](plans/test-runfunction-ipc-core.plan.md) | [Overview](overviews/test-runfunction-ipc-core.overview.md)
 - **GitHub:** [#28](https://github.com/maxlogvn/finger-chromium/issues/28) (closed)
+
+---
+
+**Module-level `serviceKey` state dùng chung giữa các instance (P0)**
+- **File:** `src/plugin/index.ts:61,189-191`
+- **Vấn đề:** `let serviceKey` ở module scope — tất cả `FingerprintPlugin` instance chia sẻ một key. Instance A set key, instance B có thể ghi đè. Gây sai key khi dùng multi-instance.
+- **Fix:** Chuyển `serviceKey` thành instance private field `#serviceKey`. Xoá module-level `let serviceKey`. Sửa `setServiceKey()`, `fetch()`, `_launch()` dùng `this.#serviceKey`.
+- **Tài liệu:** [Design](designs/bug-032-servicekey-module-scope.design.md) | [Spec](specs/bug-032-servicekey-module-scope.spec.md) | [Plan](plans/bug-032-servicekey-module-scope.plan.md)
+- **GitHub:** [#32](https://github.com/maxlogvn/finger-chromium/issues/32) (closed)
