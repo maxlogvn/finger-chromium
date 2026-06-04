@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 3 issues — xem section OPEN bên dưới
-- **FIXED:** 26 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
+- **OPEN:** 2 issues — xem section OPEN bên dưới
+- **FIXED:** 27 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
 
@@ -55,16 +55,6 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 ### OPEN
 
-
-**Headless viewport resize không chính xác (P2)**
-- **File:** `src/adapter/playwright/utils.ts:82-112`
-- **Vấn đề:** `setViewport()` dùng CDP `Browser.setWindowBounds` — API này không hoạt động trong `headless: true`. Dev đã ghi nhận trong overview nhưng chưa fix.
-- **GitHub:** [#36](https://github.com/maxlogvn/finger-chromium/issues/36) (open)
-
----
-
-
-
 **Thiếu test coverage cho HTTPS fallback và fetchWithFallback() trong download()**
 - **File:** `src/plugin/connector/engine.ts:130-183`, `tests/connector.test.ts`
 - **Vấn đề:** Hàm `download()` có fallback HTTPS→HTTP khi network error, và `fetchWithFallback()` được export để test. Cả hai đều không có test coverage. Fallback path (HTTPS fail → HTTP) là critical path cho việc tải engine — nếu hỏng, engine không bao giờ được tải xuống. Dự án đã từng có bug liên quan (Issue #4).
@@ -80,6 +70,14 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 ---
 
 ### FIXED
+
+**Headless viewport resize không chính xác (P2)**
+- **File:** `src/adapter/playwright/utils.ts:66-129`
+- **Vấn đề:** `setViewport()` dùng CDP `Browser.setWindowBounds` — API này không hoạt động trong `headless: true`. Fix: fallback sang `page.setViewportSize()` gốc khi CDP thất bại. Thêm `WeakMap<Page, Function>` để lưu original `setViewportSize` trước khi `bindHooks()` proxy.
+- **Tài liệu:** [Design](designs/bug-036-headless-viewport-resize.design.md) | [Spec](specs/bug-036-headless-viewport-resize.spec.md) | [Plan](plans/bug-036-headless-viewport-resize.plan.md) | [Overview](overviews/bug-036-headless-viewport-resize.overview.md)
+- **GitHub:** [#36](https://github.com/maxlogvn/finger-chromium/issues/36) (closed)
+
+---
 
 **Thiếu integration test với engine binary thật `FastExecuteScript.exe` (P0)**
 - **File:** `tests/integration-connector.test.ts`, `tests/connector.test.ts`, `src/plugin/connector/engine.ts`

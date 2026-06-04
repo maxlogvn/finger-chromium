@@ -6,15 +6,15 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Code quality: Giảm `as any` về 0 (Codebase sweep)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** [Design](designs/code-quality-no-as-any.design.md) | [Spec](specs/code-quality-no-as-any.spec.md) | [Plan](plans/code-quality-no-as-any.plan.md) | [Overview](overviews/code-quality-no-as-any.overview.md)
 - **Ghi chú:**
-  - Hiện có ~15 chỗ dùng `as any` trong strict mode, phá vỡ type safety.
-  - Cần define interface cụ thể cho từng API call (`FetchParams`, `SetupParams`, `VersionsParams`).
-  - File chính: `src/plugin/index.ts:206,218,233,252`, `src/adapter/playwright/engine.ts:76,84`, `src/plugin/connector/engine.ts:206`.
-  - Mục tiêu: 0 `as any` trong codebase.
+  - Đã loại bỏ hoàn toàn 9 chỗ `as any` trong `src/` và 37 chỗ trong `tests/`.
+  - 0 `as any` trong toàn bộ codebase (src/ + tests/).
+  - Fix gồm: widen `ApiParams.options`, type assertion `as unknown as`, `in` operator thay duck-typing, `@ts-expect-error` cho read-only property, define interface test cụ thể.
+  - 164 tests pass, typecheck pass, build pass.
 
 ---
 
@@ -149,14 +149,14 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ### Thay đổi kích thước viewport không chính xác trong chế độ headless do CDP không hỗ trợ (P2)
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-04
 - **Cập nhật:** 2026-06-04
-- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Tài liệu:** [Design](designs/bug-036-headless-viewport-resize.design.md) | [Spec](specs/bug-036-headless-viewport-resize.spec.md) | [Plan](plans/bug-036-headless-viewport-resize.plan.md) | [Overview](overviews/bug-036-headless-viewport-resize.overview.md)
 - **Ghi chú:**
   - `setViewport()` dùng CDP `Browser.setWindowBounds` không hoạt động trong headless mode.
-  - Cần detect headless, fallback sang `page.setViewportSize()`.
-  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#36](https://github.com/maxlogvn/finger-chromium/issues/36).
+  - Fix: fallback sang `page.setViewportSize()` gốc khi CDP thất bại. Thêm `WeakMap<Page, Function>` lưu original `setViewportSize`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#36](https://github.com/maxlogvn/finger-chromium/issues/36) (closed).
 
 ---
 

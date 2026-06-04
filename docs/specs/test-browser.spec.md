@@ -15,7 +15,7 @@ Viết test suite cho 4 module Browser: `launcher` (spawn Chromium process), `ut
 - Không phụ thuộc engine binary bablosoft (`FastExecuteScript.exe`).
 - `_launch()` cần engine API không khả dụng → tạo `TestPlugin` subclass override `_launch()` để bypass, dùng Playwright trực tiếp.
 - Export `isBrowser` từ `src/adapter/playwright/utils.ts` để test import được.
-- `setViewport` trong headless mode không chính xác (CDP `Browser.setWindowBounds` vô hiệu trong headless) — chỉ assert viewport > 0.
+- `setViewport` trong headless mode: fallback CDP → `page.setViewportSize()` — xem issue [#36](https://github.com/maxlogvn/finger-chromium/issues/36). Test assert viewport chính xác.
 - Tuân thủ convention codebase: `node:assert`, mocha, tiếng Việt trong `it()`.
 
 ## Thiết kế

@@ -27,6 +27,7 @@
 - **Sai lệch 2:** `setViewport` trong headless mode không chính xác.
     - Nguyên nhân: CDP `Browser.setWindowBounds` không có hiệu quả trong headless Chromium.
     - Hướng xử lý: Test configure resize chỉ assert viewport > 0 thay vì giá trị chính xác.
+    - **Đã fix:** Xem issue [#36](https://github.com/maxlogvn/finger-chromium/issues/36) — fallback sang `page.setViewportSize()` khi CDP thất bại.
     - Ảnh hưởng đến spec: Không cần cập nhật -- spec không ghi rõ headless vs non-headless.
 
 - **Sai lệch 3:** Export `isBrowser` từ `utils.ts`.
