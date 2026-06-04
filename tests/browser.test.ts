@@ -24,7 +24,7 @@ import {
   type BrowserHooks,
 } from '../src/adapter/playwright/utils';
 import { PlaywrightFingerprintPlugin, IGNORED_ARGUMENTS, UNSUPPORTED_OPTIONS } from '../src/adapter/playwright/engine';
-import { BrowserEngine } from '../src/adapter/playwright/chromium';
+import { BrowserEngine, type PluginLaunchOptions } from '../src/adapter/playwright/chromium';
 import { PluginError } from '../src/plugin/errors';
 import type { BrowserContext, Page, Browser as PW_Browser } from 'playwright-core';
 
@@ -488,7 +488,7 @@ describeWithBrowser('PlaywrightFingerprintPlugin', () => {
     it('nên throw PluginError khi có proxy option', async () => {
       const plugin = new PlaywrightFingerprintPlugin(pwLauncher);
       await rejects(
-        plugin.launchPersistentContext('', { proxy: { server: 'http://proxy:8080' } } as any),
+        plugin.launchPersistentContext('', { proxy: { server: 'http://proxy:8080' } } as Partial<PluginLaunchOptions>),
         (err: any) => {
           ok(err instanceof PluginError);
           ok(err.message.includes('proxy'));
@@ -500,7 +500,7 @@ describeWithBrowser('PlaywrightFingerprintPlugin', () => {
     it('nên throw PluginError khi có channel option', async () => {
       const plugin = new PlaywrightFingerprintPlugin(pwLauncher);
       await rejects(
-        plugin.launchPersistentContext('', { channel: 'chrome' } as any),
+        plugin.launchPersistentContext('', { channel: 'chrome' } as Partial<PluginLaunchOptions>),
         (err: any) => {
           ok(err instanceof PluginError);
           ok(err.message.includes('channel'));
@@ -512,7 +512,7 @@ describeWithBrowser('PlaywrightFingerprintPlugin', () => {
     it('nên throw PluginError khi có firefoxUserPrefs option', async () => {
       const plugin = new PlaywrightFingerprintPlugin(pwLauncher);
       await rejects(
-        plugin.launchPersistentContext('', { firefoxUserPrefs: {} } as any),
+        plugin.launchPersistentContext('', { firefoxUserPrefs: {} } as Partial<PluginLaunchOptions>),
         (err: any) => {
           ok(err instanceof PluginError);
           ok(err.message.includes('firefoxUserPrefs'));
@@ -585,9 +585,10 @@ describeWithBrowser('BrowserEngine', () => {
     it('nên tạo instance với defaults', () => {
       const engine = new BrowserEngine();
       ok(engine instanceof BrowserEngine, 'phải là instanceof BrowserEngine');
-      ok(!(engine as any).isLaunched, 'isLaunched phải là false');
-      strictEqual((engine as any).options.headless, false, 'headless mặc định là false');
-      strictEqual((engine as any).options.hasTouch, true, 'hasTouch mặc định là true');
+      const e = engine as unknown as { isLaunched: boolean; options: Record<string, unknown> };
+      ok(!e.isLaunched, 'isLaunched phải là false');
+      strictEqual(e.options.headless, false, 'headless mặc định là false');
+      strictEqual(e.options.hasTouch, true, 'hasTouch mặc định là true');
     });
 
     it('nên tạo instance với launcher custom', () => {
@@ -645,7 +646,7 @@ describeWithBrowser('BrowserEngine', () => {
 
       const result = engine.launch();
       strictEqual(result, engine, 'phải trả về this');
-      ok((engine as any).isLaunched, 'isLaunched phải là true');
+      ok((engine as unknown as { isLaunched: boolean }).isLaunched, 'isLaunched phải là true');
     });
 
     it('nên throw PluginError khi gọi lần 2', () => {
@@ -671,7 +672,7 @@ describeWithBrowser('BrowserEngine', () => {
       const engine = new BrowserEngine();
       engine.repackChromium(pwLauncher);
       // Thay engine bằng TestPlugin để bypass _launch()
-      (engine as any).engine = new TestPlugin(pwLauncher);
+      (engine as { engine: unknown }).engine = new TestPlugin(pwLauncher);
 
       engine.launch();
       const context = await engine.newContext({
@@ -704,13 +705,13 @@ describeWithBrowser('BrowserEngine', () => {
     it('nên cleanup thành công sau launch + newContext', async () => {
       const engine = new BrowserEngine();
       engine.repackChromium(pwLauncher);
-      (engine as any).engine = new TestPlugin(pwLauncher);
+      (engine as { engine: unknown }).engine = new TestPlugin(pwLauncher);
 
       engine.launch({});
       await engine.newContext({ headless: true, args: ['--no-sandbox'] });
       await engine.quit();
 
-      ok(!(engine as any).isLaunched, 'isLaunched phải là false sau quit');
+      ok(!(engine as unknown as { isLaunched: boolean }).isLaunched, 'isLaunched phải là false sau quit');
     });
 
     it('nên idempotent — gọi 2 lần không throw', async () => {

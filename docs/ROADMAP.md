@@ -682,3 +682,80 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
+### Type safety gap tại bridge `configure()` — `@ts-expect-error` + `any` annotation (P1)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Base class `FingerprintPlugin.configure()` dùng `@ts-expect-error` tại `src/plugin/index.ts:238-239` khi delegate sang `ConfigManager.configure` vì signature không đồng nhất.
+  - Subclass `PlaywrightFingerprintPlugin.configure()` dùng `any` cho `cleanup` target và `browser` tại `src/adapter/playwright/engine.ts:92-93`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#37](https://github.com/maxlogvn/finger-chromium/issues/37).
+
+---
+
+### `Loader.import()` và `load()` dùng `any` thay vì `unknown` (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `Loader.import()` return type `[any, string]` và `load()` dùng generic `<T = any>` tại `src/loader/index.ts:36,56`.
+  - Sót lại sau codebase sweep "no as any" vì đây là type annotation `any`, không phải `as any` expression.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#38](https://github.com/maxlogvn/finger-chromium/issues/38).
+
+---
+
+### Race condition low-probability trong `pcapServer.listen()` khi gọi song song (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `if (startPromise) return startPromise;` là non-atomic check tại `src/plugin/connector/pcapServer/index.ts:25-31`.
+  - Trên Windows `SO_REUSEADDR` mặc định có thể che giấu vấn đề.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#39](https://github.com/maxlogvn/finger-chromium/issues/39).
+
+---
+
+### `createTimer().promise` treo vô hạn nếu `clear()` trước callback (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `createTimer()` tại `src/common/timer.ts:80-98` không resolve promise khi `clear()` được gọi trước callback.
+  - Hiện tại codebase gọi `clear()` và không await promise, nên chưa gặp vấn đề.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#40](https://github.com/maxlogvn/finger-chromium/issues/40).
+
+---
+
+### `notify()` return wrapping không cần thiết (P3)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `notify()` tại `src/plugin/connector/utils.ts:36` trả về `{ clear: timer.clear }` — không cần wrapping vì `createTimer` đã trả về `{ clear }`.
+  - Code còn sót từ thời dùng `setTimeout` callback-style.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#41](https://github.com/maxlogvn/finger-chromium/issues/41).
+
+---
+
+### ROADMAP.md còn template cũ trong HTML comment (P3)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - HTML comment `<!-- ... -->` đầu file `docs/ROADMAP.md:1-89` chứa template cũ với trạng thái sai cho các issue đã hoàn thành.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#42](https://github.com/maxlogvn/finger-chromium/issues/42).
+
+---
+

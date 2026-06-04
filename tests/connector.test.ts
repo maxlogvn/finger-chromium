@@ -235,7 +235,7 @@ describe('RemoteEngine', () => {
           res.end(content);
         });
         await new Promise<void>((resolve) => server.listen(0, () => resolve()));
-        serverPort = (server.address() as any).port;
+        serverPort = (server.address() as { port: number }).port;
 
         const filePath = path.join(tmpDir, 'downloaded.txt');
         // Dùng http URL để test HTTPS fallback
@@ -305,7 +305,7 @@ describe('RemoteEngine', () => {
         spawnfile: path.join(scriptDir, 'FastExecuteScript.exe'),
         killed: false,
         exitCode: null,
-        kill: function () { (this as any).killed = true; },
+        kill: function () { (this as { killed: boolean }).killed = true; },
       });
 
     });
@@ -351,7 +351,7 @@ describe('RemoteEngine', () => {
         simulateResponse({ response: { ok: true } }),
       ]);
 
-      strictEqual((result as any).response?.ok, true);
+      strictEqual((result as { response?: { ok: boolean } }).response?.ok, true);
     });
 
     // --- Test case: timeout ---
@@ -379,7 +379,7 @@ describe('RemoteEngine', () => {
         simulateResponse({ response: { ok: true } }),
       ]);
 
-      strictEqual((result as any).response?.ok, true);
+      strictEqual((result as { response?: { ok: boolean } }).response?.ok, true);
     });
 
     // --- Test case: invalid JSON ---

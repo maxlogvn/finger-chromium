@@ -30,9 +30,7 @@ interface RunFunctionOptions {
 
 interface ApiParams {
   key?: string;
-  options?: {
-    perfectCanvasRequest?: boolean;
-  };
+  options?: unknown;
   [key: string]: unknown;
 }
 
@@ -119,7 +117,7 @@ export default class Connector {
     return this.#lock.acquire('client', async () => {
       try {
         const { error, ...result } = (await this.#engine.runFunction(name, params, {
-          requestTimeout: params?.options?.perfectCanvasRequest ? 0 : this.requestTimeout,
+          requestTimeout: (params?.options as { perfectCanvasRequest?: boolean } | undefined)?.perfectCanvasRequest ? 0 : this.requestTimeout,
         } as RunFunctionOptions)) as EngineResult;
         if (error) {
           if (error.includes('key is missing')) {

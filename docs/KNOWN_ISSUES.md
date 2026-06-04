@@ -15,7 +15,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 2 issues — xem section OPEN bên dưới
+- **OPEN:** 8 issues — xem section OPEN bên dưới
 - **FIXED:** 27 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
@@ -66,6 +66,48 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 - **File:** `src/plugin/connector/index.ts:61,119`, `tests/connector.test.ts`
 - **Vấn đề:** Connector dùng `async-lock` để đảm bảo chỉ một request IPC tại một thời điểm. Không có test nào kiểm tra lock behavior khi có concurrent calls — nếu lock hỏng, hai request có thể ghi chồng lên cùng file request, corrupt dữ liệu IPC.
 - **GitHub:** [#31](https://github.com/maxlogvn/finger-chromium/issues/31) (open)
+
+---
+
+**Type safety gap tại bridge `configure()` — `@ts-expect-error` ở base class + `any` annotation ở subclass**
+- **File:** `src/plugin/index.ts:238-239`, `src/adapter/playwright/engine.ts:92-93`
+- **Vấn đề:** Base class `FingerprintPlugin.configure()` dùng `@ts-expect-error` khi delegate sang `ConfigManager.configure` vì signature không đồng nhất. Subclass `PlaywrightFingerprintPlugin.configure()` dùng `any` cho `cleanup` target và `browser`. Type safety bị vô hiệu hoá ở bridge quan trọng nhất — nếu `ConfigManager.configure` đổi signature, chỉ fail runtime, không có compile-time error.
+- **GitHub:** [#37](https://github.com/maxlogvn/finger-chromium/issues/37) (open)
+
+---
+
+**`Loader.import()` và `load()` dùng `any` thay vì `unknown`**
+- **File:** `src/loader/index.ts:36,56`
+- **Vấn đề:** `Loader.import()` return type `[any, string]` và `load()` dùng generic `<T = any>`. Đây là các chỗ sót lại sau codebase sweep "no as any" vì đây là type annotation `any`, không phải `as any` expression. Không tận dụng được TypeScript type safety.
+- **GitHub:** [#38](https://github.com/maxlogvn/finger-chromium/issues/38) (open)
+
+---
+
+**Race condition low-probability trong `pcapServer.listen()` khi gọi song song**
+- **File:** `src/plugin/connector/pcapServer/index.ts:25-31`
+- **Vấn đề:** `if (startPromise) return startPromise;` là non-atomic check — nếu hai caller gọi `listen()` đồng thời khi `startPromise === undefined`, promise thứ hai overwrites `startPromise`. Server thứ nhất vẫn start nhưng promise không được return. Trên Windows, `SO_REUSEADDR` mặc định có thể che giấu vấn đề.
+- **GitHub:** [#39](https://github.com/maxlogvn/finger-chromium/issues/39) (open)
+
+---
+
+**`createTimer().promise` treo vô hạn nếu `clear()` được gọi trước khi callback chạy**
+- **File:** `src/common/timer.ts:80-98`
+- **Vấn đề:** `createTimer()` trả về `{ promise, clear }`. Nếu `clear()` được gọi trước khi `setTimeout` callback execute, `timeoutId` được clear nhưng `promise` không bao giờ resolve. Nếu consumer `await timer.promise` sau `clear()`, nó sẽ treo vô hạn. Hiện tại codebase gọi `clear()` và không await promise, nên chưa gặp vấn đề.
+- **GitHub:** [#40](https://github.com/maxlogvn/finger-chromium/issues/40) (open)
+
+---
+
+**`notify()` return wrapping không cần thiết**
+- **File:** `src/plugin/connector/utils.ts:36`
+- **Vấn đề:** `notify()` trả về `{ clear: timer.clear }` — wrapping một lớp không cần thiết. Sau khi chuyển sang `createTimer()` (issue #35), `timer` đã có sẵn `{ clear }`. Code còn sót từ thời dùng `setTimeout` callback-style.
+- **GitHub:** [#41](https://github.com/maxlogvn/finger-chromium/issues/41) (open)
+
+---
+
+**ROADMAP.md còn template cũ trong HTML comment gây nhầm lẫn**
+- **File:** `docs/ROADMAP.md:1-89`
+- **Vấn đề:** HTML comment `<!-- ... -->` đầu file chứa các mục template cũ với trạng thái "[-] Sắp làm" cho các issue #32, #34, #35, #36 đã hoàn thành. Không render trên GitHub nhưng gây nhầm lẫn khi đọc raw và làm file dài hơn cần thiết (~90 dòng).
+- **GitHub:** [#42](https://github.com/maxlogvn/finger-chromium/issues/42) (open)
 
 ---
 

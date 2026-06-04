@@ -282,10 +282,10 @@ describe('Common scripts', () => {
 describe('Loader', () => {
   describe('constructor', () => {
     it('nên lưu target, version, packages', () => {
-      const loader = new Loader('playwright-core', '1.27.0', ['fallback-pkg']);
-      strictEqual((loader as any).target, 'playwright-core');
-      strictEqual((loader as any).version, '1.27.0');
-      strictEqual((loader as any).packages[0], 'fallback-pkg');
+      const loader = new Loader('playwright-core', '1.27.0', ['fallback-pkg']) as unknown as { target: string; version: string; packages: string[] };
+      strictEqual(loader.target, 'playwright-core');
+      strictEqual(loader.version, '1.27.0');
+      strictEqual(loader.packages[0], 'fallback-pkg');
     });
   });
 

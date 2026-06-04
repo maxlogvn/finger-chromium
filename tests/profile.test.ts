@@ -52,14 +52,14 @@ describe('AdapterDataManager', () => {
   describe('constructor', () => {
     it('nên tạo instance với tempRootDir mặc định', () => {
       const dm = new AdapterDataManager();
-      const instanceDir = (dm as any).instanceTempDir as string;
+      const instanceDir = (dm as unknown as { instanceTempDir: string }).instanceTempDir as string;
       ok(instanceDir.includes('profile'), 'instanceTempDir phải chứa "profile"');
       dm.dispose();
     });
 
     it('nên tạo instance với tempRootDir chỉ định', () => {
       const dm = new AdapterDataManager({ tempRootDir: ctx.root });
-      const instanceDir = (dm as any).instanceTempDir as string;
+      const instanceDir = (dm as unknown as { instanceTempDir: string }).instanceTempDir as string;
       ok(instanceDir.startsWith(path.resolve(ctx.root)), 'instanceTempDir phải bắt đầu bằng tempRootDir chỉ định');
       dm.dispose();
     });
@@ -67,8 +67,8 @@ describe('AdapterDataManager', () => {
     it('nên tạo instanceTempDir duy nhất cho mỗi instance', () => {
       const dm1 = new AdapterDataManager();
       const dm2 = new AdapterDataManager();
-      const dir1 = (dm1 as any).instanceTempDir as string;
-      const dir2 = (dm2 as any).instanceTempDir as string;
+      const dir1 = (dm1 as unknown as { instanceTempDir: string }).instanceTempDir as string;
+      const dir2 = (dm2 as unknown as { instanceTempDir: string }).instanceTempDir as string;
       ok(dir1 !== dir2, 'Hai instance phải có instanceTempDir khác nhau');
       dm1.dispose();
       dm2.dispose();
@@ -81,7 +81,7 @@ describe('AdapterDataManager', () => {
     it('nên copy file từ source vào instanceTempDir (1 tham số)', () => {
       const dm = new AdapterDataManager({ tempRootDir: ctx.root });
       const result = dm.map(ctx.source);
-      const instanceDir = (dm as any).instanceTempDir as string;
+      const instanceDir = (dm as unknown as { instanceTempDir: string }).instanceTempDir as string;
       strictEqual(result, path.resolve(instanceDir));
       ok(fs.existsSync(path.join(result, 'test.txt')), 'Phải copy được file test.txt');
       dm.dispose();
@@ -136,7 +136,7 @@ describe('AdapterDataManager', () => {
     it('nên làm việc với relative path', () => {
       const dm = new AdapterDataManager({ tempRootDir: ctx.root });
       dm.map(ctx.source);
-      const instanceDir = (dm as any).instanceTempDir as string;
+      const instanceDir = (dm as unknown as { instanceTempDir: string }).instanceTempDir as string;
       ok(fs.existsSync(instanceDir), 'Phải tồn tại trước khi unmap');
       const relativePath = path.relative(process.cwd(), instanceDir);
       dm.unmap(relativePath);
@@ -151,7 +151,7 @@ describe('AdapterDataManager', () => {
     it('nên xoá instanceTempDir', () => {
       const dm = new AdapterDataManager({ tempRootDir: ctx.root });
       dm.map(ctx.source);
-      const instanceDir = (dm as any).instanceTempDir as string;
+      const instanceDir = (dm as unknown as { instanceTempDir: string }).instanceTempDir as string;
       ok(fs.existsSync(instanceDir), 'instanceTempDir phải tồn tại trước khi dispose');
       dm.dispose();
       ok(!fs.existsSync(instanceDir), 'instanceTempDir phải bị xoá sau khi dispose');

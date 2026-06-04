@@ -73,10 +73,10 @@ describe('SettingsCleaner', () => {
     it('nên khởi động timer khi gọi lần đầu', () => {
       let called = false;
       const origSetInterval = global.setInterval;
-      global.setInterval = ((() => {
+      global.setInterval = (() => {
         called = true;
         return makeTimer();
-      }) as any);
+      }) as unknown as typeof global.setInterval;
 
       cleaner.watch('/tmp/test');
       ok(called, 'setInterval phải được gọi');
@@ -86,10 +86,10 @@ describe('SettingsCleaner', () => {
     it('nên không tạo timer mới khi gọi nhiều lần', () => {
       let count = 0;
       const origSetInterval = global.setInterval;
-      global.setInterval = ((() => {
+      global.setInterval = (() => {
         count++;
         return makeTimer();
-      }) as any);
+      }) as unknown as typeof global.setInterval;
 
       cleaner.watch('/tmp/test');
       cleaner.watch('/tmp/other');
@@ -100,10 +100,10 @@ describe('SettingsCleaner', () => {
     it('nên unref timer', () => {
       let unrefCalled = false;
       const origSetInterval = global.setInterval;
-      global.setInterval = ((() => {
+      global.setInterval = (() => {
         const timer = { unref: () => { unrefCalled = true; return timer; } };
         return timer;
-      }) as any);
+      }) as unknown as typeof global.setInterval;
 
       cleaner.watch('/tmp/test');
       ok(unrefCalled, 'timer.unref phải được gọi');
@@ -162,8 +162,8 @@ describe('SettingsCleaner', () => {
       let clearCalled = false;
       const origClear = global.clearInterval;
       const origSet = global.setInterval;
-      global.clearInterval = (() => { clearCalled = true; }) as any;
-      global.setInterval = (() => makeTimer()) as any;
+      global.clearInterval = (() => { clearCalled = true; }) as unknown as typeof global.clearInterval;
+      global.setInterval = (() => makeTimer()) as unknown as typeof global.setInterval;
 
       cleaner.watch(tmpDir);
       // restore setInterval to avoid affecting stop()
@@ -208,7 +208,8 @@ describe('ConfigManager', () => {
       };
 
       const origConfigure = mockBrowser.configure;
-      await configManager.configure(() => {}, mockBrowser as any);
+      const mockBr = mockBrowser as unknown as { process: { once: (e: string, fn: () => void) => void }; configure: () => Promise<void> };
+      await configManager.configure(() => {}, mockBr);
 
       // Configure overwrites browser.configure
       wasOverwritten = mockBrowser.configure !== origConfigure;
@@ -218,16 +219,16 @@ describe('ConfigManager', () => {
 
     it('nên gọi sync với setViewport khi có bounds', async () => {
       let syncCalled = false;
-      const syncFn = (async (_fn: any) => { syncCalled = true; }) as any;
+      const syncFn: (fn: () => Promise<void>) => Promise<void> = async () => { syncCalled = true; };
 
-      const mockBrowser = {
+      const mockBr: { process: { once: (e: string, fn: () => void) => void }; configure: () => Promise<void> } = {
         process: { once: () => {} },
         configure: async () => {},
       };
 
       await configManager.configure(
         () => {},
-        mockBrowser as any,
+        mockBr,
         { width: 1920, height: 1080 },
         syncFn
       );
@@ -237,16 +238,16 @@ describe('ConfigManager', () => {
 
     it('nên không gọi sync khi không có bounds', async () => {
       let syncCalled = false;
-      const syncFn = (async () => { syncCalled = true; }) as any;
+      const syncFn: (fn: () => Promise<void>) => Promise<void> = async () => { syncCalled = true; };
 
-      const mockBrowser = {
+      const mockBr: { process: { once: (e: string, fn: () => void) => void }; configure: () => Promise<void> } = {
         process: { once: () => {} },
         configure: async () => {},
       };
 
       await configManager.configure(
         () => {},
-        mockBrowser as any,
+        mockBr,
         {},
         syncFn
       );
@@ -263,7 +264,7 @@ describe('ConfigManager', () => {
     beforeEach(async () => {
       tmpDir = await createTempDir();
       await fs.writeFile(path.join(tmpDir, 's', 'abc1.ini'), 'availWidth=1920\navailHeight=1080\n');
-      AsyncLock.prototype.acquire = ((_key: string, fn: any) => fn()) as any;
+      AsyncLock.prototype.acquire = ((_key: string, fn: () => Promise<unknown>) => fn()) as unknown as typeof AsyncLock.prototype.acquire;
     });
 
     afterEach(async () => {
@@ -298,7 +299,7 @@ describe('ConfigManager', () => {
     beforeEach(async () => {
       tmpDir = await createTempDir();
       await fs.writeFile(path.join(tmpDir, 's', 'abc1.ini'), 'availWidth=1920\navailHeight=1080\n');
-      AsyncLock.prototype.acquire = ((_key: string, fn: any) => fn()) as any;
+      AsyncLock.prototype.acquire = ((_key: string, fn: () => Promise<unknown>) => fn()) as unknown as typeof AsyncLock.prototype.acquire;
     });
 
     afterEach(async () => {
@@ -331,7 +332,7 @@ describe('Mutex', () => {
     try {
       const m = await loadMutex();
       ok(typeof m.default === 'object', 'default export phải là object');
-      ok(typeof (m.default as any).create === 'function', 'default.create phải là function');
+      ok(typeof (m.default as { create: unknown }).create === 'function', 'default.create phải là function');
     } catch {
       ok(true, 'Mutex native không available trong môi trường này');
     }
