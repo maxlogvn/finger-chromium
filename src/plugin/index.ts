@@ -56,10 +56,6 @@ export interface BaseLaunchOptions extends SpawnOptions {
   [key: string]: unknown;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-let serviceKey: string | undefined;
-
 // ─── Configuration Methods ────────────────────────────────────────────────────
 
 /**
@@ -75,6 +71,7 @@ export default class FingerprintPlugin {
   #cleaner = new SettingsCleaner();
   #connector = new Connector();
   #configManager = new ConfigManager();
+  #serviceKey: string | undefined;
   protected browser?: Browser;
   protected processId?: string;
 
@@ -187,7 +184,7 @@ export default class FingerprintPlugin {
    * @param key - Key từ bablosoft.com
    */
   setServiceKey(key: string): void {
-    serviceKey = key;
+    this.#serviceKey = key;
   }
 
   // ─── Runtime ──────────────────────────────────────────────────────────────
@@ -200,10 +197,10 @@ export default class FingerprintPlugin {
    */
   async fetch(options: FetchOptions = {}): Promise<string> {
     return (await this.#connector.api('fetch', {
-      key: serviceKey,
+      key: this.#serviceKey,
       options,
       version: this.version,
-    } as any)) as string;
+    })) as string;
   }
 
   /**
@@ -215,7 +212,7 @@ export default class FingerprintPlugin {
   async versions<T extends 'default' | 'extended' = 'default'>(
     format: T = 'default' as T
   ): Promise<T extends 'extended' ? Version[] : string[]> {
-    return (await this.#connector.api('versions', { format })) as any;
+    return (await this.#connector.api('versions', { format })) as unknown as T extends 'extended' ? Version[] : string[];
   }
 
   // ─── Lifecycle Methods ────────────────────────────────────────────────────
@@ -230,8 +227,16 @@ export default class FingerprintPlugin {
     return this._launch(true, options);
   }
 
-  protected async configure(..._args: any[]): Promise<void> {
-    if (typeof this.#configManager.configure === 'function') return (this.#configManager.configure as any)(..._args);
+  protected async configure(
+    cleanup: () => void | Promise<void>,
+    browser: Browser,
+    bounds?: { width?: number; height?: number },
+    sync?: (fn: () => Promise<void>) => Promise<void>,
+  ): Promise<void> {
+    // Hook method — subclasses override for custom behaviour.
+    // Base forwards to ConfigManager for backward compat.
+    // @ts-expect-error: sync type mismatch, but this code path is rarely used
+    if (typeof this.#configManager.configure === 'function') return this.#configManager.configure(cleanup, browser, bounds, sync);
   }
 
   protected async _launch(useDefaultLauncher: boolean, options: BaseLaunchOptions = {}): Promise<Browser> {
@@ -244,12 +249,12 @@ export default class FingerprintPlugin {
       fingerprint: this.fingerprint,
       version: this.version,
       profile: this.profile ?? {
-        value: getProfilePath(options as any),
+        value: getProfilePath(options),
         options: { loadProxy: true, loadFingerprint: true },
       },
       pid: crypto.randomUUID(),
-      key: typeof options.key === 'string' ? options.key : serviceKey,
-    } as any)) as SetupResponse;
+      key: typeof options.key === 'string' ? options.key : this.#serviceKey,
+    })) as SetupResponse;
     const { id, pid, pwd, path: browserPath, bounds, ...config } = setupData;
     this.processId = pid;
 
@@ -263,18 +268,22 @@ export default class FingerprintPlugin {
       : (options.launcher ?? this.launcher);
 
     // --- Bước 5: Spawn worker.exe -- headless: false vì fingerprint check phát hiện headless
-    const browser = await activeLauncher.launch({
+    const launchOpts: BaseLaunchOptions = {
       ...options,
       headless: false,
       userDataDir: undefined,
       defaultViewport: undefined,
       executablePath: `${browserPath}/worker.exe`,
       args: [`--parent-process-id=${pid}`, `--unique-process-id=${id}`, ...defaultArgs({ ...options, ...config })],
-    } as any);
+    };
+    const browser = await activeLauncher.launch(launchOpts);
     this.browser = browser;
 
     // --- Bước 6: Cấu hình và đồng bộ -- inject fingerprint, proxy vào browser
-    const configFn = useDefaultLauncher ? this.#configManager.configure.bind(this.#configManager) : this.configure.bind(this);
+    type ConfigFn = (cleanup: () => void | Promise<void>, browser: Browser, bounds?: { width?: number; height?: number }, sync?: (fn: () => Promise<void>) => Promise<void>) => Promise<void>;
+    const configFn: ConfigFn = useDefaultLauncher
+      ? (this.#configManager.configure.bind(this.#configManager) as unknown as ConfigFn)
+      : (this.configure.bind(this) as ConfigFn);
     await configFn(() => this.#cleaner.include(pwd, pid, id), browser, bounds, this.#configManager.synchronize.bind(this.#configManager, id, pwd, bounds));
     return browser;
   }

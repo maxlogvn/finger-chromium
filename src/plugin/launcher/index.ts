@@ -83,7 +83,8 @@ export const launch = async ({
           if (err) {
             childProcess.kill();
           }
-          (childProcess as any).killed = true;
+          // @ts-expect-error: ChildProcess.killed là read-only, cần set runtime để tránh gọi lại taskkill
+          childProcess.killed = true;
           resolve();
         });
       });

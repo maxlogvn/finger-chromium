@@ -7,7 +7,7 @@ Engine yêu cầu một PCAP interface để giao tiếp. Thay vì dùng PCAP th
 ## Câu hỏi làm rõ
 
 - Cần implement đầy đủ giao thức PCAP không? → Không, chỉ cần 2 lệnh engine dùng: 0x01 (request ID) và 0x07 (heartbeat).
-- Retry port khi EADDRINUSE? → Có, retry sau 1s.
+- Retry port khi EADDRINUSE? → Có, retry sau 1s. **Lưu ý:** Trên Windows, `SO_REUSEADDR` mặc định khiến EADDRINUSE không thể kích hoạt qua normal means.
 
 ## Các phương án
 
@@ -26,4 +26,4 @@ net.createServer đơn giản, phản hồi 2 lệnh binary.
 
 - **Phương án AI đề xuất:** Phương án 2 (mock TCP).
 - **Phương án được chọn:** Phương án 2.
-- **Cơ chế:** `once()` đảm bảo chỉ một server. Retry port 1s khi EADDRINUSE. `close()` giải phóng port.
+- **Cơ chế:** `startPromise` module-level caching: lần đầu tạo promise mới, các lần sau trả về promise cũ. `close()` reset `startPromise` để cho phép restart. Retry port 1s khi EADDRINUSE.

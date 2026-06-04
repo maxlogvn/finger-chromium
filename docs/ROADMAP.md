@@ -4,16 +4,161 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
-### Tên tính năng
-- **Trạng thái:** Sắp làm
-- **Ngày tạo:** YYYY-MM-DD
-- **Cập nhật:** YYYY-MM-DD
-- **Tài liệu:** ...
-- **Ghi chú:** ...
+### Code quality: Giảm `as any` về 0 (Codebase sweep)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/code-quality-no-as-any.design.md) | [Spec](specs/code-quality-no-as-any.spec.md) | [Plan](plans/code-quality-no-as-any.plan.md) | [Overview](overviews/code-quality-no-as-any.overview.md)
+- **Ghi chú:**
+  - Đã loại bỏ hoàn toàn 9 chỗ `as any` trong `src/` và 37 chỗ trong `tests/`.
+  - 0 `as any` trong toàn bộ codebase (src/ + tests/).
+  - Fix gồm: widen `ApiParams.options`, type assertion `as unknown as`, `in` operator thay duck-typing, `@ts-expect-error` cho read-only property, define interface test cụ thể.
+  - 164 tests pass, typecheck pass, build pass.
+
+---
+
+### Fix module-level `serviceKey` state (P0)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `let serviceKey` ở `src/plugin/index.ts:61` là module-level state — tất cả instance chia sẻ.
+  - Instance A gọi `setServiceKey(keyA)`, instance B gọi `setServiceKey(keyB)` → A dùng sai key.
+  - Cần đưa `serviceKey` vào instance (`this.#serviceKey`).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+
+---
+
+### Integration test với engine binary thật `FastExecuteScript.exe` (P0)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/test-integration-engine-binary.design.md) | [Spec](specs/test-integration-engine-binary.spec.md) | [Plan](plans/test-integration-engine-binary.plan.md) | [Overview](overviews/test-integration-engine-binary.overview.md)
+- **Ghi chú:**
+  - Đã tạo `tests/integration-connector.test.ts` với 3 test cases (ping với key, ping không key, nhiều IPC call).
+  - Chạy khi `BABLOSOFT_KEY` được set, skip (pending) khi không có key.
+  - 162 unit tests + 3 integration tests (pending) đều pass.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#33](https://github.com/maxlogvn/finger-chromium/issues/33).
+
+---
+
+### Refactor static property testing pattern sang Dependency Injection (P1)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property expose ra chỉ để test.
+  - Cần chuyển sang DI (pass `execFile` function qua constructor) hoặc dùng `sinon.mock()`.
+  - Liên quan: Issue #28 (test-runfunction-ipc-core).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+
+---
+
+### Timer management đồng nhất (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Dùng 2 style: `timers/promises` (config.ts) và `setTimeout().unref()` (connector).
+  - Cần chọn 1 style duy nhất, tạo wrapper nếu cần `unref()`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+
+---
+
+### Headless viewport resize fix (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `setViewport()` dùng CDP `Browser.setWindowBounds` không hoạt động trong headless mode.
+  - Cần detect headless, fallback sang `page.setViewportSize()`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #36).
 
 ---
 
 -->
+
+---
+
+### Sửa lỗi biến `serviceKey` ở module scope gây dùng chung key giữa các instance (P0)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/bug-032-servicekey-module-scope.design.md) | [Spec](specs/bug-032-servicekey-module-scope.spec.md) | [Plan](plans/bug-032-servicekey-module-scope.plan.md) | [Overview](overviews/bug-032-servicekey-module-scope.overview.md)
+- **Ghi chú:**
+  - `let serviceKey` ở `src/plugin/index.ts:61` là module-level state — tất cả instance chia sẻ.
+  - Instance A gọi `setServiceKey(keyA)`, instance B gọi `setServiceKey(keyB)` dẫn đến A dùng sai key.
+  - Fix: chuyển thành instance private field `#serviceKey`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#32](https://github.com/maxlogvn/finger-chromium/issues/32).
+
+---
+
+### Thiếu kiểm thử tích hợp với engine nhị phân thật `FastExecuteScript.exe` (P0)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/test-integration-engine-binary.design.md) | [Spec](specs/test-integration-engine-binary.spec.md) | [Plan](plans/test-integration-engine-binary.plan.md) | [Overview](overviews/test-integration-engine-binary.overview.md)
+- **Ghi chú:**
+  - Đã tạo `tests/integration-connector.test.ts` với 3 test cases (ping với key, ping không key, nhiều IPC call).
+  - Chạy khi `BABLOSOFT_KEY` được set, skip (pending) khi không có key.
+  - 162 unit tests + 3 integration tests (pending) đều pass.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#33](https://github.com/maxlogvn/finger-chromium/issues/33).
+
+---
+
+### Thuộc tính static `_execFile` và `_closeTimeout` bị lộ ra ngoài chỉ để phục vụ kiểm thử (P1)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/bug-034-static-property-di.design.md) | [Spec](specs/bug-034-static-property-di.spec.md) | [Plan](plans/bug-034-static-property-di.plan.md) | [Overview](overviews/bug-034-static-property-di.overview.md)
+- **Ghi chú:**
+  - `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property expose ra chỉ để test.
+  - Fix: chuyển sang DI qua constructor (`EngineOptions.execFile`, `EngineOptions.closeTimeout`).
+  - Xoá 2 static property, thêm private fields `#execFile`, `#closeTimeout`.
+  - 164 tests pass.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#34](https://github.com/maxlogvn/finger-chromium/issues/34).
+
+---
+
+### Quản lý bộ đếm thời gian không nhất quán giữa các module (P2)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/timer-management-uniform.design.md) | [Spec](specs/timer-management-uniform.spec.md) | [Plan](plans/timer-management-uniform.plan.md) | [Overview](overviews/timer-management-uniform.overview.md)
+- **Ghi chú:**
+  - Đã tạo `src/common/timer.ts` với `sleep()`, `withTimeout()`, `createTimer()` — centralized API duy nhất.
+  - Đã chuyển toàn bộ 4 module (`config.ts`, `engine.ts`, `index.ts`, `utils.ts`) sang dùng API mới.
+  - 164 tests pass, 0 lỗi lint/typecheck/build.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#35](https://github.com/maxlogvn/finger-chromium/issues/35) (closed).
+
+---
+
+### Thay đổi kích thước viewport không chính xác trong chế độ headless do CDP không hỗ trợ (P2)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/bug-036-headless-viewport-resize.design.md) | [Spec](specs/bug-036-headless-viewport-resize.spec.md) | [Plan](plans/bug-036-headless-viewport-resize.plan.md) | [Overview](overviews/bug-036-headless-viewport-resize.overview.md)
+- **Ghi chú:**
+  - `setViewport()` dùng CDP `Browser.setWindowBounds` không hoạt động trong headless mode.
+  - Fix: fallback sang `page.setViewportSize()` gốc khi CDP thất bại. Thêm `WeakMap<Page, Function>` lưu original `setViewportSize`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#36](https://github.com/maxlogvn/finger-chromium/issues/36) (closed).
+
+---
 
 Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
@@ -64,7 +209,7 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - `EngineTimeoutError` -- timeout khởi động engine
   - `RequestTimeoutError` -- timeout request
   - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #14 -- export error classes ra public API, Issue #16 -- JSDoc tham chiếu method không tồn tại)
-  - **Docs correction (2026-06-04):** Da bo sung giai thich "tai sao" cho `dedent`, `captureStackTrace`, `Symbol.toStringTag`; them chi tiet message tung class vao spec/product; fix overview sai "3 dong".
+  - **Docs correction (2026-06-04):** Đã bổ sung giải thích "tại sao" cho `dedent`, `captureStackTrace`, `Symbol.toStringTag`; thêm chi tiết message từng class vào spec/product; fix overview sai "3 dòng".
 
 ---
 
@@ -317,17 +462,79 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
-### Tăng test coverage cho core modules
+### Test Error classes & Utilities
 
-- **Trạng thái:** [-] Sắp làm
+- **Trạng thái:** [X] Hoàn thành
 - **Ngày tạo:** 2026-06-03
 - **Cập nhật:** 2026-06-03
-- **Tài liệu:**
+- **Tài liệu:** [Design](designs/test-error-classes-utilities.design.md) | [Spec](specs/test-error-classes-utilities.spec.md) | [Plan](plans/test-error-classes-utilities.plan.md) | [Overview](overviews/test-error-classes-utilities.overview.md)
 - **Ghi chú:**
-  - Hiện chỉ có 2 file test: `multi-profile-singleton.test.ts` và `quit-cleanup.test.ts`
-  - Cần unit test cho: `RemoteEngine` (engine.ts), `Connector` (connector/index.ts), `PCAPServer`, `Cleaner`
-  - Test với browser thật (theo CONVENTIONS.md) nhưng cần thêm test cho logic xử lý lỗi và edge cases
-  - Mục tiêu: coverage tối thiểu 60% cho `src/plugin/` và `src/adapter/`
+  - File test: `tests/utils.test.ts` (35 test cases, 4 module)
+  - Module đã test: `errors.ts`, `utils.ts`, `common/index.ts`, `loader/index.ts`
+  - Tất cả 58 test (35 mới + 23 cũ) đều pass
+  - Sai lệch: 1 test `defaultArgs()` sửa behavior cho đúng với code (headless mặc định = true)
+
+---
+
+### Test Connector (RemoteEngine + Connector + PCAP)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-03
+- **Tài liệu:** [Design](designs/test-connector.design.md) | [Spec](specs/test-connector.spec.md) | [Plan](plans/test-connector.plan.md) | [Overview](overviews/test-connector.overview.md)
+- **Ghi chú:**
+  - File test: `tests/connector.test.ts` — 27 test cases mới
+  - PCAP Server: 5 tests (listen/close, request ID, heartbeat, data rỗng, close server)
+  - RemoteEngine: 15 tests (constructor, setters, exists, checksum, download, kill)
+  - Connector: 7 tests (constructor, api error normalization, cleanup)
+  - Tất cả 85 tests pass (27 mới + 58 cũ)
+  - Hybrid approach: PCAP với TCP thật, helpers với file thật + HTTP server local, Connector với mock RemoteEngine
+  - Integration test với engine thật: `it.skip` — triển khai sau
+
+---
+
+### Test Cleanup (SettingsCleaner + ConfigManager + Mutex)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/test-cleanup.design.md) | [Spec](specs/test-cleanup.spec.md) | [Plan](plans/test-cleanup.plan.md) | [Overview](overviews/test-cleanup.overview.md) -- `tests/cleanup.test.ts`
+- **Ghi chú:**
+  - File test: `tests/cleanup.test.ts` — 19 test cases mới
+  - Module đã test: `cleaner.ts`, `config.ts`, `mutex/index.ts`
+  - Manual stub (CJS property mutation) + integration (temp file thật) + sinon global spies
+  - Tất cả 104 tests pass (19 mới + 85 cũ)
+  - Sai lệch: proxyquire → manual stub (ESM incompatibility), bỏ test `#cleanup` private method, sinon chỉ dùng cho global spies
+
+---
+
+### Test Browser (Launcher + BrowserEngine + PlaywrightBridge)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/test-browser.design.md) | [Spec](specs/test-browser.spec.md) | [Plan](plans/test-browser.plan.md) | [Overview](overviews/test-browser.overview.md) -- `tests/browser.test.ts`
+- **Ghi chú:**
+  - File test: `tests/browser.test.ts` -- 40 test cases mới
+  - Module đã test: `launcher/index.ts`, `adapter/playwright/chromium.ts`, `adapter/playwright/engine.ts`, `adapter/playwright/utils.ts`
+  - Integration test với Playwright Chromium thật (skip nếu không có binary)
+  - Tất cả 156 tests pass (40 mới + 116 cũ)
+  - Sai lệch: Tạo `TestPlugin` subclass để bypass `_launch()` (engine API không khả dụng). Export `isBrowser` từ `utils.ts`. setViewport headless không chính xác.
+
+---
+
+### Test Profile (AdapterDataManager)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-03
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/test-profile.design.md) | [Spec](specs/test-profile.spec.md) | [Plan](plans/test-profile.plan.md) | [Overview](overviews/test-profile.overview.md)
+- **Ghi chú:**
+  - File test: `tests/profile.test.ts` — 12 test cases mới
+  - Module đã test: `adapter/playwright/data.ts` — `AdapterDataManager`
+  - Unit test: map/unmap/dispose, generateUniqueName, edge cases
+  - Dùng thư mục temp thật (fs thật, không mock)
+  - Tất cả 116 tests pass (12 mới + 104 cũ)
 
 ---
 
@@ -395,6 +602,160 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
   - `net.Server` thiếu `unref()` — PCAP server giữ event loop sau khi cleanup.
   - Fix: thêm `svr.unref()` trong callback `onListening` của PCAP server.
   - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #21).
+
+---
+
+### Test coverage: `runFunction()` IPC core (Issue #28)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/test-runfunction-ipc-core.design.md) | [Spec](specs/test-runfunction-ipc-core.spec.md) | [Plan](plans/test-runfunction-ipc-core.plan.md) | [Overview](overviews/test-runfunction-ipc-core.overview.md)
+- **Ghi chú:**
+  - Đã thêm 6 test cases cho `RemoteEngine.runFunction()` trong `tests/connector.test.ts`.
+  - Dùng `RemoteEngine._execFile` mock (static property) thay vì `child_process.execFile` override (ESM live binding immutable).
+  - Thêm `RemoteEngine._closeTimeout` static để test process đóng nhanh.
+  - Thêm `raw` flag trong `simulateResponse` helper cho invalid JSON test.
+  - Tất cả 162 tests pass.
+  - Bug fix — xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #28).
+
+---
+
+### Test coverage: EADDRINUSE retry trong PCAP server (Issue #29)
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Design](designs/bug-029-eaddrInuse-retry-test.design.md) | [Spec](specs/bug-029-eaddrInuse-retry-test.spec.md) | [Plan](plans/bug-029-eaddrInuse-retry-test.plan.md) | [Overview](overviews/bug-029-eaddrInuse-retry-test.overview.md)
+- **Ghi chú:**
+  - Đã thay `once()` bằng `startPromise` caching trong `pcapServer/index.ts`.
+  - Đã thêm 2 test: idempotent listen + restart after close (164 tests pass).
+  - EADDRINUSE retry test KHÔNG khả thi trên Windows do `net.Server` dùng `SO_REUSEADDR` mặc định.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #29).
+
+---
+
+### Test coverage: HTTPS fallback trong `download()` (Issue #30)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `download()` có fallback HTTPS→HTTP khi network error, `fetchWithFallback()` được export để test.
+  - Cả hai đều không có coverage — dự án đã từng có bug liên quan (Issue #4).
+  - Liên quan: Test Connector, Bug fix #24 (download cleanup).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #30).
+
+---
+
+### Test coverage: async-lock trong Connector (Issue #31)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Connector dùng `async-lock` để serialise IPC requests. Spec yêu cầu test concurrent calls.
+  - Hiện tại không có test nào verify lock behavior — nguy cơ race condition trên file-based IPC.
+  - Liên quan: Test Connector, Bug fix #22 (AsyncLock per-instance).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #31).
+
+---
+
+### Docs: Fix spec/overview consistency và các lỗi nhỏ
+
+- **Trạng thái:** [X] Hoàn thành
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** [Overview](overviews/docs-spec-overview-consistency.overview.md)
+- **Ghi chú:**
+  - Đã cập nhật spec files để phản ánh deviations thực tế (EADDRINUSE, `#cleanup`, permission error, sinon).
+  - **`test-connector.spec.md`:** Xoá EADDRINUSE retry test, sửa `require.cache` → ESM import, cập nhật test counts (5+15+7=27).
+  - **`test-cleanup.spec.md`:** Sửa sinon → manual stub, xoá `#cleanup()` test cases, cập nhật test counts (9+10+4=23).
+  - **`test-browser.spec.md`:** Thêm TestPlugin pattern, isBrowser export, setViewport headless limitation, cập nhật count (40).
+  - **`test-profile.spec.md`:** Xoá map() error path, unmap() permission error, cập nhật counts (4+3+2=9).
+  - **`test-connector.plan.md`:** Xoá EADDRINUSE bước, sửa ESM cache notes.
+  - **`test-cleanup.plan.md`:** Xoá sinon installation task, xoá `#cleanup()` task, thay sinon code bằng manual stub.
+  - **`test-cleanup.overview.md`:** Sửa reference sai "thêm sinon vào devDependencies".
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — các issue #28-#31 vẫn open (test coverage gaps).
+
+---
+
+### Type safety gap tại bridge `configure()` — `@ts-expect-error` + `any` annotation (P1)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Base class `FingerprintPlugin.configure()` dùng `@ts-expect-error` tại `src/plugin/index.ts:238-239` khi delegate sang `ConfigManager.configure` vì signature không đồng nhất.
+  - Subclass `PlaywrightFingerprintPlugin.configure()` dùng `any` cho `cleanup` target và `browser` tại `src/adapter/playwright/engine.ts:92-93`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#37](https://github.com/maxlogvn/finger-chromium/issues/37).
+
+---
+
+### `Loader.import()` và `load()` dùng `any` thay vì `unknown` (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `Loader.import()` return type `[any, string]` và `load()` dùng generic `<T = any>` tại `src/loader/index.ts:36,56`.
+  - Sót lại sau codebase sweep "no as any" vì đây là type annotation `any`, không phải `as any` expression.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#38](https://github.com/maxlogvn/finger-chromium/issues/38).
+
+---
+
+### Race condition low-probability trong `pcapServer.listen()` khi gọi song song (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `if (startPromise) return startPromise;` là non-atomic check tại `src/plugin/connector/pcapServer/index.ts:25-31`.
+  - Trên Windows `SO_REUSEADDR` mặc định có thể che giấu vấn đề.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#39](https://github.com/maxlogvn/finger-chromium/issues/39).
+
+---
+
+### `createTimer().promise` treo vô hạn nếu `clear()` trước callback (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `createTimer()` tại `src/common/timer.ts:80-98` không resolve promise khi `clear()` được gọi trước callback.
+  - Hiện tại codebase gọi `clear()` và không await promise, nên chưa gặp vấn đề.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#40](https://github.com/maxlogvn/finger-chromium/issues/40).
+
+---
+
+### `notify()` return wrapping không cần thiết (P3)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `notify()` tại `src/plugin/connector/utils.ts:36` trả về `{ clear: timer.clear }` — không cần wrapping vì `createTimer` đã trả về `{ clear }`.
+  - Code còn sót từ thời dùng `setTimeout` callback-style.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#41](https://github.com/maxlogvn/finger-chromium/issues/41).
+
+---
+
+### ROADMAP.md còn template cũ trong HTML comment (P3)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - HTML comment `<!-- ... -->` đầu file `docs/ROADMAP.md:1-89` chứa template cũ với trạng thái sai cho các issue đã hoàn thành.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#42](https://github.com/maxlogvn/finger-chromium/issues/42).
 
 ---
 

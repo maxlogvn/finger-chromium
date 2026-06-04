@@ -17,10 +17,11 @@ import extract from 'extract-zip';
 import EventEmitter from 'node:events';
 import { pipeline } from 'node:stream/promises';
 import { createHash, randomUUID } from 'node:crypto';
-import { type ChildProcess, execFile } from 'node:child_process';
+import { type ChildProcess, execFile as nodeExecFile } from 'node:child_process';
 import { createReadStream, createWriteStream } from 'node:fs';
 import debugFactory from 'debug';
 import { EngineTimeoutError, InvalidEngineError, PluginError, RequestTimeoutError } from '../errors';
+import { createTimer } from '../../common/timer';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -81,6 +82,10 @@ export interface EngineOptions {
   engineTimeout?: string | number;
   /** Timeout chờ phản hồi (ms). */
   requestTimeout?: string | number;
+  /** Hàm spawn process -- dùng để inject mock trong test. Mặc định dùng child_process.execFile. */
+  execFile?: typeof nodeExecFile;
+  /** Thời gian chờ process đóng (ms). Mặc định CLOSE_TIMEOUT. */
+  closeTimeout?: number;
 }
 
 /**
@@ -111,7 +116,7 @@ export interface FunctionResult {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function exists(filePath: string): Promise<boolean> {
+export async function exists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
     return true;
@@ -120,14 +125,14 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-async function checksum(filePath: string): Promise<string> {
+export async function checksum(filePath: string): Promise<string> {
   const reader = createReadStream(filePath);
   const hash = createHash('sha1');
   await pipeline(reader, hash);
   return hash.digest('hex');
 }
 
-async function download(url: string, filePath: string): Promise<void> {
+export async function download(url: string, filePath: string): Promise<void> {
   const httpsUrl = url.replace(/^http:/, 'https:');
   const tmpPath = filePath + '.tmp';
   const writer = createWriteStream(tmpPath);
@@ -168,7 +173,7 @@ async function download(url: string, filePath: string): Promise<void> {
  * Wrapper axios request -- thử HTTPS trước, fallback HTTP nếu lỗi network.
  * Chỉ fallback khi là lỗi network (không fallback cho 4xx/5xx).
  */
-async function fetchWithFallback<T = unknown>(url: string, options?: Record<string, unknown>) {
+export async function fetchWithFallback<T = unknown>(url: string, options?: Record<string, unknown>) {
   const httpsUrl = url.replace(/^http:/, 'https:');
   try {
     return await axios.get<T>(httpsUrl, options);
@@ -196,9 +201,13 @@ export default class RemoteEngine extends EventEmitter {
   #engineTimeout: number = DEFAULT_TIMEOUT;
   #requestTimeout: number = DEFAULT_TIMEOUT;
   #process: ChildProcess | undefined = undefined;
+  #execFile: typeof nodeExecFile;
+  #closeTimeout: number;
 
   constructor(options: EngineOptions = {}) {
     super();
+    this.#execFile = options.execFile ?? nodeExecFile;
+    this.#closeTimeout = options.closeTimeout ?? CLOSE_TIMEOUT;
     this.setCwd(options.cwd);
     this.setArgs(options.args);
     this.setEngineTimeout(options.engineTimeout);
@@ -270,28 +279,30 @@ export default class RemoteEngine extends EventEmitter {
 
     try {
       responseStr = await new Promise<string>((resolve, reject) => {
-        let closeTimer: NodeJS.Timeout | null = null;
-        let requestTimer: NodeJS.Timeout | null = null;
+        let requestTimer: ReturnType<typeof createTimer> | undefined;
+        let closeTimer: ReturnType<typeof createTimer> | undefined;
 
         if (requestTimeout) {
-          requestTimer = setTimeout(() => {
+          requestTimer = createTimer(requestTimeout);
+          requestTimer.promise.then(() => {
             reject(new RequestTimeoutError(`Hết thời gian chờ khi gọi method "${name}".`));
-          }, requestTimeout).unref();
+          });
         }
 
         const closeHandler = () => {
-          closeTimer = setTimeout(() => {
+          closeTimer = createTimer(this.#closeTimeout);
+          closeTimer.promise.then(() => {
             debug('Tiến trình engine đã đóng trong lúc chờ phản hồi');
             resolve('');
-          }, CLOSE_TIMEOUT);
+          });
         };
 
         requestWatcher.on('change', async () => {
           const content = await fs.readFile(requestPath, 'utf8');
           debug('Đã nhận kết quả từ engine thành công');
 
-          if (requestTimer) clearTimeout(requestTimer);
-          if (closeTimer) clearTimeout(closeTimer);
+          requestTimer?.clear();
+          closeTimer?.clear();
           engineProcess.off('close', closeHandler);
 
           await fs.unlink(requestPath);
@@ -355,7 +366,7 @@ export default class RemoteEngine extends EventEmitter {
 
     // --- Bước 5: Spawn FastExecuteScript.exe
     return new Promise<ChildProcess>((resolve, reject) => {
-      const proc = execFile(
+      const proc = this.#execFile(
         path.join(scriptDir, 'FastExecuteScript.exe'),
         ['--silent', ...this.#args],
         { cwd: scriptDir },
@@ -410,12 +421,13 @@ export default class RemoteEngine extends EventEmitter {
 
     proc.kill();
 
-    const timer = setTimeout(() => {
+    const sigkillTimer = createTimer(timeout);
+    sigkillTimer.promise.then(() => {
       proc.kill('SIGKILL');
-    }, timeout).unref();
+    });
 
     await exitPromise;
-    clearTimeout(timer);
+    sigkillTimer.clear();
     this.#process = undefined;
   }
 

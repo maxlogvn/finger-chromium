@@ -9,7 +9,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { BrowserContext, BrowserType, Page } from 'playwright-core';
-import FingerprintPlugin from '../../plugin';
+import FingerprintPlugin, { type BaseLaunchOptions } from '../../plugin';
+import type { Browser } from '../../plugin/launcher';
 import defaultLoader from './loader';
 import { PluginError } from '../../plugin/errors';
 import { bindHooks, getViewport, onClose, setViewport } from './utils';
@@ -73,11 +74,11 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
       userDataDir,
       viewport: null,
       launcher: {
-        launch: async (opts: any = {}) => {
+        launch: async (opts: BaseLaunchOptions = {}) => {
           const filteredArgs = (opts.args ?? []).filter((arg: string) => !arg.startsWith('--user-data-dir'));
-          return this.pwLauncher[method](userDataDir, { ...opts, args: filteredArgs });
+          return this.pwLauncher[method](userDataDir, { ...opts, args: filteredArgs }) as unknown as Browser;
         },
-      } as any,
+      } as unknown as { launch: (opts: BaseLaunchOptions) => Promise<Browser> },
       ignoreDefaultArgs: Array.isArray(ignoreDefaultArgs)
         ? ignoreDefaultArgs.concat(IGNORED_ARGUMENTS)
         : ignoreDefaultArgs || IGNORED_ARGUMENTS,

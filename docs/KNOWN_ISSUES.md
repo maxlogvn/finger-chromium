@@ -15,8 +15,8 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 0 issue — xem section OPEN bên dưới
-- **FIXED:** 25 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
+- **OPEN:** 8 issues — xem section OPEN bên dưới
+- **FIXED:** 27 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
 
@@ -53,9 +53,90 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 
 > **Ghi chú:** Không dùng local numbering. Mỗi entry chỉ có mô tả + số GitHub issue tương ứng.
 
-_Không có OPEN issue nào._
+### OPEN
+
+**Thiếu test coverage cho HTTPS fallback và fetchWithFallback() trong download()**
+- **File:** `src/plugin/connector/engine.ts:130-183`, `tests/connector.test.ts`
+- **Vấn đề:** Hàm `download()` có fallback HTTPS→HTTP khi network error, và `fetchWithFallback()` được export để test. Cả hai đều không có test coverage. Fallback path (HTTPS fail → HTTP) là critical path cho việc tải engine — nếu hỏng, engine không bao giờ được tải xuống. Dự án đã từng có bug liên quan (Issue #4).
+- **GitHub:** [#30](https://github.com/maxlogvn/finger-chromium/issues/30) (open)
+
+---
+
+**Thiếu test coverage cho async-lock concurrency trong Connector.api()**
+- **File:** `src/plugin/connector/index.ts:61,119`, `tests/connector.test.ts`
+- **Vấn đề:** Connector dùng `async-lock` để đảm bảo chỉ một request IPC tại một thời điểm. Không có test nào kiểm tra lock behavior khi có concurrent calls — nếu lock hỏng, hai request có thể ghi chồng lên cùng file request, corrupt dữ liệu IPC.
+- **GitHub:** [#31](https://github.com/maxlogvn/finger-chromium/issues/31) (open)
+
+---
+
+**Type safety gap tại bridge `configure()` — `@ts-expect-error` ở base class + `any` annotation ở subclass**
+- **File:** `src/plugin/index.ts:238-239`, `src/adapter/playwright/engine.ts:92-93`
+- **Vấn đề:** Base class `FingerprintPlugin.configure()` dùng `@ts-expect-error` khi delegate sang `ConfigManager.configure` vì signature không đồng nhất. Subclass `PlaywrightFingerprintPlugin.configure()` dùng `any` cho `cleanup` target và `browser`. Type safety bị vô hiệu hoá ở bridge quan trọng nhất — nếu `ConfigManager.configure` đổi signature, chỉ fail runtime, không có compile-time error.
+- **GitHub:** [#37](https://github.com/maxlogvn/finger-chromium/issues/37) (open)
+
+---
+
+**`Loader.import()` và `load()` dùng `any` thay vì `unknown`**
+- **File:** `src/loader/index.ts:36,56`
+- **Vấn đề:** `Loader.import()` return type `[any, string]` và `load()` dùng generic `<T = any>`. Đây là các chỗ sót lại sau codebase sweep "no as any" vì đây là type annotation `any`, không phải `as any` expression. Không tận dụng được TypeScript type safety.
+- **GitHub:** [#38](https://github.com/maxlogvn/finger-chromium/issues/38) (open)
+
+---
+
+**Race condition low-probability trong `pcapServer.listen()` khi gọi song song**
+- **File:** `src/plugin/connector/pcapServer/index.ts:25-31`
+- **Vấn đề:** `if (startPromise) return startPromise;` là non-atomic check — nếu hai caller gọi `listen()` đồng thời khi `startPromise === undefined`, promise thứ hai overwrites `startPromise`. Server thứ nhất vẫn start nhưng promise không được return. Trên Windows, `SO_REUSEADDR` mặc định có thể che giấu vấn đề.
+- **GitHub:** [#39](https://github.com/maxlogvn/finger-chromium/issues/39) (open)
+
+---
+
+**`createTimer().promise` treo vô hạn nếu `clear()` được gọi trước khi callback chạy**
+- **File:** `src/common/timer.ts:80-98`
+- **Vấn đề:** `createTimer()` trả về `{ promise, clear }`. Nếu `clear()` được gọi trước khi `setTimeout` callback execute, `timeoutId` được clear nhưng `promise` không bao giờ resolve. Nếu consumer `await timer.promise` sau `clear()`, nó sẽ treo vô hạn. Hiện tại codebase gọi `clear()` và không await promise, nên chưa gặp vấn đề.
+- **GitHub:** [#40](https://github.com/maxlogvn/finger-chromium/issues/40) (open)
+
+---
+
+**`notify()` return wrapping không cần thiết**
+- **File:** `src/plugin/connector/utils.ts:36`
+- **Vấn đề:** `notify()` trả về `{ clear: timer.clear }` — wrapping một lớp không cần thiết. Sau khi chuyển sang `createTimer()` (issue #35), `timer` đã có sẵn `{ clear }`. Code còn sót từ thời dùng `setTimeout` callback-style.
+- **GitHub:** [#41](https://github.com/maxlogvn/finger-chromium/issues/41) (open)
+
+---
+
+**ROADMAP.md còn template cũ trong HTML comment gây nhầm lẫn**
+- **File:** `docs/ROADMAP.md:1-89`
+- **Vấn đề:** HTML comment `<!-- ... -->` đầu file chứa các mục template cũ với trạng thái "[-] Sắp làm" cho các issue #32, #34, #35, #36 đã hoàn thành. Không render trên GitHub nhưng gây nhầm lẫn khi đọc raw và làm file dài hơn cần thiết (~90 dòng).
+- **GitHub:** [#42](https://github.com/maxlogvn/finger-chromium/issues/42) (open)
+
+---
 
 ### FIXED
+
+**Headless viewport resize không chính xác (P2)**
+- **File:** `src/adapter/playwright/utils.ts:66-129`
+- **Vấn đề:** `setViewport()` dùng CDP `Browser.setWindowBounds` — API này không hoạt động trong `headless: true`. Fix: fallback sang `page.setViewportSize()` gốc khi CDP thất bại. Thêm `WeakMap<Page, Function>` để lưu original `setViewportSize` trước khi `bindHooks()` proxy.
+- **Tài liệu:** [Design](designs/bug-036-headless-viewport-resize.design.md) | [Spec](specs/bug-036-headless-viewport-resize.spec.md) | [Plan](plans/bug-036-headless-viewport-resize.plan.md) | [Overview](overviews/bug-036-headless-viewport-resize.overview.md)
+- **GitHub:** [#36](https://github.com/maxlogvn/finger-chromium/issues/36) (closed)
+
+---
+
+**Thiếu integration test với engine binary thật `FastExecuteScript.exe` (P0)**
+- **File:** `tests/integration-connector.test.ts`, `tests/connector.test.ts`, `src/plugin/connector/engine.ts`
+- **Vấn đề:** 162 tests hiện tại đều là unit/hybrid. Không có test nào gọi engine thật (`FastExecuteScript.exe`). Engine API có thể fail hoàn toàn mà dev không biết.
+- **Tài liệu:** [Design](designs/test-integration-engine-binary.design.md) | [Spec](specs/test-integration-engine-binary.spec.md) | [Plan](plans/test-integration-engine-binary.plan.md) | [Overview](overviews/test-integration-engine-binary.overview.md)
+- **GitHub:** [#33](https://github.com/maxlogvn/finger-chromium/issues/33) (closed)
+
+---
+
+**EADDRINUSE retry logic trong PCAP server không test được trên Windows**
+- **File:** `src/plugin/connector/pcapServer/index.ts:23-64`, `tests/connector.test.ts`
+- **Thay đổi:** `once()` wrapper đã được thay bằng `startPromise` module-level caching. `close()` reset `startPromise` để cho phép restart server. Đã thêm 2 test cases mới: idempotent listen + restart after close. Tuy nhiên, EADDRINUSE retry logic không thể test trên Windows do `net.Server` dùng `SO_REUSEADDR` mặc định.
+- **Windows limitation:** `net.Server` không throw EADDRINUSE trên Windows vì `SO_REUSEADDR` được bật mặc định. EADDRINUSE retry test chỉ chạy được trên Linux/macOS.
+- **Tài liệu:** [Design](designs/bug-029-eaddrInuse-retry-test.design.md) | [Spec](specs/bug-029-eaddrInuse-retry-test.spec.md) | [Plan](plans/bug-029-eaddrInuse-retry-test.plan.md) | [Overview](overviews/bug-029-eaddrInuse-retry-test.overview.md)
+- **GitHub:** [#29](https://github.com/maxlogvn/finger-chromium/issues/29) (closed)
+
+---
 
 **`isBrowser` type guard dùng string check fragile**
 - **File:** `src/adapter/playwright/utils.ts:19-23`
@@ -254,3 +335,38 @@ _Không có OPEN issue nào._
 - **Vấn đề:** `net.Server` thiếu `unref()` trong callback `onListening` — TCP server giữ event loop alive sau khi cleanup, process không tự động thoát.
 - **Tài liệu:** [Design](designs/bug-021-pcap-unref.design.md) | [Spec](specs/bug-021-pcap-unref.spec.md) | [Plan](plans/bug-021-pcap-unref.plan.md) | [Overview](overviews/bug-021-pcap-unref.overview.md)
 - **GitHub:** [#21](https://github.com/maxlogvn/finger-chromium/issues/21) (closed)
+
+---
+
+**Thiếu test coverage cho `runFunction()` — IPC core giao tiếp với engine binary**
+- **File:** `tests/connector.test.ts`
+- **Vấn đề:** Đã thêm 6 test cases cho `RemoteEngine.runFunction()` dùng cơ chế `RemoteEngine._execFile` mock + `_closeTimeout` override. Test đầy đủ: parse response, timeout, invalid JSON, process đóng, dọn file rác, requestTimeout=0.
+- **Tài liệu:** [Design](designs/test-runfunction-ipc-core.design.md) | [Spec](specs/test-runfunction-ipc-core.spec.md) | [Plan](plans/test-runfunction-ipc-core.plan.md) | [Overview](overviews/test-runfunction-ipc-core.overview.md)
+- **GitHub:** [#28](https://github.com/maxlogvn/finger-chromium/issues/28) (closed)
+
+---
+
+**Module-level `serviceKey` state dùng chung giữa các instance (P0)**
+- **File:** `src/plugin/index.ts:61,189-191`
+- **Vấn đề:** `let serviceKey` ở module scope — tất cả `FingerprintPlugin` instance chia sẻ một key. Instance A set key, instance B có thể ghi đè. Gây sai key khi dùng multi-instance.
+- **Fix:** Chuyển `serviceKey` thành instance private field `#serviceKey`. Xoá module-level `let serviceKey`. Sửa `setServiceKey()`, `fetch()`, `_launch()` dùng `this.#serviceKey`.
+- **Tài liệu:** [Design](designs/bug-032-servicekey-module-scope.design.md) | [Spec](specs/bug-032-servicekey-module-scope.spec.md) | [Plan](plans/bug-032-servicekey-module-scope.plan.md)
+- **GitHub:** [#32](https://github.com/maxlogvn/finger-chromium/issues/32) (closed)
+
+---
+
+**Static property `_execFile`/`_closeTimeout` expose ra public cho testing (P1)**
+- **File:** `src/plugin/connector/engine.ts`
+- **Vấn đề:** `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property, chỉ dùng để mock trong test. Dev khác có thể vô tình ghi đè, crash toàn bộ engine. `@internal` JSDoc không ngăn được abuse.
+- **Fix:** Chuyển sang DI qua constructor. Thêm `execFile` và `closeTimeout` vào `EngineOptions`. Xoá static property. Test inject qua `new RemoteEngine({ execFile: mockFn, closeTimeout: 100 })`.
+- **Tài liệu:** [Design](designs/bug-034-static-property-di.design.md) | [Spec](specs/bug-034-static-property-di.spec.md) | [Plan](plans/bug-034-static-property-di.plan.md) | [Overview](overviews/bug-034-static-property-di.overview.md)
+- **GitHub:** [#34](https://github.com/maxlogvn/finger-chromium/issues/34) (closed)
+
+---
+
+**Timer management không đồng nhất (P2)**
+- **File:** `src/common/timer.ts`, `src/plugin/config.ts`, `src/plugin/connector/engine.ts`, `src/plugin/connector/index.ts`, `src/plugin/connector/utils.ts`
+- **Vấn đề:** Dùng 2 style timer: `timers/promises` (config.ts) và `setTimeout().unref()` callback style (connector/engine.ts). Khó maintain, khó test. Không có centralized wrapper.
+- **Fix:** Tạo `src/common/timer.ts` với `sleep()`, `withTimeout()`, `createTimer()` — centralized API duy nhất cho mọi nhu cầu timer. Chuyển toàn bộ module sang dùng API này.
+- **Tài liệu:** [Design](designs/timer-management-uniform.design.md) | [Spec](specs/timer-management-uniform.spec.md) | [Plan](plans/timer-management-uniform.plan.md) | [Overview](overviews/timer-management-uniform.overview.md)
+- **GitHub:** [#35](https://github.com/maxlogvn/finger-chromium/issues/35) (closed)

@@ -30,9 +30,7 @@ interface RunFunctionOptions {
 
 interface ApiParams {
   key?: string;
-  options?: {
-    perfectCanvasRequest?: boolean;
-  };
+  options?: unknown;
   [key: string]: unknown;
 }
 
@@ -115,11 +113,11 @@ export default class Connector {
     const port = await this.#ensurePcapPort();
     this.#engine.setArgs([`--mock-pcap-port=${port}`]);
 
-    let notifyTimer: Parameters<typeof clearTimeout>[0] | undefined;
+    let notifyTimer: { clear: () => void } | undefined;
     return this.#lock.acquire('client', async () => {
       try {
         const { error, ...result } = (await this.#engine.runFunction(name, params, {
-          requestTimeout: params?.options?.perfectCanvasRequest ? 0 : this.requestTimeout,
+          requestTimeout: (params?.options as { perfectCanvasRequest?: boolean } | undefined)?.perfectCanvasRequest ? 0 : this.requestTimeout,
         } as RunFunctionOptions)) as EngineResult;
         if (error) {
           if (error.includes('key is missing')) {
@@ -130,7 +128,7 @@ export default class Connector {
         }
         return result.response ?? result;
       } finally {
-        clearTimeout(notifyTimer);
+        notifyTimer?.clear();
       }
     });
   }

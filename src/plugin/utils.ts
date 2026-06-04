@@ -39,7 +39,7 @@ interface DefaultArgsOptions {
   extensions?: string[];
 }
 
-interface GetProfilePathOptions {
+export interface GetProfilePathOptions {
   args?: string[];
   userDataDir?: string;
 }

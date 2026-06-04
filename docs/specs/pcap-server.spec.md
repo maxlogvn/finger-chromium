@@ -17,8 +17,8 @@ Source: `src/plugin/connector/pcapServer/index.ts` (72 dòng).
 - Chỉ hiểu 2 lệnh binary:
   - `0x01` (Request ID): engine yêu cầu ID mới — server phản hồi với ID dạng số.
   - `0x07` (Heartbeat): engine kiểm tra server còn sống — server phản hồi xác nhận.
-- `once()` đảm bảo `listen()` chỉ gọi được một lần — các lần sau ignore.
-- Retry port khi `EADDRINUSE` (sau 1 giây).
+- `startPromise` module-level caching: nếu `startPromise` đã tồn tại, trả về ngay (cùng promise, cùng port). `close()` reset `startPromise` để cho phép restart.
+- Retry port khi `EADDRINUSE` (sau 1 giây). **Lưu ý Windows:** `net.Server` dùng `SO_REUSEADDR` mặc định nên EADDRINUSE không thể kích hoạt trên Windows qua normal means.
 - Debug logging qua namespace `browser-with-fingerprints:connector:pcapServer`.
 
 ## Thiết kế
@@ -101,15 +101,17 @@ Lần gọi api() đầu tiên
 
 | Tình huống | Hành vi |
 |---|---|
-| Port đã dùng (EADDRINUSE) | Retry sau 1 giây — gọi `server.listen()` lại, không throw |
+| Port đã dùng (EADDRINUSE) | Retry sau 1 giây — gọi `server.listen()` lại, không throw. **Không test được trên Windows** do `SO_REUSEADDR`. |
 | Socket error | `debug` log — server vẫn chạy, không crash |
-| `listen()` gọi lần thứ hai | `once()` ignore — không tạo server mới |
+| `listen()` gọi lần thứ hai (server đang chạy) | Trả về `startPromise` hiện tại (cùng promise, cùng port) |
+| `listen()` gọi sau `close()` | Tạo server mới, port mới (reset `startPromise = undefined` trong `close()`) |
 | `close()` khi chưa có server | Resolve ngay — không throw |
 
 ## Kiểm tra
 
 - Happy path: listen thành công, engine kết nối, gửi 0x01/0x07, nhận response.
-- Edge case: port đã dùng → tự động retry, cuối cùng listen thành công.
-- Edge case: `listen()` gọi 2 lần → lần 2 ignore.
+- Edge case: port đã dùng (EADDRINUSE) → tự động retry, cuối cùng listen thành công. **Không test được trên Windows** do `SO_REUSEADDR`.
+- Edge case: `listen()` gọi 2 lần → trả về `startPromise` hiện tại (idempotent, cùng port).
+- Restart: `close()` → `listen()` lại → server mới, port mới (nếu port=0).
 - Close: `close()` → server dừng, port giải phóng.
 - Close khi chưa listen: resolve ngay, không lỗi.

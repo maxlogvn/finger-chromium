@@ -3,11 +3,11 @@
 //
 //   1. onClose() -- register clean-up handler (disconnected / close event)
 //   2. bindHooks() -- proxy newContext/newPage/setViewportSize
-//   3. setViewport() -- CDP-based resize với retry
+//   3. setViewport() -- CDP-based resize (headed) với fallback page.setViewportSize (headless)
 //   4. getViewport() -- lấy kích thước viewport từ in-browser script
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { Browser, BrowserContext, Page } from 'playwright-core';
+import type { Browser, BrowserContext, Page, CDPSession } from 'playwright-core';
 import { scripts } from '../../common';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -16,7 +16,9 @@ export const MAX_RESIZE_RETRIES = 3;
 
 // ─── Runtime ──────────────────────────────────────────────────────────────────
 
-const isBrowser = (target: unknown): target is Browser =>
+const originalSetViewportSize = new WeakMap<Page, Page['setViewportSize']>();
+
+export const isBrowser = (target: unknown): target is Browser =>
   typeof target === 'object' &&
   target !== null &&
   'isConnected' in target &&
@@ -62,6 +64,7 @@ export const bindHooks = (target: Browser | BrowserContext, hooks: BrowserHooks 
     return ctx;
   }
   function patchPage(page: Page): Page {
+    originalSetViewportSize.set(page, page.setViewportSize.bind(page));
     page.setViewportSize = new Proxy(page.setViewportSize, {
       apply: async () => {
         console.warn('[Fingerprint] Không thể thay đổi viewport: kích thước đã bị khoá bởi fingerprint.');
@@ -69,15 +72,15 @@ export const bindHooks = (target: Browser | BrowserContext, hooks: BrowserHooks 
     }) as typeof page.setViewportSize;
     return page;
   }
-  if (!isBrowser(target) && !(target as any).newContext) {
+  if (!isBrowser(target) && !('newContext' in target)) {
     patchContext(target as BrowserContext);
   }
 };
 
 /**
- * Resize viewport qua CDP -- thử tối đa MAX_RESIZE_RETRIES lần.
- * delta ban đầu là 16x88 (khung viền trình duyệt), sau mỗi lần thất bại
- * tự điều chỉnh delta để đạt đúng kích thước mong muốn.
+ * Resize viewport -- thử CDP Browser.setWindowBounds trước (headed mode).
+ * Nếu CDP không hoạt động (headless mode), fallback sang page.setViewportSize().
+ * delta cho fallback là 0 (headless không có window chrome).
  */
 export const setViewport = async (
   page: Page,
@@ -91,24 +94,38 @@ export const setViewport = async (
     height?: number;
   }
 ): Promise<void> => {
-  const delta = diff ? { ...diff } : { width: 16, height: 88 };
-  const cdp = await page.context().newCDPSession(page);
-  const { windowId } = await cdp.send('Browser.getWindowForTarget');
-  for (let i = 0; i < MAX_RESIZE_RETRIES; ++i) {
-    const bounds = { width: width + delta.width, height: height + delta.height };
-    await Promise.all([cdp.send('Browser.setWindowBounds', { bounds, windowId }), waitForResize(page)]);
-    const viewport = await getViewport(page);
-    if (width === viewport.width && height === viewport.height) {
-      break;
+  // --- Bước 1: Thử CDP Browser.setWindowBounds -- hoạt động ở headed mode
+  let cdp: CDPSession | null = null;
+  try {
+    cdp = await page.context().newCDPSession(page);
+    const { windowId } = await cdp.send('Browser.getWindowForTarget');
+    const delta = diff ? { ...diff } : { width: 16, height: 88 };
+    for (let i = 0; i < MAX_RESIZE_RETRIES; ++i) {
+      const bounds = { width: width + delta.width, height: height + delta.height };
+      await Promise.all([cdp.send('Browser.setWindowBounds', { bounds, windowId }), waitForResize(page)]);
+      const viewport = await getViewport(page);
+      if (width === viewport.width && height === viewport.height) {
+        return;
+      }
+      if (i === MAX_RESIZE_RETRIES - 1) {
+        break;
+      }
+      delta.height += height - viewport.height;
+      delta.width += width - viewport.width;
     }
-    if (i === MAX_RESIZE_RETRIES - 1) {
-      console.warn('[Fingerprint] Không thể đặt kích thước viewport chính xác sau nhiều lần thử.');
-      break;
-    }
-    delta.height += height - viewport.height;
-    delta.width += width - viewport.width;
+  } catch {
+    // CDP failed -- fallback bên dưới
+  } finally {
+    await cdp?.detach();
   }
-  await cdp.detach();
+
+  // --- Bước 2: Fallback -- dùng page.setViewportSize gốc (delta=0 cho headless)
+  const orig = originalSetViewportSize.get(page);
+  if (orig) {
+    await orig({ width, height });
+  } else {
+    console.warn('[Fingerprint] Không thể resize viewport: không tìm thấy original setViewportSize.');
+  }
 };
 
 /**
