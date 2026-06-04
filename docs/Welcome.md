@@ -82,7 +82,9 @@ Issue được theo dõi song song ở hai nơi:
 | **Local** | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | Entry point chính -- đọc để biết tình trạng |
 | **GitHub** | [Issues](https://github.com/maxlogvn/finger-chromium/issues) | Lưu trữ vĩnh viễn, traceable |
 
-Hiện có **0 issue OPEN** — đang chờ xử lý. Chi tiết và mapping local-GitHub tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+Hiện có **8 issue OPEN** — gồm 3 test coverage gaps (cũ) + 5 quality improvement tasks (mới). Chi tiết và mapping local-GitHub tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+
+> **Quality sweep (06-2026):** Đã bổ sung 5 task nâng cao chất lượng code — xem [ROADMAP.md](ROADMAP.md) mục "Sắp làm".
 
 ---
 

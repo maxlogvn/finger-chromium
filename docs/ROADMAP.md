@@ -4,16 +4,162 @@ Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 
 ---
 
-### Tên tính năng
-- **Trạng thái:** Sắp làm
-- **Ngày tạo:** YYYY-MM-DD
-- **Cập nhật:** YYYY-MM-DD
-- **Tài liệu:** ...
-- **Ghi chú:** ...
+### Code quality: Giảm `as any` về 0 (Codebase sweep)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Hiện có ~15 chỗ dùng `as any` trong strict mode, phá vỡ type safety.
+  - Cần define interface cụ thể cho từng API call (`FetchParams`, `SetupParams`, `VersionsParams`).
+  - File chính: `src/plugin/index.ts:206,218,233,252`, `src/adapter/playwright/engine.ts:76,84`, `src/plugin/connector/engine.ts:206`.
+  - Mục tiêu: 0 `as any` trong codebase.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — quality tasks overview.
+
+---
+
+### Fix module-level `serviceKey` state (P0)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `let serviceKey` ở `src/plugin/index.ts:61` là module-level state — tất cả instance chia sẻ.
+  - Instance A gọi `setServiceKey(keyA)`, instance B gọi `setServiceKey(keyB)` → A dùng sai key.
+  - Cần đưa `serviceKey` vào instance (`this.#serviceKey`).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+
+---
+
+### Integration test với engine binary thật `FastExecuteScript.exe` (P0)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Hiện tại 100% test là unit/hybrid, không test với engine thật.
+  - Nguy cơ: engine API thay đổi, code vẫn pass 162 tests nhưng fail hoàn toàn khi chạy thật.
+  - Cần test luồng cơ bản: download -> extract -> spawn -> runFunction('ping', {}).
+  - CI condition: chạy khi `BABLOSOFT_KEY` được set.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+
+---
+
+### Refactor static property testing pattern sang Dependency Injection (P1)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property expose ra chỉ để test.
+  - Cần chuyển sang DI (pass `execFile` function qua constructor) hoặc dùng `sinon.mock()`.
+  - Liên quan: Issue #28 (test-runfunction-ipc-core).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+
+---
+
+### Timer management đồng nhất (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Dùng 2 style: `timers/promises` (config.ts) và `setTimeout().unref()` (connector).
+  - Cần chọn 1 style duy nhất, tạo wrapper nếu cần `unref()`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+
+---
+
+### Headless viewport resize fix (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `setViewport()` dùng CDP `Browser.setWindowBounds` không hoạt động trong headless mode.
+  - Cần detect headless, fallback sang `page.setViewportSize()`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) (Issue #36).
 
 ---
 
 -->
+
+---
+
+### Sửa lỗi biến `serviceKey` ở module scope gây dùng chung key giữa các instance (P0)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `let serviceKey` ở `src/plugin/index.ts:61` là module-level state — tất cả instance chia sẻ.
+  - Instance A gọi `setServiceKey(keyA)`, instance B gọi `setServiceKey(keyB)` dẫn đến A dùng sai key.
+  - Cần đưa `serviceKey` vào instance (`this.#serviceKey`).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#32](https://github.com/maxlogvn/finger-chromium/issues/32).
+
+---
+
+### Thiếu kiểm thử tích hợp với engine nhị phân thật `FastExecuteScript.exe` (P0)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Hiện tại 100% test là unit/hybrid, không test với engine thật.
+  - Nguy cơ: engine API thay đổi, code vẫn pass 162 tests nhưng fail hoàn toàn khi chạy thật.
+  - Cần test luồng cơ bản: download -> extract -> spawn -> runFunction('ping', {}).
+  - CI condition: chạy khi `BABLOSOFT_KEY` được set.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#33](https://github.com/maxlogvn/finger-chromium/issues/33).
+
+---
+
+### Thuộc tính static `_execFile` và `_closeTimeout` bị lộ ra ngoài chỉ để phục vụ kiểm thử (P1)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property expose ra chỉ để test.
+  - Cần chuyển sang DI (pass `execFile` function qua constructor) hoặc dùng `sinon.mock()`.
+  - Liên quan: Issue #28 (test-runfunction-ipc-core).
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#34](https://github.com/maxlogvn/finger-chromium/issues/34).
+
+---
+
+### Quản lý bộ đếm thời gian không nhất quán giữa các module (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - Dùng 2 style: `timers/promises` (config.ts) và `setTimeout().unref()` (connector).
+  - Cần chọn 1 style duy nhất, tạo wrapper nếu cần `unref()`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#35](https://github.com/maxlogvn/finger-chromium/issues/35).
+
+---
+
+### Thay đổi kích thước viewport không chính xác trong chế độ headless do CDP không hỗ trợ (P2)
+
+- **Trạng thái:** [-] Sắp làm
+- **Ngày tạo:** 2026-06-04
+- **Cập nhật:** 2026-06-04
+- **Tài liệu:** (sẽ tạo theo WORKFLOW.md khi bắt đầu xử lý)
+- **Ghi chú:**
+  - `setViewport()` dùng CDP `Browser.setWindowBounds` không hoạt động trong headless mode.
+  - Cần detect headless, fallback sang `page.setViewportSize()`.
+  - Xem [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) — [#36](https://github.com/maxlogvn/finger-chromium/issues/36).
+
+---
 
 Trạng thái: [X] Hoàn thành | [/] Đang làm | [-] Sắp làm | [ ] Backlog
 

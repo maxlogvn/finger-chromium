@@ -15,7 +15,7 @@ Dự án dùng hệ thống đồng bộ hai chiều giữa local và GitHub Iss
 
 ### Mapping giữa local và GitHub
 
-- **OPEN:** 4 issues — xem section OPEN bên dưới
+- **OPEN:** 8 issues — xem section OPEN bên dưới
 - **FIXED:** 25 issues đã đóng trên GitHub — xem từng entry với số GitHub tương ứng
 
 ### Quy trình fix một issue
@@ -54,6 +54,42 @@ Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (không theo template trê
 > **Ghi chú:** Không dùng local numbering. Mỗi entry chỉ có mô tả + số GitHub issue tương ứng.
 
 ### OPEN
+
+---
+
+**Module-level `serviceKey` state dùng chung giữa các instance (P0)**
+- **File:** `src/plugin/index.ts:61,189-191`
+- **Vấn đề:** `let serviceKey` ở module scope — tất cả `FingerprintPlugin` instance chia sẻ một key. Instance A set key, instance B có thể ghi đè. Gây sai key khi dùng multi-instance.
+- **GitHub:** [#32](https://github.com/maxlogvn/finger-chromium/issues/32) (open)
+
+---
+
+**Thiếu integration test với engine binary thật `FastExecuteScript.exe` (P0)**
+- **File:** `tests/connector.test.ts`, `src/plugin/connector/engine.ts`
+- **Vấn đề:** 162 tests hiện tại đều là unit/hybrid. Không có test nào gọi engine thật (`FastExecuteScript.exe`). Engine API có thể fail hoàn toàn mà dev không biết. Luồng download -> extract -> spawn -> runFunction('ping') chưa bao giờ được verify.
+- **GitHub:** [#33](https://github.com/maxlogvn/finger-chromium/issues/33) (open)
+
+---
+
+**Static property `_execFile`/`_closeTimeout` expose ra public cho testing (P1)**
+- **File:** `src/plugin/connector/engine.ts:194,197`
+- **Vấn đề:** `RemoteEngine._execFile` và `RemoteEngine._closeTimeout` là static public property, chỉ dùng để mock trong test. Dev khác có thể vô tình ghi đè, crash toàn bộ engine. `@internal` JSDoc không ngăn được abuse.
+- **Liên quan:** Bug test-runfunction-ipc-core (Issue #28).
+- **GitHub:** [#34](https://github.com/maxlogvn/finger-chromium/issues/34) (open)
+
+---
+
+**Timer management không đồng nhất (P2)**
+- **File:** `src/plugin/config.ts:109`, `src/plugin/connector/engine.ts:283,419`, `src/plugin/connector/index.ts`
+- **Vấn đề:** Dùng 2 style timer: `timers/promises` (config.ts) và `setTimeout().unref()` callback style (connector/engine.ts). Khó maintain, khó test. Không có centralized wrapper.
+- **GitHub:** [#35](https://github.com/maxlogvn/finger-chromium/issues/35) (open)
+
+---
+
+**Headless viewport resize không chính xác (P2)**
+- **File:** `src/adapter/playwright/utils.ts:82-112`
+- **Vấn đề:** `setViewport()` dùng CDP `Browser.setWindowBounds` — API này không hoạt động trong `headless: true`. Dev đã ghi nhận trong overview nhưng chưa fix.
+- **GitHub:** [#36](https://github.com/maxlogvn/finger-chromium/issues/36) (open)
 
 ---
 
