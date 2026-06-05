@@ -16,8 +16,6 @@ interface TimerHandle {
   clear: () => void;
 }
 
-// ─── TimeoutError ─────────────────────────────────────────────────────────────
-
 /**
  * Lỗi timeout dùng chung cho withTimeout().
  * Throw khi promise không kịp hoàn thành trước deadline.
@@ -27,8 +25,6 @@ export class TimeoutError extends Error {
   name = 'TimeoutError';
 }
 
-// ─── sleep ────────────────────────────────────────────────────────────────────
-
 /**
  * Delay đơn giản, tự động unref (không giữ event loop).
  * Dùng `timers/promises` bên trong với `ref: false`.
@@ -36,10 +32,7 @@ export class TimeoutError extends Error {
  * @example
  * await sleep(1000); // chờ 1 giây
  */
-export const sleep = (ms: number): Promise<void> =>
-  sleepPromise(ms, undefined, { ref: false });
-
-// ─── withTimeout ─────────────────────────────────────────────────────────────
+export const sleep = (ms: number): Promise<void> => sleepPromise(ms, undefined, { ref: false });
 
 /**
  * Race một promise với timeout.
@@ -50,19 +43,15 @@ export const sleep = (ms: number): Promise<void> =>
  * @example
  * const data = await withTimeout(fetch(url), 5000, 'Fetch timeout');
  */
-export function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  message?: string
-): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, ms: number, message?: string): Promise<T> {
   const timer = createTimer(ms);
   return Promise.race([
     promise,
-    timer.promise.then(() => { throw new TimeoutError(message ?? 'Timeout'); })
+    timer.promise.then(() => {
+      throw new TimeoutError(message ?? 'Timeout');
+    }),
   ]).finally(() => timer.clear());
 }
-
-// ─── createTimer ──────────────────────────────────────────────────────────────
 
 /**
  * Tạo timer có thể huỷ — thay thế cho callback-style `setTimeout` + `clearTimeout`.
@@ -79,11 +68,12 @@ export function withTimeout<T>(
  */
 export function createTimer(ms: number): TimerHandle {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const promise = new Promise<void>(resolve => {
+  const promise = new Promise<void>((resolve) => {
     timeoutId = setTimeout(() => {
       resolve();
     }, ms);
-    if (timeoutId && typeof timeoutId === 'object') {
+    // Chỉ gọi unref nếu tồn tại (tránh lỗi trên môi trường không phải Node)
+    if (timeoutId && typeof timeoutId.unref === 'function') {
       timeoutId.unref();
     }
   });
@@ -94,6 +84,6 @@ export function createTimer(ms: number): TimerHandle {
         clearTimeout(timeoutId);
         timeoutId = undefined;
       }
-    }
+    },
   };
 }

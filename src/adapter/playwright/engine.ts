@@ -146,7 +146,7 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     browser: any,
     bounds: { width: number; height: number },
-    sync: (fn: () => Promise<void>) => Promise<void>
+    sync: <T>(fn: () => Promise<T> | T) => Promise<T>
   ): Promise<void> {
     const context = browser as BrowserContext;
 
