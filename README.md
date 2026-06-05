@@ -3,61 +3,49 @@
 </p>
 
 <p align="center">
-  Native Chromium anti-detect engine cho Playwright — inject fingerprint thiết bị thật, đồng bộ proxy, và quản lý profile bền vững.
+  Trình điều khiển Chromium chống bot detection — inject fingerprint thiết bị thật, đồng bộ proxy, quản lý profile bền vững, dành cho Playwright.
 </p>
 
 <p align="center">
-  <a href="#tính-năng">Tính năng</a>
+  <a href="#tinh-nang">Tính năng</a>
   &nbsp;|&nbsp;
-  <a href="#cài-đặt">Cài đặt</a>
+  <a href="#cai-dat">Cài đặt</a>
   &nbsp;|&nbsp;
-  <a href="#sử-dụng-nhanh">Sử dụng nhanh</a>
+  <a href="#su-dung-nhanh">Sử dụng nhanh</a>
   &nbsp;|&nbsp;
   <a href="#api">API</a>
   &nbsp;|&nbsp;
-  <a href="#biến-môi-trường">Biến môi trường</a>
+  <a href="#bien-moi-truong">Biến môi trường</a>
   &nbsp;|&nbsp;
-  <a href="#tài-liệu">Tài liệu</a>
+  <a href="#tai-lieu">Tài liệu</a>
   &nbsp;|&nbsp;
-  <a href="#phát-triển">Phát triển</a>
+  <a href="#phat-trien">Phát triển</a>
 </p>
 
 ---
 
 ## Tính năng
 
-- **Fingerprint thật** — Inject fingerprint thu thập từ thiết bị thực tế ở cấp độ C/C++ thông qua CDP, không để lại vết override trong JavaScript context. [Chi tiết](docs/products/fingerprint-config.product.md)
-- **PerfectCanvas** — Render canvas chính xác theo fingerprint đích (cần request từ CanvasInspector).
-- **Proxy đồng bộ** — Tương thích HTTP/HTTPS/SOCKS4/SOCKS5, tự động đồng bộ timezone, geolocation, ngôn ngữ và WebRTC theo IP proxy. [Chi tiết](docs/products/proxy-config.product.md)
-- **Hỗ trợ WebRTC** — Thay thế IP thật bằng IP proxy trong WebRTC, hoặc tắt hoàn toàn.
-- **Profile bền vững** — Lưu và tải cookies, localStorage, session, lịch sử đăng nhập giữa các phiên. [Chi tiết](docs/products/profile-management.product.md)
-- **Nhiều kỹ thuật chống detect** — Nhiễu WebGL, nhiễu Canvas/Web Audio, che giấu DOM element, giả lập Sensor API, Battery API, và màn hình HiDPI.
-- **Quản lý viewport tự động** — Resize viewport qua CDP, đồng bộ kích thước fingerprint. [Chi tiết](docs/products/viewport-management.product.md)
-- **Chỉ Windows** — Được xây dựng dành riêng cho Windows (win32, cả 32-bit và 64-bit).
-
-## Yêu cầu
-
-| Điều kiện | Giá trị |
-|---|---|
-| Node.js | >= 18 |
-| Hệ điều hành | Windows (win32) |
-| Peer dependency | `playwright-core` >= 1.60 |
+- **Fingerprint thật** — Inject fingerprint thu thập từ thiết bị thực tế ở tầng C/C++ trước khi browser khởi động, không để lại dấu vết override ở JS layer.
+- **Proxy đồng bộ** — Tự động đồng bộ timezone, geolocation, WebRTC, DNS theo proxy.
+- **Profile bền vững** — Tự động lưu cookie, localStorage, session giữa các phiên, tránh corrupt dữ liệu gốc.
+- **PerfectCanvas** — Render canvas chính xác theo fingerprint thật, tránh phát hiện bởi canvas fingerprinting.
+- **Nhiễu WebGL/Audio/Canvas** — Làm nhiễu dữ liệu đồ họa và âm thanh để che giấu thông tin phần cứng thật.
+- **Tùy chỉnh launcher** — Hỗ trợ Playwright patch tùy chỉnh.
+- **Chỉ Windows** — Hoạt động trên Windows 32-bit và 64-bit.
 
 ## Cài đặt
 
-```bash
-npm install github:maxlogvn/finger-chromium
-```
+### Yêu cầu
 
-Sau khi cài, npm tự động chạy `prepare` script để build thư viện. Nếu build không tự động chạy (do `--ignore-scripts`), hãy chạy thủ công:
+- **Node.js** >= 18
+- **playwright-core** >= 1.60 (peer dependency)
+- **Windows** 10/11 (32-bit hoặc 64-bit)
 
-```bash
-npm run build
-```
-
-Đảm bảo bạn đã cài `playwright-core` và tải Chromium:
+### Các bước
 
 ```bash
+npm install fingerprint-chromium-engine
 npm install playwright-core
 npx playwright install chromium
 ```
@@ -65,223 +53,150 @@ npx playwright install chromium
 ## Sử dụng nhanh
 
 ```ts
-import {BrowserEngine} from 'fingerprint-chromium-engine';
+import { BrowserEngine } from 'fingerprint-chromium-engine';
 
-const engine = new BrowserEngine();
-const fingerprintData = await engine.newFingerprint({tags: ['Chrome', 'Desktop', 'Windows 10']});
+async function main() {
+  // Lấy fingerprint từ service
+  const browser = new BrowserEngine();
+  const fingerprint = await browser.newFingerprint({
+    tags: ['Chrome', 'Desktop', 'Windows 10'],
+    timeLimit: '30 days',
+  });
 
-const chromium = engine
-    .useFingerprint(fingerprintData!, {usePerfectCanvas: true})
-    .useProxy('http://user:pass@host:port', {changeTimezone: true})
-    .useProfile('./profiles/user_01', {loadFingerprint: true})
-    .launch({headless: false})
-const context = await chromium.newContext();
-const page = await context.newPage();
-await page.goto('https://google.com', {waitUntil: 'domcontentloaded'});
-await page.waitForTimeout(10_000);
-await page.close();
-await engine.quit();
+  // Cấu hình và khởi động
+  const context = await browser
+    .useFingerprint(fingerprint, {
+      usePerfectCanvas: true,
+      safeWebGL: true,
+      safeCanvas: true,
+    })
+    .useProxy('http://user:pass@proxy.example.com:8080', {
+      changeTimezone: true,
+      changeGeolocation: true,
+      changeWebRTC: 'replace',
+    })
+    .useProfile('./profiles/user_01', {
+      loadProxy: true,
+      loadFingerprint: true,
+    })
+    .launch({ headless: false })
+    .newContext();
+
+  const page = await context.newPage();
+  await page.goto('https://example.com');
+
+  // Đóng và lưu profile
+  await browser.quit();
+}
 ```
 
 ## API
 
-Chi tiết đầy đủ tại [BrowserEngine product doc](docs/products/browser-engine.product.md).
+### `new BrowserEngine(launcher?)`
 
-### Error classes
+Tạo instance mới. `launcher` là tùy chọn — mặc định dùng launcher đã được patch sẵn.
 
-Có thể import và catch lỗi theo type:
+### `BrowserEngine.useFingerprint(data, options?)`
 
-```ts
-import {
-  PluginError,
-  MissingKeyError,
-  InvalidEngineError,
-  EngineTimeoutError,
-  RequestTimeoutError,
-} from 'fingerprint-chromium-engine';
+Gắn fingerprint cho browser.
 
-try {
-  await engine.launch().newContext();
-} catch (err) {
-  if (err instanceof MissingKeyError) {
-    console.error('Thiếu key — cần set BABLOSOFT_KEY:', err.message);
-  }
-}
-```
+- `data` — Chuỗi JSON fingerprint từ `newFingerprint()` hoặc từ service.
+- `options.usePerfectCanvas` — Render canvas chính xác theo fingerprint (mặc định `true`).
+- `options.safeWebGL` — Làm nhiễu WebGL (mặc định `true`).
+- `options.safeCanvas` — Làm nhiễu Canvas 2D (mặc định `true`).
+- `options.safeAudio` — Làm nhiễu Web Audio API (mặc định `true`).
+- `options.safeBattery` — Giả lập Battery API (mặc định `true`).
+- `options.safeElementSize` — Che giấu tọa độ DOM element (mặc định `false`).
+- `options.useFontPack` — Đồng bộ font với fingerprint (mặc định `true`).
+- `options.emulateDeviceScaleFactor` — Giả lập màn hình Retina (mặc định `true`).
+- `options.emulateSensorAPI` — Giả lập Sensor API (mặc định `true`).
 
-Xem thêm: [Error Hierarchy product doc](docs/products/error-hierarchy.product.md)
+### `BrowserEngine.useProxy(data, options?)`
 
-### `BrowserEngine`
+Định tuyến traffic qua proxy.
 
-Class chính để tạo instance. Mỗi `new BrowserEngine()` là một session độc lập, có cấu hình riêng.
-`Chromium` là alias của `BrowserEngine` (giữ cho backward compatibility).
+- `data` — Proxy URL định dạng `protocol://user:pass@host:port`.
+- `options.changeTimezone` — Đổi múi giờ theo proxy (mặc định `true`).
+- `options.changeGeolocation` — Đổi vị trí địa lý (mặc định `false`).
+- `options.changeBrowserLanguage` — Đổi ngôn ngữ trình duyệt (mặc định `true`).
+- `options.changeWebRTC` — `'enable' | 'disable' | 'replace'` (mặc định `'replace'`).
+- `options.enableTunneling` — Bật/tắt tunneling tích hợp (mặc định `true`).
+- `options.dnsMode` — `'system-proxy' | 'custom-proxy' | 'custom-direct'` (mặc định `'system-proxy'`).
+- `options.enableQUIC` — Bật QUIC nếu proxy hỗ trợ UDP (mặc định `false`).
 
-```ts
-import { BrowserEngine, Chromium } from 'fingerprint-chromium-engine';
-const engine = new BrowserEngine();
-// Hoặc: const engine = new Chromium();
-```
+### `BrowserEngine.useProfile(dirPath, options?)`
 
-Các method gọi chain được, **phải gọi trước `launch()`**.
+Liên kết thư mục profile.
 
-#### `useFingerprint(data: string, options?: FingerprintOptions): this`
+- `dirPath` — Đường dẫn thư mục lưu cookie, localStorage.
+- `options.loadProxy` — Tự động load proxy từ profile cũ (mặc định `true`).
+- `options.loadFingerprint` — Tự động load fingerprint từ profile cũ (mặc định `true`).
 
-Gắn fingerprint vào trình duyệt. `data` là chuỗi fingerprint từ service bablosoft.
+### `BrowserEngine.launch(options?)`
 
-| Option | Mặc định | Mô tả |
-|---|---|---|
-| `usePerfectCanvas` | `true` | Render canvas chính xác theo fingerprint |
-| `useFontPack` | `true` | Đồng bộ font với fingerprint (cần FontPack) |
-| `emulateDeviceScaleFactor` | `true` | Giả lập màn hình Retina/HiDPI |
-| `emulateSensorAPI` | `true` | Giả lập Sensor API (gia tốc kế, con quay hồi chuyển...) |
-| `safeCanvas` | `true` | Nhiễu Canvas 2D chống canvas fingerprinting |
-| `safeWebGL` | `true` | Nhiễu WebGL che giấu thông tin GPU |
-| `safeAudio` | `true` | Nhiễu Web Audio API |
-| `safeBattery` | `true` | Giả lập Battery API |
-| `safeElementSize` | `false` | Che giấu tọa độ DOM element thật |
+Khởi động engine. Chỉ được gọi một lần.
 
-Xem thêm: [Fingerprint Config product doc](docs/products/fingerprint-config.product.md)
+- `options` — Override context options (viewport, locale...).
 
-#### `useProxy(data: string, options?: ProxyOptions): this`
+### `BrowserEngine.newContext(options?)`
 
-Định tuyến toàn bộ traffic qua proxy. Định dạng: `protocol://user:pass@host:port`.
+Tạo Playwright BrowserContext. Phải gọi `launch()` trước.
 
-| Option | Mặc định | Mô tả |
-|---|---|---|
-| `changeBrowserLanguage` | `true` | Đổi ngôn ngữ trình duyệt theo proxy |
-| `changeTimezone` | `true` | Đổi múi giờ theo proxy |
-| `changeGeolocation` | `false` | Đổi vị trí địa lý theo proxy |
-| `changeWebRTC` | `'replace'` | `'enable'` / `'disable'` / `'replace'` |
-| `enableTunneling` | `true` | Bật/tắt hệ thống tunneling tích hợp |
-| `enableQUIC` | `false` | Bật QUIC (cần proxy hỗ trợ UDP) |
-| `dnsMode` | `'system-proxy'` | `'system-proxy'` / `'custom-proxy'` / `'custom-direct'` |
-| `ipInfoMethod` | `'database'` | `'database'` / `'ip-api.com'` |
-| `detectExternalIP` | `true` | Tự động phát hiện IP công khai |
+Trả về `Promise<BrowserContext>`.
 
-Xem thêm: [Proxy Config product doc](docs/products/proxy-config.product.md)
+### `BrowserEngine.newFingerprint(options?)`
 
-#### `useProfile(dirPath: string, options?: ProfileOptions): this`
+Lấy fingerprint mới từ service.
 
-Liên kết thư mục profile để duy trì trạng thái giữa các phiên.
+- `options.tags` — Lọc theo thiết bị, OS, trình duyệt: `['Chrome', 'Desktop', 'Windows 10']`.
+- `options.timeLimit` — `'*' | '15 days' | '30 days' | '60 days'`.
+- `options.minWidth / maxWidth` — Lọc theo độ phân giải màn hình.
+- `options.minHeight / maxHeight` — Lọc theo độ phân giải màn hình.
+- `options.minBrowserVersion / maxBrowserVersion` — Lọc theo phiên bản trình duyệt.
+- `options.perfectCanvasRequest` — PerfectCanvas request từ CanvasInspector.
+- `options.dynamicPerfectCanvas` — Cho phép render động (mặc định `true`).
 
-| Option | Mặc định | Mô tả |
-|---|---|---|
-| `loadProxy` | `true` | Tải proxy đã dùng lần trước từ profile |
-| `loadFingerprint` | `true` | Tải fingerprint đã dùng lần trước từ profile |
+### `BrowserEngine.quit(saveDataPath?)`
 
-Xem thêm: [Profile Management product doc](docs/products/profile-management.product.md)
+Đóng trình duyệt, giải phóng tài nguyên, lưu profile.
 
-#### `launch(options?: PluginLaunchOptions): this`
+- `saveDataPath` — Ghi đè đường dẫn lưu profile (nếu muốn).
 
-Khởi tạo engine. Chỉ được gọi **một lần**. Ném lỗi nếu gọi lại.
+## API nâng cao
+
+### `BrowserEngine.repackChromium(launcher)`
+
+Thay thế launcher mặc định bằng bản tùy chỉnh.
 
 ```ts
-engine.launch({ headless: false, hasTouch: true })
+browser.repackChromium(myCustomLauncher);
 ```
 
-#### `newContext(options?: PluginLaunchOptions): Promise<BrowserContext>`
+### `BrowserEngine.engine`
 
-Tạo `BrowserContext` Playwright. Phải gọi `launch()` trước. Chỉ cho phép một context tại một thời điểm.
+Truy cập instance engine gốc cho các tác vụ nâng cao.
 
-```ts
-const context = await engine.newContext()
-```
-
-#### `newFingerprint(options?: FetchOptions): Promise<string | undefined>`
-
-Lấy fingerprint mới từ service, có thể lọc theo tag, thời gian, kích thước màn hình, phiên bản trình duyệt.
-
-```ts
-const fp = await engine.newFingerprint({
-  tags: ['Chrome', 'Desktop', 'Windows 10'],
-  timeLimit: '30 days',
-  minWidth: 1280,
-  minHeight: 720,
-})
-```
-
-Xem thêm: [Type System product doc](docs/products/type-system.product.md) (FetchOptions)
-
-#### `quit(saveDataPath?: string): Promise<void>`
-
-Đóng trình duyệt, giải phóng tài nguyên và lưu profile. Có thể ghi đè đường dẫn lưu profile.
-
-```ts
-await engine.quit()
-await engine.quit('./profiles/user_backup')
-```
-
-## Biến môi trường
-
-| Biến | Mặc định | Mô tả |
-|---|---|---|
-| `BABLOSOFT_KEY` | `''` | Key bảo mật cho engine (bắt buộc để dùng fingerprint) |
-| `BROWSER_RUNNING_DIR` | `.tmp/browser/running` | Thư mục tạm cho trình duyệt đang chạy |
-| `ENGINE_WORKING_DIR` | `.tmp/browser/engine` | Thư mục làm việc của engine |
-| `DEBUG` | — | Bật debug log: `browser-with-fingerprints:*` |
-
-## Kiến trúc
-
-```
-src/
-├── adapter/playwright/   # Playwright adapter (chromium.ts, engine.ts, loader.ts, data.ts)
-├── plugin/               # Plugin hệ thống (launcher, connector, mutex, browser, config)
-├── loader/               # Tải engine, quản lý file nhị phân
-├── common/               # Tiện ích dùng chung
-├── types/                # TypeScript type definitions
-└── index.ts              # Export công khai
-```
-
-Fingerprint được inject ở cấp độ **C/C++** thông qua CDP message trước khi trình duyệt chạy, không để lại vết override trong JavaScript context.
 
 ## Tài liệu
 
-| Tài liệu | Mô tả |
-|---|---|
-| [Tổng quan dự án](docs/Welcome.md) | Giới thiệu, cấu trúc docs, ghi chú code issues |
-| [Hướng dẫn phát triển](docs/WORKFLOW.md) | Quy trình phát triển tính năng từ đầu đến cuối |
-| [Quy ước code](docs/CONVENTIONS.md) | Đặt tên, comment, error handling, CDP, testing |
-| [Công nghệ sử dụng](docs/STACK.md) | TypeScript, Playwright, dependencies |
-| [Roadmap](docs/ROADMAP.md) | Trạng thái tất cả tính năng |
+Xem thêm trong thư mục `docs/`:
 
-### Product docs
-
-| Tính năng | Mô tả |
-|---|---|
-| [BrowserEngine](docs/products/browser-engine.product.md) | Fluent API tổng quan: launch, newContext, quit |
-| [Fingerprint Config](docs/products/fingerprint-config.product.md) | Tùy chọn fingerprint: PerfectCanvas, WebGL, Audio... |
-| [Proxy Config](docs/products/proxy-config.product.md) | Proxy: HTTP/SOCKS, DNS, WebRTC, timezone sync |
-| [Profile Management](docs/products/profile-management.product.md) | Profile: lưu/tải cookies, proxy, fingerprint |
-| [Viewport Management](docs/products/viewport-management.product.md) | Resize viewport tự động qua CDP |
-| [Hook Binding](docs/products/hook-binding.product.md) | Tự động resize, chặn thay đổi viewport |
-| [Type System](docs/products/type-system.product.md) | TypeScript types: FingerprintOptions, ProxyOptions... |
-| [Error Hierarchy](docs/products/error-hierarchy.product.md) | Xử lý lỗi: PluginError, MissingKeyError... |
+- [Welcome.md](docs/Welcome.md) — Giới thiệu dự án và lời khuyên đọc.
+- [CONVENTIONS.md](docs/CONVENTIONS.md) — Quy ước code.
+- [STACK.md](docs/STACK.md) — Công nghệ sử dụng và lý do chọn.
+- [WORKFLOW.md](docs/WORKFLOW.md) — Quy trình phát triển tính năng.
+- [TRACKING.md](docs/TRACKING.md) — Theo dõi feature và issue.
+- [NOTES.md](docs/NOTES.md) — Ghi chú kiến trúc và lưu ý phát triển.
 
 ## Phát triển
 
 ```bash
-npm run lint        # ESLint
-npm run lint:fix    # ESLint + tự động sửa
-npm run format      # Prettier
-npm test            # Mocha tests (trình duyệt thật)
-npm run build       # Build bundle (tsup)
-npm run dev         # Watch mode
+npm run lint       # Kiểm tra code style
+npm run typecheck  # Kiểm tra TypeScript
+npm run build      # Bundle ESM + CJS
+npm test           # Chạy test với browser thật
 ```
 
-- Tất cả test chạy với **trình duyệt thật** — không mock Playwright.
-- File test đặt trong `tests/`.
-
-## Ghi chú quan trọng
-
-- **Chỉ hỗ trợ Windows.** Đảm bảo hệ thống của bạn là Windows trước khi sử dụng.
-- **Key bablosoft** — set qua biến môi trường `BABLOSOFT_KEY`.
-- **PerfectCanvas** yêu cầu lấy request từ ứng dụng CanvasInspector (xem wiki bablosoft).
-- **FontPack** có thể tải tại [bablosoft wiki](https://wiki.bablosoft.com/doku.php?id=fontpack).
-
-## Góp ý và báo lỗi
-
-Báo lỗi tại [GitHub Issues](https://github.com/maxlogvn/PrivateChromiumEngine/issues).
-
-## Giấy phép
+## License
 
 MIT

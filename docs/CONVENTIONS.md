@@ -232,26 +232,10 @@ Ngoại lệ: file adapter có thể re-export type để tiện import (`export
 
 ## Tài liệu (Documentation)
 
-### Quy tắc tập trung Known Issues
+### Quy tắc tập trung Tracking
 
-`docs/KNOWN_ISSUES.md` là **entry point duy nhất** cho mọi bug, known issue, và fix đã được ghi nhận.
+`docs/TRACKING.md` là **entry point duy nhất** cho mọi bug, feature, và fix đã được ghi nhận.
+Issue chi tiết lưu tại `docs/issues/`, mỗi issue một file markdown. Dùng template [`docs/templates/known-issue.template.md`](templates/known-issue.template.md) để tạo file issue mới.
 
-- **Roadmap** (`ROADMAP.md`): Không link trực tiếp đến bug fix docs trong trường `Tài liệu`. Nếu feature có bug fix, thêm ghi chú ngắn trong trường `Ghi chú` kèm link `KNOWN_ISSUES.md #N`.
-- **Welcome** (`Welcome.md`): Chỉ giữ link tóm tắt đến `KNOWN_ISSUES.md` và GitHub Issues. Không chứa chi tiết issue nào.
-- **Khi fix bug**: Cập nhật `KNOWN_ISSUES.md` trước -- chuyển từ OPEN sang FIXED. Dùng template [`docs/templates/known-issue.template.md`](templates/known-issue.template.md) để tạo body khi tạo GitHub issue mới. Thêm link đến design/spec/plan/overview của bug fix. Không sửa Roadmap hay Welcome để thêm chi tiết fix.
-- **Quét định kỳ**: Khi thêm issue mới, kiểm tra ROADMAP.md và Welcome.md có tham chiếu inline đến issue đó không; nếu có, thay bằng link `KNOWN_ISSUES.md #N`.
-
-### Đồng bộ với GitHub Issues
-
-Dự án đồng bộ issue giữa local (`docs/KNOWN_ISSUES.md`) và GitHub Issues.
-
-**Quy trình:**
-- Mỗi issue local có một GitHub issue tương ứng (ghi trong trường `GitHub:`).
-- Entry trong KNOWN_ISSUES.md dùng format ngắn gọn (kèm link GitHub), không dùng template. Template [`docs/templates/known-issue.template.md`](templates/known-issue.template.md) chỉ dùng cho body GitHub issue.
-- Khi fix xong: cập nhật KNOWN_ISSUES.md -> tạo/update GitHub issue -> thêm comment chi tiết (dùng nội dung từ `docs/overviews/<bug>.overview.md` làm closing comment) -> đóng GitHub issue.
-
-### Mục đích
-
-- Tránh trùng lặp thông tin giữa các file.
-- Giữ cho Roadmap và Welcome gọn, tập trung vào đúng mục đích của chúng (theo dõi tiến độ và onboarding).
-- Người đọc chỉ cần nhớ một nơi để tra cứu issue: `KNOWN_ISSUES.md`.
+- **Welcome** (`Welcome.md`): Chỉ giữ link tóm tắt đến `TRACKING.md`. Không chứa chi tiết issue nào.
+- **Quét định kỳ**: Khi thêm issue mới, kiểm tra Welcome.md có tham chiếu inline đến issue đó không; nếu có, thay bằng link `TRACKING.md`.

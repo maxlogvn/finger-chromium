@@ -33,7 +33,7 @@ export default class Loader {
    * @param packages - Danh sách package names
    * @returns [module, version] hoặc undefined nếu packages rỗng
    */
-  static import(packages: string[] = []): [any, string] | undefined {
+  static import(packages: string[] = []): [unknown, string] | undefined {
     if (!packages.length) return undefined;
     for (const id of packages) {
       try {
@@ -53,7 +53,7 @@ export default class Loader {
    * @param property - Tên property cần lấy từ module (mặc định 'chromium')
    * @returns Module đã load
    */
-  load<T = any>(property = 'chromium'): T {
+  load<T = unknown>(property = 'chromium'): T {
     const result = Loader.import([this.target, ...this.packages]);
     if (!result) {
       throw new PluginError(`Failed to resolve package "${this.target}".`);
@@ -64,6 +64,7 @@ export default class Loader {
         `Version ${version} of the "${this.target}" package is not supported - use version ${this.version} or higher.`
       );
     }
-    return property in module ? module[property] : module;
+    const mod = module as Record<string, unknown>;
+    return property in mod ? (mod[property] as T) : module as T;
   }
 }
