@@ -13,8 +13,8 @@
   - **Phụ thuộc:** Không.
 
 - [ ] **Bước 2: Tích hợp vào engine connector**  
-  - **Làm gì:** Sửa `src/plugin/connector/engine.ts` để gửi config `webgl_noise`.  
-  - **File liên quan:** `src/plugin/connector/engine.ts`, `src/plugin/connector/types.ts`.  
+  - **Làm gì:** Sửa `src/plugin/connector/bridge.ts` để gửi config `webgl_noise`.  
+  - **File liên quan:** `src/plugin/connector/bridge.ts`, `src/plugin/connector/types.ts`.  
   - **DoD:** Kết nối thành công tới engine mock, request chứa đúng field.  
   - **Thời gian ước lượng:** 1h  
   - **Rủi ro:** Engine API có thể thay đổi – cần kiểm tra tài liệu engine.  
@@ -22,7 +22,7 @@
 
 - [ ] **Bước 3: Thêm API cho người dùng**  
   - **Làm gì:** Thêm method `chromium.setWebGLNoise(noise)` ở adapter.  
-  - **File liên quan:** `src/adapter/playwright/chromium.ts`  
+  - **File liên quan:** `src/adapter/playwright/fluent.ts`  
   - **DoD:** Ví dụ trong `examples/` chạy được, in ra giá trị WebGL đã bị noise.  
   - **Thời gian ước lượng:** 1.5h  
   - **Phụ thuộc:** Bước 2.

@@ -1,7 +1,7 @@
 # <Tên dự án>
 
 > <Một câu mô tả dự án là gì, làm được gì.>
-Ví dụ: "Thư viện Node.js giúp điều khiển trình duyệt Chromium với fingerprint thật, bypass bot detection hiệu quả."
+Ví dụ: "Thư viện Node.js giúp điều khiển trình duyệt Fluent với fingerprint thật, bypass bot detection hiệu quả."
 
 ---
 

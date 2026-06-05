@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  Trình điều khiển Chromium chống bot detection — inject fingerprint thiết bị thật, đồng bộ proxy, quản lý profile bền vững, dành cho Playwright.
+  Trình điều khiển Fluent chống bot detection — inject fingerprint thiết bị thật, đồng bộ proxy, quản lý profile bền vững, dành cho Playwright.
 </p>
 
 <p align="center">

@@ -8,7 +8,7 @@
 
 | Loại             | Convention   | Ví dụ                 |
 | ---------------- | ------------ | --------------------- |
-| File             | `kebab-case` | `chromium-engine.ts`  |
+| File             | `kebab-case` | `chromium-bridge.ts`  |
 | Class            | `PascalCase` | `BrowserEngine`       |
 | Function         | `camelCase`  | `useFingerprint()`    |
 | Type / Interface | `PascalCase` | `FingerprintOptions`  |
@@ -26,8 +26,8 @@ Mỗi file bắt đầu bằng comment `//` mô tả luồng hoạt động chí
 Không dùng JSDoc `/** @file */` hay box ASCII cho phần này.
 
 ```ts
-// ─── File: chromium.ts ────────────────────────────────────────────────────
-// Namespace điều khiển trình duyệt Chromium với hỗ trợ fingerprint, proxy và profile.
+// ─── File: fluent.ts ────────────────────────────────────────────────────
+// Namespace điều khiển trình duyệt Fluent với hỗ trợ fingerprint, proxy và profile.
 //
 //   1. Khởi tạo engine (PlaywrightFingerprintPlugin + AdapterDataManager)
 //   2. Đăng ký cấu hình (fingerprint, proxy, profile) qua Fluent API

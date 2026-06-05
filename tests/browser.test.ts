@@ -1,6 +1,6 @@
 // ─── File: tests/browser.test.ts ────────────────────────────────────────────
 // Integration test cho Browser modules: Launcher, Utils, PlaywrightFingerprintPlugin,
-// BrowserEngine. Dùng Playwright Chromium thật.
+// BrowserEngine. Dùng Playwright Fluent thật.
 //
 //   1. Launcher -- launch(), Browser.close(), Browser.configure()
 //   2. Utils -- isBrowser, onClose, bindHooks, setViewport
@@ -23,8 +23,8 @@ import {
   getViewport,
   type BrowserHooks,
 } from '../src/adapter/playwright/utils';
-import { PlaywrightFingerprintPlugin, IGNORED_ARGUMENTS, UNSUPPORTED_OPTIONS } from '../src/adapter/playwright/engine';
-import { BrowserEngine, type PluginLaunchOptions } from '../src/adapter/playwright/chromium';
+import { PlaywrightFingerprintPlugin, IGNORED_ARGUMENTS, UNSUPPORTED_OPTIONS } from '../src/adapter/playwright/bridge';
+import { BrowserEngine, type PluginLaunchOptions } from '../src/adapter/playwright/fluent';
 import { PluginError } from '../src/plugin/errors';
 import type { BrowserContext, Page, Browser as PW_Browser } from 'playwright-core';
 
@@ -34,7 +34,7 @@ const DEFAULT_TIMEOUT = 30_000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Tìm executablePath của Chromium từ Playwright. Trả về null nếu không có. */
+/** Tìm executablePath của Fluent từ Playwright. Trả về null nếu không có. */
 function getChromiumExe(): string | null {
   try {
     const exePath = playwright.chromium.executablePath();
@@ -101,7 +101,7 @@ describeWithBrowser('Launcher', () => {
 
   before(async () => {
     tempDir = await createTempDir();
-    // Tạo script Node.js giả lập Chromium — chạy mãi không ra DevTools URL
+    // Tạo script Node.js giả lập Fluent — chạy mãi không ra DevTools URL
     hangScriptPath = path.join(tempDir, 'hang.js');
     await fs.writeFile(hangScriptPath, 'setInterval(() => {}, 60000);');
   });
@@ -113,7 +113,7 @@ describeWithBrowser('Launcher', () => {
   // ─── launch() ─────────────────────────────────────────────────────────────
 
   describe('launch()', () => {
-    it('nên spawn Chromium và trả về Browser object đúng shape', async () => {
+    it('nên spawn Fluent và trả về Browser object đúng shape', async () => {
       const browser: Browser = await launch({
         executablePath: chromiumExe!,
         args: [`--user-data-dir=${tempDir}`, '--no-sandbox'],

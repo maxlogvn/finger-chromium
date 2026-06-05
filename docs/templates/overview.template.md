@@ -42,7 +42,7 @@ Ví dụ: "Đã triển khai inject WebGL noise qua engine native. Tất cả c�
 - `docs/plans/webgl-noise.plan.md` (tạo mới)
 - `docs/products/webgl-noise.product.md` (tạo mới)
 - `src/injectors/webgl.ts` (tạo mới)
-- `src/adapter/playwright/chromium.ts` (cập nhật)
+- `src/adapter/playwright/fluent.ts` (cập nhật)
 
 ## Ghi chú cho các task tiếp theo
 - Khi nào cần inject native, tham khảo `webgl.ts` làm mẫu.

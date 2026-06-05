@@ -12,7 +12,7 @@ Ví dụ: "Tính năng cho phép inject fingerprint WebGL noise ở tầng nativ
 - **Ngoài phạm vi:** Những thứ rõ ràng không thuộc tính năng này (để tránh hiểu nhầm).
 
 Ví dụ:
-- Trong phạm vi: Inject WebGL noise, hỗ trợ Chromium 120+.
+- Trong phạm vi: Inject WebGL noise, hỗ trợ Fluent 120+.
 - Ngoài phạm vi: Inject WebGL noise cho Firefox, thay đổi các fingerprint khác (canvas, audio).
 
 ## Yêu cầu
@@ -52,8 +52,8 @@ Mô tả luồng dữ liệu từ đầu vào đến đầu ra. Ghi rõ schema n
 ## Components
 Liệt kê các module/component cần tạo mới hoặc chỉnh sửa, kèm trách nhiệm.
 
-- `src/plugin/connector/engine.ts` (sửa) – thêm field `webgl_noise` vào request JSON.
-- `src/adapter/playwright/chromium.ts` (sửa) – gọi `api('configure')` với tham số mới.
+- `src/plugin/connector/bridge.ts` (sửa) – thêm field `webgl_noise` vào request JSON.
+- `src/adapter/playwright/fluent.ts` (sửa) – gọi `api('configure')` với tham số mới.
 - `src/injectors/webgl.ts` (tạo mới) – chứa mã inject native.
 
 ## Xử lý lỗi

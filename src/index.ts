@@ -26,4 +26,4 @@ export {
   type PluginLaunchOptions,
   type ProfileOptions,
   type ProxyOptions,
-} from './adapter/playwright/chromium';
+} from './adapter/playwright/fluent';

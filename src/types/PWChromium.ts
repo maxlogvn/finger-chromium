@@ -9,10 +9,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { BrowserContext } from 'playwright-core';
-import type { FetchOptions, PluginLaunchOptions } from '../adapter/playwright/chromium';
+import type { FetchOptions, PluginLaunchOptions } from '../adapter/playwright/fluent';
 
 /**
- * Interface điều khiển trình duyệt Chromium với hỗ trợ fingerprint, proxy và profile.
+ * Interface điều khiển trình duyệt Fluent với hỗ trợ fingerprint, proxy và profile.
  *
  * Key bảo mật được đọc từ biến môi trường `BABLOSOFT_KEY` — set trước khi chạy.
  * Các method cấu hình (`useFingerprint`, `useProxy`, `useProfile`)
@@ -44,13 +44,13 @@ export interface PWChromium {
   readonly engine: object;
 
   /**
-   * Thay thế Chromium mặc định bằng một launcher tùy chỉnh.
+   * Thay thế Fluent mặc định bằng một launcher tùy chỉnh.
    *
    * Launcher mặc định đã được patch sẵn để chống detection — chỉ dùng method này
    * khi có lý do đặc biệt và hiểu rõ rủi ro bị detect.
    * Cần gọi trước `launch()`.
    *
-   * @param launcher - Launcher tùy chỉnh thay thế Chromium mặc định.
+   * @param launcher - Launcher tùy chỉnh thay thế Fluent mặc định.
    *
    * @example
    * browser.repackChromium(customLauncher)

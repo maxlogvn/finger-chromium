@@ -3,7 +3,7 @@
 //
 //   Các hàm này tách biệt logic phức tạp ra khỏi core class, giúp dễ kiểm thử
 //   và tái sử dụng khi cần mở rộng (ví dụ: thêm loại cấu hình mới).
-//   1. defaultArgs() -- lọc và xây dựng arguments cho Chromium
+//   1. defaultArgs() -- lọc và xây dựng arguments cho Fluent
 //   2. getProfilePath() -- trích xuất đường dẫn profile từ options
 //   3. validateConfig() -- kiểm tra tham số cấu hình hợp lệ
 //   4. validateLauncher() -- kiểm tra launcher object có method launch
@@ -15,7 +15,7 @@ import { PluginError } from './errors.js';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /**
- * Các argument mặc định cho Chromium.
+ * Các argument mặc định cho Fluent.
  *
  * `--disable-features=NetworkServiceInProcess2,OptimizationGuideModelDownloading,AutoDeElevate`
  *   - NetworkServiceInProcess2: bật chế độ network service in-process gây thay đổi
@@ -74,7 +74,7 @@ interface BrowserLauncher {
 // ─── Runtime ──────────────────────────────────────────────────────────────────
 
 /**
- * Xây dựng arguments Chromium từ input của user.
+ * Xây dựng arguments Fluent từ input của user.
  *
  * **Tại sao cần lọc IGNORED_ARGS?**
  *   - `--kiosk`/`--start-maximized` làm thay đổi window bounds, nhiều script phát hiện
@@ -88,7 +88,7 @@ interface BrowserLauncher {
  *   Flag này ép window có kích thước thật, làm cho difference > 0 giống như trình duyệt thật.
  *
  * @param options - Tuỳ chọn arguments
- * @returns Mảng arguments hoàn chỉnh để spawn Chromium
+ * @returns Mảng arguments hoàn chỉnh để spawn Fluent
  */
 export const defaultArgs = ({
   args = [],

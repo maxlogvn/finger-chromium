@@ -1,7 +1,7 @@
 // ─── File: tests/bug-007-multi-profile-singleton.test.ts ─────────────────────
-// Test cho Bug #7 — Singleton `Chromium` không hỗ trợ launch nhiều profile song song.
+// Test cho Bug #7 — Singleton `Fluent` không hỗ trợ launch nhiều profile song song.
 //
-//   1. `Chromium` là class alias (không phải instance)
+//   1. `Fluent` là class alias (không phải instance)
 //   2. `new BrowserEngine()` tạo instance độc lập — config không ảnh hưởng lẫn nhau
 //   3. `launch()` guard hoạt động per-instance
 //   4. `quit()` an toàn trên mọi instance
@@ -9,18 +9,18 @@
 
 import { describe, it } from 'mocha';
 import { strictEqual, notStrictEqual, ok, rejects } from 'node:assert';
-import { BrowserEngine, Chromium } from '../src/adapter/playwright/chromium';
+import { BrowserEngine, Fluent } from '../src/adapter/playwright/fluent';
 
-// ─── Chromium là class alias ─────────────────────────────────────────────────
+// ─── Fluent là class alias ─────────────────────────────────────────────────
 
-describe('Chromium backward compatibility', () => {
+describe('Fluent backward compatibility', () => {
   it('nên là class (cùng reference với BrowserEngine)', () => {
-    strictEqual(Chromium, BrowserEngine, 'Chromium phải là alias của BrowserEngine');
+    strictEqual(Fluent, BrowserEngine, 'Fluent phải là alias của BrowserEngine');
   });
 
-  it('nên có thể dùng new Chromium() để tạo instance', () => {
-    const instance = new Chromium();
-    ok(instance instanceof BrowserEngine, 'new Chromium() phải tạo BrowserEngine instance');
+  it('nên có thể dùng new Fluent() để tạo instance', () => {
+    const instance = new Fluent();
+    ok(instance instanceof BrowserEngine, 'new Fluent() phải tạo BrowserEngine instance');
     ok(typeof instance.launch === 'function', 'instance phải có launch()');
     ok(typeof instance.quit === 'function', 'instance phải có quit()');
   });

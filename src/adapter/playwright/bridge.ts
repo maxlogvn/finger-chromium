@@ -1,11 +1,11 @@
-// ─── File: adapter/playwright/engine.ts ────────────────────────────────────
+// ─── File: adapter/playwright/bridge.ts ────────────────────────────────────
 // Bridge giữa FingerprintPlugin và Playwright BrowserType.
 // Cho phép launch persistent context với fingerprint/proxy/profile.
 //
 //   1. Load Playwright module (mặc định hoặc custom)
 //   2. Override launch/launchPersistentContext để inject fingerprint
 //   3. Validate options không hỗ trợ (proxy, channel, firefoxUserPrefs)
-//   4. Filter ignored Chromium arguments
+//   4. Filter ignored Fluent arguments
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { BrowserContext, BrowserType, Page } from 'playwright-core';
@@ -15,12 +15,12 @@ import type { Browser } from '@src/plugin/launcher';
 import { PluginError } from '@src/plugin/errors';
 import defaultLoader from './loader';
 import { bindHooks, getViewport, onClose, setViewport } from './utils';
-import type { Launcher, PluginLaunchOptions } from './chromium';
+import type { Launcher, PluginLaunchOptions } from './fluent';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /**
- * Các argument Chromium bị loại bỏ để tránh xung đột với fingerprint.
+ * Các argument Fluent bị loại bỏ để tránh xung đột với fingerprint.
  * `--disable-extensions` bị loại vì extension có thể làm lộ dấu vết thực thi.
  */
 export const IGNORED_ARGUMENTS = ['--disable-extensions'];

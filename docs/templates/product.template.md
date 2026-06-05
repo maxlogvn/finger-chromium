@@ -4,7 +4,7 @@
 
 ## Mô tả (cho người dùng)
 Tính năng này giải quyết vấn đề gì của người dùng, dùng như thế nào một cách tổng quan.  
-Ví dụ: "Tính năng fingerprint cho phép developer gắn fingerprint thật vào browser Chromium, giúp bypass bot detection mà không cần cấu hình thủ công từng tham số."
+Ví dụ: "Tính năng fingerprint cho phép developer gắn fingerprint thật vào browser Fluent, giúp bypass bot detection mà không cần cấu hình thủ công từng tham số."
 
 ## Yêu cầu hệ thống
 - **Playwright Core** >= 1.60 (peer dependency)
@@ -42,7 +42,7 @@ import { chromium } from '@your-org/fingerprint-injector';
 - Nếu không gọi `useFingerprint` trước `launch()`, browser chạy với fingerprint mặc định (không injection).
 
 ## Giới hạn và điều kiện
-- Chỉ hỗ trợ Chromium-based browsers (Chrome, Edge, Brave). Không hỗ trợ Firefox.
+- Chỉ hỗ trợ Fluent-based browsers (Chrome, Edge, Brave). Không hỗ trợ Firefox.
 - WebGL noise chỉ hoạt động khi GPU acceleration được bật.
 - Tính năng này không thay đổi `navigator.plugins` hay `navigator.languages`.
 

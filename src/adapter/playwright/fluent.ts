@@ -1,5 +1,5 @@
-// ─── File: adapter/playwright/chromium.ts ──────────────────────────────────
-// Namespace điều khiển trình duyệt Chromium với hỗ trợ fingerprint, proxy và profile.
+// ─── File: adapter/playwright/fluent.ts ──────────────────────────────────
+// Namespace điều khiển trình duyệt Fluent với hỗ trợ fingerprint, proxy và profile.
 //
 //   1. Tạo instance mới: `new BrowserEngine()` — mỗi instance độc lập
 //   2. Đăng ký cấu hình (fingerprint, proxy, profile) qua Fluent API
@@ -12,21 +12,21 @@ import path from 'node:path';
 
 import type { BrowserContext, BrowserType } from 'playwright-core';
 
-import { PlaywrightFingerprintPlugin } from './engine';
+import { PlaywrightFingerprintPlugin } from './bridge';
 import { AdapterDataManager } from './data';
-import { PluginError } from '../../plugin/errors';
+import { PluginError } from '@src/plugin/errors';
 
-import type { PWChromium } from '../../types/PWChromium';
-import type { ProfileOptions } from '../../types/profile';
-import type { FingerprintOptions } from '../../types/fingerprint';
-import type { ProxyOptions } from '../../types/proxy';
-import type { FetchOptions } from '../../types/fetch';
+import type { PWChromium } from '@src/types/PWChromium';
+import type { ProfileOptions } from '@src/types/profile';
+import type { FingerprintOptions } from '@src/types/fingerprint';
+import type { ProxyOptions } from '@src/types/proxy';
+import type { FetchOptions } from '@src/types/fetch';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
  * Re-export các tùy chọn phổ biến để người dùng không cần import sâu vào package.
- * Giữ cho API bề mặt luôn gọn – chỉ cần import từ `chromium.ts`.
+ * Giữ cho API bề mặt luôn gọn – chỉ cần import từ `fluent.ts`.
  */
 export type { ProfileOptions, FingerprintOptions, ProxyOptions, FetchOptions };
 
@@ -58,7 +58,7 @@ export const DEFAULT_CONTEXT_OPTIONS: PluginLaunchOptions = {
 
 
 /**
- * Engine điều khiển Chromium -- tích hợp fingerprint, proxy, profile.
+ * Engine điều khiển Fluent -- tích hợp fingerprint, proxy, profile.
  * Dùng `new BrowserEngine()` để tạo instance riêng cho mỗi session.
  */
 export class BrowserEngine implements PWChromium {
@@ -224,8 +224,8 @@ export class BrowserEngine implements PWChromium {
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 /**
- * Alias backward compatibility cho code cũ import `Chromium`.
- * Giờ là class, không phải instance — dùng `new BrowserEngine()` hoặc `new Chromium()`.
+ * Alias backward compatibility cho code cũ import `Fluent`.
+ * Giờ là class, không phải instance — dùng `new BrowserEngine()` hoặc `new Fluent()`.
  *
  * @example
  * const engine = new BrowserEngine();
@@ -234,4 +234,4 @@ export class BrowserEngine implements PWChromium {
  *   .launch()
  *   .newContext();
  */
-export const Chromium = BrowserEngine;
+export const Fluent = BrowserEngine;

@@ -1,5 +1,5 @@
 // ─── File: launcher/index.ts ───────────────────────────────────────────────
-// Browser Launcher -- spawn Chromium child process, phát hiện DevTools URL,
+// Browser Launcher -- spawn Fluent child process, phát hiện DevTools URL,
 // và cung cấp cơ chế đóng process tree.
 //
 //   1. Spawn worker.exe với arguments (bao gồm remote-debugging-port)
@@ -18,7 +18,7 @@ import { PluginError } from '../errors.js';
 
 /** Đối tượng điều khiển trình duyệt đã launch. */
 export interface Browser {
-  /** Tiến trình child process của Chromium. */
+  /** Tiến trình child process của Fluent. */
   process: ChildProcess;
   /** Cổng DevTools đang lắng nghe. */
   port: number;
@@ -43,27 +43,27 @@ export interface Browser {
 export interface LaunchOptions {
   /** Cổng remote debugging (0 để chọn ngẫu nhiên). */
   debuggingPort?: number;
-  /** Thư mục user data (profile). Nếu không set, Chromium dùng profile tạm. */
+  /** Thư mục user data (profile). Nếu không set, Fluent dùng profile tạm. */
   userDataDir?: string;
   /** Chạy headless hay không (mặc định false). */
   headless?: boolean;
   /** Timeout chờ DevTools URL (ms). Mặc định 30000. */
   timeout?: number;
-  /** Các argument dòng lệnh bổ sung cho Chromium. */
+  /** Các argument dòng lệnh bổ sung cho Fluent. */
   args?: string[];
-  /** Đường dẫn đến executable Chromium. Bắt buộc phải có. */
+  /** Đường dẫn đến executable Fluent. Bắt buộc phải có. */
   executablePath: string;
 }
 
 // ─── Runtime ──────────────────────────────────────────────────────────────────
 
 /**
- * Spawn Chromium và chờ DevTools listening URL.
+ * Spawn Fluent và chờ DevTools listening URL.
  *
- * **Tại sao parse từ stderr lẫn stdout?** Một số phiên bản Chromium ghi DevTools URL
+ * **Tại sao parse từ stderr lẫn stdout?** Một số phiên bản Fluent ghi DevTools URL
  * vào stderr, số khác ghi vào stdout. Đọc cả hai đảm bảo tương thích.
  *
- * **Tại sao dùng `taskkill /T /F`?** Chromium spawn nhiều process con (GPU, renderer, ...).
+ * **Tại sao dùng `taskkill /T /F`?** Fluent spawn nhiều process con (GPU, renderer, ...).
  * Kill đơn lẻ process cha sẽ để lại process con chạy nền. `taskkill /T /F` giết cả cây
  * process, tránh rò rỉ tài nguyên.
  */

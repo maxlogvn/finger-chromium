@@ -11,7 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PluginError } from '../../plugin/errors';
-import { BROWSER_RUNNING_DIR } from './chromium';
+import { BROWSER_RUNNING_DIR } from './fluent';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

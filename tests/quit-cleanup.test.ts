@@ -20,7 +20,7 @@ import * as pcapServer from '../src/plugin/connector/pcapServer';
 import { SettingsCleaner } from '../src/plugin/cleaner';
 import * as mutex from '../src/plugin/mutex';
 import FingerprintPlugin from '../src/plugin';
-import { BrowserEngine } from '../src/adapter/playwright/chromium';
+import { BrowserEngine } from '../src/adapter/playwright/fluent';
 
 // ─── Module-level cleanup methods ────────────────────────────────────────────
 

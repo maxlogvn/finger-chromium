@@ -13,7 +13,7 @@ import Loader from '../../loader';
  *
  * Sử dụng `playwright-core` làm fallback để hỗ trợ môi trường
  * chỉ cài package lõi, giảm kích thước cài đặt khi không cần
- * trình duyệt Chromium tích hợp sẵn của `playwright`.
+ * trình duyệt Fluent tích hợp sẵn của `playwright`.
  *
  * Version tối thiểu 1.27.1 đảm bảo có API `launchPersistentContext`
  * ổn định cho fingerprint và profile engine.

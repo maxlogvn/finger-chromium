@@ -1,4 +1,4 @@
-// ─── File: connector/engine.ts ─────────────────────────────────────────────
+// ─── File: connector/bridge.ts ─────────────────────────────────────────────
 // RemoteEngine -- tải, giải nén, và IPC với engine binary (FastExecuteScript.exe).
 // File-based IPC: viết JSON request, chokidar watch phản hồi.
 //

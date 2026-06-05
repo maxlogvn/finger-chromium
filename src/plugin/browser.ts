@@ -1,5 +1,5 @@
 // ─── File: plugin/browser.ts ───────────────────────────────────────────────
-// Resize chính xác viewport Chromium thông qua CDP, tự động hiệu chỉnh sai lệch
+// Resize chính xác viewport Fluent thông qua CDP, tự động hiệu chỉnh sai lệch
 // do khung viền trình duyệt (title bar, border).
 //
 //   1. Kết nối CDP tới browser instance

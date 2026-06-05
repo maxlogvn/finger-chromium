@@ -1,6 +1,6 @@
 # fingerprint-chromium-engine
 
-Thư viện Node.js giúp điều khiển trình duyệt Chromium với fingerprint thật, bypass bot detection hiệu quả.
+Thư viện Node.js giúp điều khiển trình duyệt Fluent với fingerprint thật, bypass bot detection hiệu quả.
 
 ---
 
@@ -8,12 +8,12 @@ Thư viện Node.js giúp điều khiển trình duyệt Chromium với fingerpr
 
 | Thuộc tính | Mô tả |
 |---|---|
-| **Loại dự án** | Thư viện Node.js điều khiển Chromium chống bot detection |
+| **Loại dự án** | Thư viện Node.js điều khiển Fluent chống bot detection |
 | **Người dùng cuối** | Developer dùng Playwright cần fingerprint thật, proxy đồng bộ, profile bền vững |
 | **Platform** | Windows 32-bit & 64-bit |
 | **Cơ chế cốt lõi** | Fingerprint thu thập từ thiết bị thực tế, inject ở tầng C/C++ trước khi trình duyệt khởi động — không có dấu hiệu bị override ở JS layer |
 
-> **Kỹ thuật inject:** Engine nhị phân (C/C++) được load trước khi Chromium chạy, ghi đè các browser API ở tầng native. Xem chi tiết tại [STACK.md](STACK.md) và các file `*.design.md` trong `docs/designs/`.
+> **Kỹ thuật inject:** Engine nhị phân (C/C++) được load trước khi Fluent chạy, ghi đè các browser API ở tầng native. Xem chi tiết tại [STACK.md](STACK.md) và các file `*.design.md` trong `docs/designs/`.
 
 ---
 
@@ -57,7 +57,7 @@ docs/
 
 ```
 src/
-├── adapter/        # Playwright adapter (chromium.ts, engine.ts, loader.ts, ...)
+├── adapter/        # Playwright adapter (fluent.ts, bridge.ts, loader.ts, ...)
 ├── common/         # Tiện ích dùng chung
 ├── loader/         # Tải xuống engine, quản lý file nhị phân
 ├── plugin/         # Plugin hệ thống (launcher, connector, mutex, browser, ...)
