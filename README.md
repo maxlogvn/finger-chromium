@@ -45,7 +45,7 @@
 ### Các bước
 
 ```bash
-npm install fingerprint-chromium-engine
+npm npm install github:maxlogvn/finger-chromium
 npm install playwright-core
 npx playwright install chromium
 ```

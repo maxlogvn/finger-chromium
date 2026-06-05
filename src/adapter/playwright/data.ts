@@ -15,6 +15,11 @@ import { BROWSER_RUNNING_DIR } from './chromium';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/**
+ * Tuỳ chọn khởi tạo AdapterDataManager.
+ * Cho phép chỉ định thư mục gốc chứa các profile tạm (temp root),
+ * giúp cô lập dữ liệu giữa nhiều instance và tránh xung đột thư mục.
+ */
 export interface AdaDataManagerOptions {
   tempRootDir?: string;
 }
@@ -22,9 +27,12 @@ export interface AdaDataManagerOptions {
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
 /**
- * Quản lý ánh xạ profile -- sao chép từ thư mục gốc sang thư mục tạm
- * để tránh ghi trực tiếp vào profile gốc trong lúc browser đang chạy.
- * Dùng map() để copy, unmap() để xoá thư mục tạm.
+ * Quản lý ánh xạ profile: sao chép từ thư mục gốc sang thư mục tạm
+ * để **tránh ghi trực tiếp vào profile gốc khi browser đang chạy**,
+ * nguyên nhân chính gây corrupt dữ liệu (file bị khoá, crash giữa chừng).
+ *
+ * Sau khi browser đóng, dùng `map(tempDir, originalDir)` để sao chép
+ * ngược lại, lưu các thay đổi (cookie, localStorage,...) vào profile gốc.
  */
 export class AdapterDataManager {
   private readonly tempRootDir: string;
@@ -35,13 +43,26 @@ export class AdapterDataManager {
     this.instanceTempDir = path.join(this.tempRootDir, this.generateUniqueName());
   }
 
+  /**
+   * Sao chép profile gốc vào thư mục tạm (khi khởi tạo session).
+   */
   map(sourceProfileDir: string): string;
 
+  /**
+   * Sao chép profile từ thư mục tạm ngược về thư mục đích (khi quit).
+   */
   map(tempProfileDir: string, destinationDir: string): string;
 
   /**
-   * Sao chép profile -- từ source sang temp (bỏ targetDir) hoặc từ temp sang destination.
-   * Nếu không có targetDir, tạo temp dir mới.
+   * Sao chép profile theo hai chiều:
+   * - Nếu chỉ có `inputDir` (source): tạo bản sao vào `instanceTempDir` để browser làm việc,
+   *   bảo vệ dữ liệu gốc khỏi corrupt.
+   * - Nếu có `targetDir`: sao chép từ `inputDir` (thư mục tạm) sang `targetDir` (profile gốc)
+   *   để lưu lại toàn bộ thay đổi sau khi browser đóng.
+   *
+   * @param inputDir - Thư mục nguồn
+   * @param targetDir - (Optional) Thư mục đích; nếu bỏ trống sẽ copy vào temp của instance
+   * @returns Đường dẫn thư mục đích đã được resolve
    */
   map(inputDir: string, targetDir?: string): string {
     const dest = targetDir ?? this.instanceTempDir;
@@ -60,7 +81,10 @@ export class AdapterDataManager {
   }
 
   /**
-   * Xoá thư mục tạm -- gọi khi kết thúc session.
+   * Xoá thư mục tạm để giải phóng dung lượng đĩa và tránh rò rỉ dữ liệu
+   * khi kết thúc session.
+   *
+   * @param tempDirPath - Đường dẫn thư mục tạm cần xoá
    */
   unmap(tempDirPath: string): void {
     const resolvedPath = path.resolve(tempDirPath);
@@ -76,7 +100,9 @@ export class AdapterDataManager {
   }
 
   /**
-   * Dọn dẹp toàn bộ -- xoá instance temp dir.
+   * Dọn dẹp toàn bộ tài nguyên của instance hiện tại.
+   * Được gọi khi `quit()` để xoá thư mục tạm của chính instance,
+   * đảm bảo không để lại dữ liệu thừa trên đĩa.
    */
   dispose(): void {
     this.unmap(this.instanceTempDir);
@@ -87,8 +113,9 @@ export class AdapterDataManager {
   }
 
   /**
-   * Tạo tên duy nhất cho temp dir -- timestamp + random hex.
-   * Dùng Math.random thay vì crypto để tránh blocking.
+   * Tạo tên duy nhất cho thư mục tạm: timestamp + random hex.
+   * Dùng `Math.random` thay vì `crypto` để tránh blocking khi khởi tạo,
+   * độ unique đủ dùng cho tiến trình đơn lẻ.
    */
   private generateUniqueName(): string {
     const hex = Math.floor(Math.random() * 0xffff)

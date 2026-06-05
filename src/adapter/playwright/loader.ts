@@ -8,6 +8,16 @@
 
 import Loader from '../../loader';
 
+/**
+ * Loader instance cho Playwright.
+ *
+ * Sử dụng `playwright-core` làm fallback để hỗ trợ môi trường
+ * chỉ cài package lõi, giảm kích thước cài đặt khi không cần
+ * trình duyệt Chromium tích hợp sẵn của `playwright`.
+ *
+ * Version tối thiểu 1.27.1 đảm bảo có API `launchPersistentContext`
+ * ổn định cho fingerprint và profile engine.
+ */
 const loader: Loader = new Loader('playwright', '1.27.1', ['playwright-core']);
 
 export default loader;

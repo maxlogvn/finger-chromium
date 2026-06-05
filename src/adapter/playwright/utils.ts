@@ -12,12 +12,21 @@ import { scripts } from '../../common';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+/**
+ * Số lần thử lại tối đa khi resize viewport qua CDP.
+ * Cần retry vì `Browser.setWindowBounds` có thể không áp dụng chính xác ngay lần đầu
+ * (window manager hoặc hiệu ứng animated resize làm lệch kích thước thực tế).
+ */
 export const MAX_RESIZE_RETRIES = 3;
 
 // ─── Runtime ──────────────────────────────────────────────────────────────────
 
 const originalSetViewportSize = new WeakMap<Page, Page['setViewportSize']>();
 
+/**
+ * Phân biệt Browser với BrowserContext để chọn đúng sự kiện cleanup.
+ * Browser không có sự kiện `close`, chỉ có `disconnected` – nếu dùng nhầm sẽ bỏ sót cleanup.
+ */
 export const isBrowser = (target: unknown): target is Browser =>
   typeof target === 'object' &&
   target !== null &&
@@ -27,8 +36,8 @@ export const isBrowser = (target: unknown): target is Browser =>
   typeof (target as Browser).version === 'function';
 
 /**
- * Đăng ký handler dọn dẹp -- dùng disconnected event cho Browser,
- * close event cho BrowserContext.
+ * Đăng ký handler dọn dẹp – dùng `disconnected` cho Browser (vì Browser không có `close`),
+ * dùng `close` cho BrowserContext để bắt đúng thời điểm context đóng.
  */
 export const onClose = (target: Browser | BrowserContext, listener: () => void): void => {
   if (isBrowser(target)) {
@@ -38,14 +47,21 @@ export const onClose = (target: Browser | BrowserContext, listener: () => void):
   }
 };
 
+/**
+ * Hook để inject logic khi page mới được tạo (ví dụ: cài script chống fingerprint).
+ * Gồm callback `onPageCreated` được gọi sau khi page mở.
+ */
 export type BrowserHooks = {
   onPageCreated?: (page: Page) => Promise<void> | void;
 };
 
 /**
- * Proxy newContext/newPage/setViewportSize để intercept việc tạo page
- * và gọi onPageCreated hook -- đảm bảo viewport luôn đúng kích thước.
- * setViewportSize bị chặn vì kích thước đã bị fingerprint lock.
+ * Proxy các hàm tạo context/page và setViewportSize để:
+ * 1. Ép `viewport: null` khi tạo context – tránh override viewport mặc định của browser,
+ *    vì fingerprint đã khoá kích thước.
+ * 2. Gọi `onPageCreated` hook để kịp inject script trước khi page load.
+ * 3. Chặn `page.setViewportSize` bằng warning, vì viewport đã bị fingerprint lock,
+ *    thay đổi sẽ làm lộ dấu vết.
  */
 export const bindHooks = (target: Browser | BrowserContext, hooks: BrowserHooks = {}): void => {
   if (isBrowser(target)) {
@@ -78,9 +94,13 @@ export const bindHooks = (target: Browser | BrowserContext, hooks: BrowserHooks 
 };
 
 /**
- * Resize viewport -- thử CDP Browser.setWindowBounds trước (headed mode).
- * Nếu CDP không hoạt động (headless mode), fallback sang page.setViewportSize().
- * delta cho fallback là 0 (headless không có window chrome).
+ * Resize viewport thật của browser.
+ * Ưu tiên dùng CDP `Browser.setWindowBounds` cho headed mode vì thay đổi kích thước
+ * cửa sổ thật, không chỉ viewport nội dung. Nếu CDP không khả dụng (headless),
+ * fallback về `page.setViewportSize` gốc với delta = 0 (headless không có window chrome).
+ *
+ * @param page - Trang cần resize
+ * @param options - `width`, `height` mong muốn; `diff` là delta bù chrome window (headed).
  */
 export const setViewport = async (
   page: Page,
@@ -130,6 +150,7 @@ export const setViewport = async (
 
 /**
  * Lấy kích thước viewport hiện tại qua in-browser script.
+ * Dùng `page.evaluate` để đo chính xác `window.innerWidth` / `innerHeight`.
  */
 export const getViewport = (page: Page): Promise<{ width: number; height: number }> =>
   page.evaluate(scripts.getViewport) as Promise<{ width: number; height: number }>;

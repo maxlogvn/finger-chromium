@@ -1,6 +1,8 @@
 // ─── File: plugin/utils.ts ─────────────────────────────────────────────────
 // Tiện ích cho plugin -- xử lý arguments, profile path, validation.
 //
+//   Các hàm này tách biệt logic phức tạp ra khỏi core class, giúp dễ kiểm thử
+//   và tái sử dụng khi cần mở rộng (ví dụ: thêm loại cấu hình mới).
 //   1. defaultArgs() -- lọc và xây dựng arguments cho Chromium
 //   2. getProfilePath() -- trích xuất đường dẫn profile từ options
 //   3. validateConfig() -- kiểm tra tham số cấu hình hợp lệ
@@ -14,8 +16,14 @@ import { PluginError } from './errors.js';
 
 /**
  * Các argument mặc định cho Chromium.
- * --disable-features: tắt các tính năng gây nhiễu fingerprint (NetworkServiceInProcess2, ...)
- * --disk-cache-size: giới hạn cache để tránh để lại dấu vết trên disk.
+ *
+ * `--disable-features=NetworkServiceInProcess2,OptimizationGuideModelDownloading,AutoDeElevate`
+ *   - NetworkServiceInProcess2: bật chế độ network service in-process gây thay đổi
+ *     fingerprint network stack, tắt để giữ fingerprint ổn định.
+ *   - OptimizationGuideModelDownloading: tự động tải model ML, làm lộ hành vi bot.
+ *   - AutoDeElevate: liên quan đến UAC, không cần thiết và có thể gây log bất thường.
+ * `--disk-cache-size=5000000`: giới hạn cache ~5MB, vừa đủ để tránh để lại dấu vết
+ *   lớn trên disk nhưng vẫn cho phép caching cơ bản.
  */
 const DEFAULT_ARGS: readonly string[] = [
   '--lang=en',
@@ -28,8 +36,12 @@ const DEFAULT_ARGS: readonly string[] = [
 
 /**
  * Các argument bị cấm -- nếu user truyền vào sẽ bị lọc bỏ.
- * Những argument này làm thay đổi hành vi trình duyệt gây lộ fingerprint
- * (kiosk, headless, user-data-dir do ta tự quản lý, ...).
+ *
+ * `--kiosk`, `--start-maximized`, `--start-fullscreen`: thay đổi kích thước window
+ *   theo cách không tự nhiên, dễ bị fingerprint check phát hiện automation.
+ * `--headless`: hầu hết các trang đều detect headless mode, buộc phải tắt.
+ * `--user-data-dir`: ta tự quản lý profile qua `--user-data-dir` trong defaultArgs,
+ *   nếu để user truyền vào có thể ghi đè sai thư mục hoặc xung đột với cơ chế lock.
  */
 const IGNORED_ARGS: readonly string[] = [
   '--kiosk',
@@ -64,11 +76,16 @@ interface BrowserLauncher {
 /**
  * Xây dựng arguments Chromium từ input của user.
  *
- * **Tại sao lọc IGNORED_ARGS?** Một số argument (vd --kiosk, --headless) có thể
- * làm thay đổi fingerprint hoặc gây conflict với cơ chế tự quản lý user-data-dir.
- * **Tại sao force --bas-force-visible-window khi không headless?** Một số trang
- * kiểm tra headless mode bằng window.outerWidth/outerHeight. Flag này ép
- * window có kích thước thật, tránh bị phát hiện.
+ * **Tại sao cần lọc IGNORED_ARGS?**
+ *   - `--kiosk`/`--start-maximized` làm thay đổi window bounds, nhiều script phát hiện
+ *     automation qua sự khác biệt giữa screen và window size.
+ *   - `--headless` bị detect gần như chắc chắn (navigator.webdriver, missing plugins...).
+ *   - `--user-data-dir` do ta tự quản lý, nếu để user override sẽ phá vỡ cơ chế lock.
+ *
+ * **Tại sao force `--bas-force-visible-window` khi không headless?**
+ *   Một số trang kiểm tra headless bằng `window.outerWidth - window.innerWidth`
+ *   hoặc `window.outerHeight - window.innerHeight`. Trong headless mode, difference = 0.
+ *   Flag này ép window có kích thước thật, làm cho difference > 0 giống như trình duyệt thật.
  *
  * @param options - Tuỳ chọn arguments
  * @returns Mảng arguments hoàn chỉnh để spawn Chromium
@@ -81,15 +98,17 @@ export const defaultArgs = ({
   extensions = [],
 }: DefaultArgsOptions = {}): string[] => {
   // --- Bước 1: Tạo argument user-data-dir (do ta quản lý)
+  // Đặt user-data-dir sớm nhất có thể, tránh bất kỳ flag nào khác ghi đè.
   const result: string[] = [`--user-data-dir=${profile}`];
 
   // --- Bước 2: Lọc và xử lý từng argument user truyền vào
   const processed = args.reduce(
     (acc: string[], arg: string): string[] => {
       const [key, value] = arg.split('=');
-      // Bỏ qua các argument bị cấm
+      // Bỏ qua các argument bị cấm để tránh thay đổi fingerprint không mong muốn
       if (!IGNORED_ARGS.some((ignored) => arg.includes(ignored))) {
         // Gộp extension nếu có nhiều --load-extension hoặc --disable-extensions-except
+        // Việc gộp tránh trường hợp extension bị load nhiều lần hoặc conflict.
         if (key.includes('disable-extensions-except') || key.includes('load-extension')) {
           acc.push(
             `${key}=${extensions
@@ -108,6 +127,7 @@ export const defaultArgs = ({
 
   // --- Bước 3: Thêm flag headless hoặc force visible window
   if (headless) {
+    // Headless mode: ẩn scrollbar, tắt âm thanh để giảm resource, nhưng vẫn giữ fingerprint fake
     result.push('--hide-scrollbars', '--mute-audio');
   } else {
     // --bas-force-visible-window: ép window có kích thước thật, tránh headless detection
@@ -115,15 +135,21 @@ export const defaultArgs = ({
   }
 
   // --- Bước 4: Gộp với default args
+  // Default args chứa các flag an toàn cho fingerprint, gộp sau cùng để có thể ghi đè
+  // nếu user cần thay đổi một số flag cụ thể (như --lang).
   return processed.concat(result, DEFAULT_ARGS);
 };
 
 /**
  * Trích xuất đường dẫn profile từ options.
  *
- * **Tại sao ưu tiên userDataDir?** Vì đây là cách hiện đại và rõ ràng nhất để
- * chỉ định profile. Fallback sang --user-data-dir trong args để tương thích
- * với cách gọi cũ (khi profile được truyền qua args).
+ * **Tại sao ưu tiên userDataDir?**
+ *   - `userDataDir` là thuộc tính chuẩn trong LaunchOptions của Playwright/Puppeteer,
+ *     hiện đại và rõ ràng nhất để chỉ định profile.
+ *   - Fallback sang `--user-data-dir` trong args để tương thích với các cách gọi cũ,
+ *     khi người dùng truyền profile qua arguments thay vì option riêng.
+ *   - Dùng `path.resolve()` để chuẩn hóa đường dẫn tuyệt đối, tránh lỗi relative path
+ *     khi worker chạy ở thư mục khác.
  *
  * @param options - Tuỳ chọn chứa args hoặc userDataDir
  * @returns Đường dẫn profile tuyệt đối, hoặc chuỗi rỗng nếu không có
@@ -139,8 +165,11 @@ export const getProfilePath = ({ args = [], userDataDir = '' }: GetProfilePathOp
 /**
  * Validate tham số cấu hình (fingerprint, proxy, profile).
  *
- * **Tại sao?** Đảm bảo các tham số bắt buộc có kiểu đúng, tránh lỗi runtime
- * khó hiểu khi truyền vào object null hoặc kiểu sai.
+ * **Tại sao cần kiểm tra kiểu dữ liệu tường minh?**
+ *   - Người dùng có thể vô tình truyền `null`, `undefined` hoặc object rỗng.
+ *   - Nếu không kiểm tra, lỗi sẽ xảy ra sâu trong engine với message khó hiểu
+ *     (ví dụ: "Cannot read property 'value' of undefined").
+ *   - Ném `PluginError` ngay từ đầu giúp debug nhanh và thân thiện hơn.
  *
  * @param type - Tên cấu hình (dùng trong message lỗi)
  * @param value - Giá trị cấu hình (phải là string)
@@ -156,9 +185,11 @@ export const validateConfig = (type: string, value: unknown, options: unknown): 
 /**
  * Validate launcher object.
  *
- * **Tại sao?** Yêu cầu launcher phải có method `launch` là function, bởi vì
- * engine cần gọi `launcher.launch()` để spawn trình duyệt. Kiểm tra sớm
- * giúp báo lỗi rõ ràng thay vì crash ở sâu bên trong.
+ * **Tại sao kiểm tra `launch` là function?**
+ *   - Plugin cần gọi `launcher.launch(options)` để spawn trình duyệt.
+ *   - Nếu `launch` không phải function, toàn bộ quá trình spawn sẽ crash.
+ *   - Kiểm tra sớm tại factory method `FingerprintPlugin.create()` giúp báo lỗi
+ *     ngay khi khởi tạo thay vì chờ đến lúc gọi `spawn()`.
  *
  * @param launcher - Đối tượng launcher cần kiểm tra
  * @throws PluginError nếu launcher không hợp lệ

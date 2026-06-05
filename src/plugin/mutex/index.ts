@@ -12,8 +12,18 @@ import { PluginError } from '../errors';
 
 const requireNative = createRequire(import.meta.url);
 
-// ─── Package Root ─────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Tìm đường dẫn gốc của package `fingerprint-chromium-engine`.
+ * Lý do: native addon được đặt trong `plugin/mutex/`, cần biết chính xác thư mục
+ * gốc để load đúng file nhị phân, ngay cả khi ứng dụng chạy từ thư mục không phải
+ * node_modules (ví dụ: bundled app).
+ *
+ * @param startDir - Đường dẫn bắt đầu tìm kiếm (thường là `__dirname` của file hiện tại)
+ * @returns Đường dẫn tuyệt đối đến thư mục gốc package
+ * @throws {PluginError} Nếu không tìm thấy package.json của đúng package
+ */
 function resolvePackageRoot(startDir: string): string {
   let current = startDir;
   while (true) {
@@ -21,7 +31,7 @@ function resolvePackageRoot(startDir: string): string {
       const pkg = requireNative(path.join(current, 'package.json'));
       if (pkg.name === 'fingerprint-chromium-engine') return current;
     } catch {
-      // chưa tìm thấy -- tiếp tục đi lên
+      // package.json không tồn tại hoặc không đúng tên -- tiếp tục đi lên
     }
     const parent = path.dirname(current);
     if (parent === current) {
@@ -36,13 +46,19 @@ const PACKAGE_PATH = resolvePackageRoot(path.dirname(__filename));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** Interface mô tả các method của native module mutex. */
 interface MutexModule {
   create: (name: string) => void;
+  close?: (name: string) => void;
   [key: string]: unknown;
 }
 
 // ─── Native Module ────────────────────────────────────────────────────────────
 
+/**
+ * Native module mutex, được load từ `plugin/mutex/${platform}-${arch}/mutex.node`.
+ * Nếu platform/arch không được hỗ trợ (ví dụ Linux hoặc macOS), throw `PluginError`.
+ */
 const mutex: MutexModule = (() => {
   try {
     const modulePath = path.join(PACKAGE_PATH, `plugin/mutex/${process.platform}-${process.arch}/mutex.node`);
@@ -61,13 +77,30 @@ const mutex: MutexModule = (() => {
   }
 })();
 
+// ─── Exports ──────────────────────────────────────────────────────────────────
+
+/**
+ * Native module mutex. Trong hầu hết trường hợp, dùng trực tiếp các hàm `create`
+ * và `release` được export riêng sẽ thuận tiện hơn.
+ */
 export default mutex;
+
+/**
+ * Tạo named mutex trên Windows.
+ *
+ * @param name - Tên mutex (thường dùng để đồng bộ giữa các process)
+ */
 export const create = mutex.create;
 
 /**
- * Release named mutex -- gọi native close() nếu được hỗ trợ.
- * Nếu native chưa có method close(), skip silently.
- * Windows kernel tự cleanup handle mutex khi process thoát.
+ * Giải phóng named mutex.
+ * Gọi native `close()` nếu được hỗ trợ. Nếu native chưa implement `close`, bỏ qua.
+ *
+ * Lý do: Windows kernel tự động cleanup handle mutex khi process thoát, nên không
+ * cần giải phóng tường minh. Tuy nhiên, một số trường hợp (ví dụ test) muốn giải
+ * phóng sớm, method này cho phép làm điều đó nếu addon hỗ trợ.
+ *
+ * @param name - Tên mutex đã tạo trước đó
  */
 export const release = (name: string): void => {
   if (typeof mutex.close === 'function') {

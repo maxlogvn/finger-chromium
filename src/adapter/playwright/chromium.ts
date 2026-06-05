@@ -9,21 +9,30 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import path from 'node:path';
+
+import type { BrowserContext, BrowserType } from 'playwright-core';
+
 import { PlaywrightFingerprintPlugin } from './engine';
 import { AdapterDataManager } from './data';
 import { PluginError } from '../../plugin/errors';
 
-import type { BrowserContext, BrowserType } from 'playwright-core';
 import type { PWChromium } from '../../types/PWChromium';
-
 import type { ProfileOptions } from '../../types/profile';
 import type { FingerprintOptions } from '../../types/fingerprint';
 import type { ProxyOptions } from '../../types/proxy';
 import type { FetchOptions } from '../../types/fetch';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+/**
+ * Re-export các tùy chọn phổ biến để người dùng không cần import sâu vào package.
+ * Giữ cho API bề mặt luôn gọn – chỉ cần import từ `chromium.ts`.
+ */
 export type { ProfileOptions, FingerprintOptions, ProxyOptions, FetchOptions };
+
 /** Options cho launchPersistentContext -- trích xuất từ kiểu Playwright. */
 export type PluginLaunchOptions = Parameters<BrowserType['launchPersistentContext']>[1];
+
 /** Launcher có thể tuỳ chỉnh -- cho phép dùng Playwright patch hoặc mặc định. */
 export type Launcher = Pick<BrowserType, 'launch' | 'launchPersistentContext'>;
 
@@ -31,8 +40,10 @@ export type Launcher = Pick<BrowserType, 'launch' | 'launchPersistentContext'>;
 
 /** Key bảo mật từ biến môi trường BABLOSOFT_KEY -- dùng cho API engine. */
 export const PRIVATE_KEY = process.env.BABLOSOFT_KEY ?? '';
+
 /** Thư mục tạm cho browser đang chạy -- lưu profile runtime, bị xoá khi quit. */
 export const BROWSER_RUNNING_DIR = path.join(process.cwd(), process.env.BROWSER_RUNNING_DIR ?? '.tmp/browser/running');
+
 /** Thư mục làm việc của engine -- nơi giải nén và chạy worker.exe. */
 export const ENGINE_WORKING_DIR = path.join(process.cwd(), process.env.ENGINE_WORKING_DIR ?? '.tmp/browser/engine');
 
@@ -45,7 +56,6 @@ export const DEFAULT_CONTEXT_OPTIONS: PluginLaunchOptions = {
   hasTouch: true,
 };
 
-// ─── Profile ──────────────────────────────────────────────────────────────────
 
 /**
  * Engine điều khiển Chromium -- tích hợp fingerprint, proxy, profile.
@@ -177,7 +187,7 @@ export class BrowserEngine implements PWChromium {
    * @param options - Bộ lọc fingerprint (tags, time...)
    * @returns JSON string fingerprint
    */
-  async newFingerprint(options: FetchOptions | undefined) {
+  async newFingerprint(options: FetchOptions | undefined): Promise<string> {
     return await this.engine.fetch(options);
   }
 

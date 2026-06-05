@@ -5,10 +5,20 @@
 //   2. getViewport -- window.innerWidth / innerHeight
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Tập hợp các script chạy trong browser context.
+ * Gom vào một object để tránh truyền string thô khi gọi page.evaluate,
+ * giúp tái sử dụng và quản lý tập trung.
+ */
 export const scripts: Record<string, (...args: unknown[]) => unknown> = {
   /**
-   * Đợi resize hoàn tất -- dùng ResizeObserver + double rAF để đảm bảo
-   * layout đã ổn định sau khi thay đổi kích thước.
+   * Đợi cho đến khi viewport đã resize xong và layout ổn định.
+   *
+   * Dùng `ResizeObserver` để bắt sự kiện thay đổi kích thước phần tử body.
+   * Sau khi observer kích hoạt, cần **hai frame animation** (double rAF)
+   * vì một rAF chỉ đảm bảo paint đã xảy ra, chưa chắc layout đã hoàn toàn
+   * ổn định – double rAF giúp chờ thêm một chu kỳ layout/paint nữa,
+   * đảm bảo `getViewport` trả về đúng kích thước cuối cùng.
    */
   waitForResize: () => {
     return new Promise((done) => {
@@ -20,6 +30,10 @@ export const scripts: Record<string, (...args: unknown[]) => unknown> = {
 
   /**
    * Lấy kích thước viewport thực tế.
+   *
+   * Sử dụng `window.innerWidth` và `innerHeight` thay vì
+   * `document.documentElement.clientWidth` vì `innerWidth` bao gồm
+   * cả thanh cuộn (nếu có), phản ánh đúng không gian hiển thị của trang.
    */
   getViewport: () => ({ width: window.innerWidth, height: window.innerHeight }),
 };
