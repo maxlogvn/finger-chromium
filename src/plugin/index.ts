@@ -49,7 +49,8 @@ interface PluginConfig {
  * Tuỳ chọn khởi động browser mở rộng -- thêm key, launcher custom, viewport.
  * Kế thừa toàn bộ LaunchOptions từ launcher module.
  */
-export interface BaseLaunchOptions extends SpawnOptions {
+export interface BaseLaunchOptions extends Omit<SpawnOptions, 'executablePath'> {
+  executablePath?: string;
   launcher?: { launch: (opts: BaseLaunchOptions) => Promise<Browser> };
   key?: string;
   defaultViewport?: { width: number; height: number } | null;

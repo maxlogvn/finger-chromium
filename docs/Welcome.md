@@ -29,7 +29,6 @@ Thư viện Node.js giúp điều khiển trình duyệt Chromium với fingerpr
 **Đọc khi cần:**
 4. [Công nghệ sử dụng](STACK.md) — dependencies, lý do chọn từng công nghệ
 5. [Quy trình phát triển tính năng](WORKFLOW.md) — flow từ design → spec → plan → implement
-6. [Roadmap dự án](ROADMAP.md) — tiến độ các tính năng
 
 ---
 
@@ -42,15 +41,10 @@ docs/
 ├── plans/         # <tên>.plan.md        -- kế hoạch thực hiện
 ├── overviews/     # <tên>.overview.md    -- báo cáo tổng quan kết quả thực hiện plan
 ├── products/      # <tên>.product.md     -- tài liệu tính năng (đọc để hiểu tính năng)
+├── issues/        # <tên>.md             -- chi tiết từng issue
 ├── templates/     # template cho từng loại tài liệu
-│   ├── design.template.md
-│   ├── spec.template.md
-│   ├── plan.template.md
-│   ├── overview.template.md
-│   ├── product.template.md
-│   └── known-issue.template.md          -- Mẫu body cho GitHub issue mới
-├── KNOWN_ISSUES.md -- danh sách bug và vấn đề đã biết
-├── ROADMAP.md     -- theo dõi tiến độ tất cả tính năng
+├── TRACKING.md    -- theo dõi feature và issue fix
+├── NOTES.md       -- ghi chú kiến trúc và lưu ý phát triển
 ├── CONVENTIONS.md -- quy ước code
 ├── STACK.md       -- công nghệ sử dụng
 ├── WORKFLOW.md    -- quy trình phát triển tính năng
@@ -73,26 +67,10 @@ src/
 
 ---
 
-## Known Issues
+## Tracking
 
-Issue được theo dõi song song ở hai nơi:
-
-| Nơi | Link | Mục đích |
-|-----|------|----------|
-| **Local** | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | Entry point chính -- đọc để biết tình trạng |
-| **GitHub** | [Issues](https://github.com/maxlogvn/finger-chromium/issues) | Lưu trữ vĩnh viễn, traceable |
-
-Hiện có **7 issue OPEN** — gồm 3 test coverage gaps (cũ) + 5 quality improvement tasks (mới). Chi tiết và mapping local-GitHub tại [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
-
-> **Quality sweep (06-2026):** Đã bổ sung 5 task nâng cao chất lượng code — xem [ROADMAP.md](ROADMAP.md) mục "Sắp làm".
+Feature và issue fix được theo dõi tại [`TRACKING.md`](TRACKING.md).
 
 ---
 
-## Ghi chú kiến trúc
 
-Các lưu ý quan trọng về thiết kế và rủi ro cần biết khi phát triển:
-
-- **Phụ thuộc bablosoft engine:** Toàn bộ cơ chế inject fingerprint dựa vào binary engine của bablosoft (`FastExecuteScript.exe`) — closed-source, không audit được. Nếu bablosoft thay đổi API, checksum, hoặc ngừng service, thư viện ngừng hoạt động.
-- **Chỉ hỗ trợ Windows:** Dự án giới hạn ở `win32` (native mutex C++ addon, engine binary chỉ chạy trên Windows). Không thể mở rộng sang macOS/Linux mà không viết lại toàn bộ tầng inject.
-- **File-based IPC:** Engine giao tiếp qua file system (ghi JSON request file, chokidar watch phản hồi) thay vì pipe/socket. Đơn giản nhưng chậm hơn và dễ gặp vấn đề quyền truy cập file trên Windows.
-- **HTTP download:** URL tải engine metadata/ binary đã được chuyển sang `https://` với fallback HTTP — xem [KNOWN_ISSUES.md #8](KNOWN_ISSUES.md).

@@ -14,21 +14,20 @@ Các tài liệu dưới đây chứa toàn bộ ngữ cảnh quan trọng của
 |---|---|
 | [`docs/Welcome.md`](docs/Welcome.md) | Tổng quan dự án |
 | [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) | Quy ước đặt tên, cấu trúc file, phong cách code |
-| [`docs/STACK.md`](docs/STACK.md) | Công nghệ sử dụng |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Theo dõi tiến độ tất cả tính năng |
 | [`docs/WORKFLOW.md`](docs/WORKFLOW.md) | Quy trình phát triển tính năng từ đầu đến cuối |
-| [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md) | Bug và vấn đề đã biết, đồng bộ với GitHub Issues |
+| [`docs/TRACKING.md`](docs/TRACKING.md) | Theo dõi feature và issue fix |
 
 ### Issue tracking
 
-Dự án đồng bộ issue giữa local (`docs/KNOWN_ISSUES.md`) và GitHub Issues (<https://github.com/maxlogvn/finger-chromium/issues>).
+Issue được quản lý hoàn toàn local:
+- **`docs/TRACKING.md`** — theo dõi trạng thái từng issue (Dự định làm / Đang làm / Đã hoàn thành).
+- **`docs/issues/`** — mỗi issue một file markdown, dùng template [`docs/templates/known-issue.template.md`](docs/templates/known-issue.template.md).
 
 **Quy tắc cho AI agent:**
-- Trước khi fix bug, đọc KNOWN_ISSUES.md để biết trạng thái hiện tại.
-- Khi fix xong, cập nhật KNOWN_ISSUES.md và đồng bộ lên GitHub issue tương ứng. Dùng template [`docs/templates/known-issue.template.md`](docs/templates/known-issue.template.md) khi tạo GitHub issue mới.
-- Comment trên GitHub issue: dùng nội dung từ `docs/overviews/<bug>.overview.md` làm closing comment.
-- **Cảnh báo:** Template yêu cầu "Đầy đủ dấu: Phải có dấu tiếng Việt đầy đủ. Không viết kiểu 'khong dau'." — **đọc kỹ template trước khi post**, kiểm tra lại nội dung để tránh lặp lại lỗi cũ.
-- Khi tạo issue mới, thêm entry vào KNOWN_ISSUES.md (theo template) và tạo GitHub issue tương ứng.
+- Trước khi làm việc, đọc TRACKING.md để biết trạng thái hiện tại.
+- Khi tạo issue mới: viết file tại `docs/issues/<tên>.md` theo template, thêm entry vào TRACKING.md.
+- Khi cập nhật trạng thái: chuyển entry trong TRACKING.md, cập nhật file issue nếu cần.
+- **Cảnh báo:** Template yêu cầu "Đầy đủ dấu: Phải có dấu tiếng Việt đầy đủ. Không viết kiểu 'khong dau'."
 
 ---
 
@@ -70,18 +69,6 @@ Kết cấu nhất quán giữa các feature: cùng loại tài liệu có cùng
 
 ---
 
-## Phong cách viết tài liệu, code và GitHub
-
-Tất cả tài liệu (design, spec, plan, product, overview), code comment, và GitHub comment phải:
-
-- **Viết bằng tiếng Việt**, dùng từ ngữ thân thiện, dễ hiểu, như đang giải thích cho một developer đồng nghiệp.
-- **Tránh lạm dụng thuật ngữ** khiến nội dung khó đọc. Nếu bắt buộc dùng thuật ngữ chuyên ngành (ví dụ `BrowserContext`, `launchPersistentContext`, `CDP`), giải thích ngắn gọn ngay kế bên.
-- **Không dùng câu phức tạp** -- ưu tiên rõ ràng, đi thẳng vào vấn đề.
-- **Giải thích "tại sao"** chứ không chỉ "làm gì" -- đặc biệt trong code comment và overview.
-- **Ví dụ tốt:** "Giữ `const` vì `launch()` kiểm tra trạng thái một lần -- nếu dùng `let`, biến có thể bị gán lại ngoài ý muốn."
-- **Ví dụ dở:** "Duy trì `const` nhằm đảm bảo tính bất biến của trạng thái launch trong lifecycle."
-
----
 
 ## Biến môi trường
 
