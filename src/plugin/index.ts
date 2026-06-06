@@ -75,7 +75,7 @@ export default class FingerprintPlugin {
   protected profile?: PluginConfig;
   protected proxy?: PluginConfig;
   #cleaner = new SettingsCleaner();
-  #connector = new Connector();
+  #connector!: Connector;
   #configManager = new ConfigManager();
   #serviceKey: string | undefined;
   protected browser?: Browser;
@@ -83,8 +83,13 @@ export default class FingerprintPlugin {
 
   /**
    * @param launcherInstance - Launcher tuỳ chỉnh, nếu không có thì dùng mặc định
+   * @param connector - Connector tuỳ chỉnh, nếu không có thì tạo mới (dùng cho test)
    */
-  constructor(launcherInstance?: { launch: (opts: BaseLaunchOptions) => Promise<Browser> }) {
+  constructor(
+    launcherInstance?: { launch: (opts: BaseLaunchOptions) => Promise<Browser> },
+    connector?: Connector,
+  ) {
+    this.#connector = connector ?? new Connector();
     this.launcher =
       launcherInstance ?? ({ launch } as unknown as { launch: (opts: BaseLaunchOptions) => Promise<Browser> });
   }

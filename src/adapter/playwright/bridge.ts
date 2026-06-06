@@ -11,6 +11,7 @@
 import type { BrowserContext, BrowserType, Page } from 'playwright-core';
 
 import FingerprintPlugin, { type BaseLaunchOptions } from '../../plugin';
+import type Connector from '../../plugin/connector';
 import type { Browser } from '@src/plugin/launcher';
 import { PluginError } from '@src/plugin/errors';
 import defaultLoader from './loader';
@@ -67,9 +68,10 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
 
   /**
    * @param launcher - Tuỳ chọn launcher tuỳ chỉnh (dùng để test hoặc thay thế browser)
+   * @param connector - Connector tuỳ chỉnh (dùng để test với mock)
    */
-  constructor(launcher?: Launcher) {
-    super();
+  constructor(launcher?: Launcher, connector?: Connector) {
+    super(undefined, connector);
     this.pwLauncher = launcher ?? createDefaultLauncher();
   }
 

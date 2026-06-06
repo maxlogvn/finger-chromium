@@ -27,7 +27,7 @@ Như Đang làm, thêm **Bước hiện tại: Hoàn thành** + link Overview (b
 
 ---
 
-## Dự định làm
+## Đang làm
 
 **Viết Integration Tests cho Core Flow** | feature
 Xây dựng integration test cho toàn bộ core flow (launch → newContext → quit) với `RemoteEngine` được mock, không cần BABLOSOFT_KEY.
@@ -38,7 +38,9 @@ Các bước:
 - Plan: triển khai từng bước
 - Code: mock layer + test file
 - Chạy được: `npm test` không cần key, pass trong CI
-- **Tài liệu:** [Issue](docs/issues/integration-test-coverage.md)
+- **Nhánh:** `integration-test-core-flow`
+- **Bước hiện tại:** Tài liệu xong — chờ review + merge
+- **Tài liệu:** [Issue](docs/issues/integration-test-coverage.md) / [Design](docs/designs/integration-test-coverage.design.md) / [Plan](docs/plans/integration-test-core-flow.plan.md) / [Product](docs/products/integration-test-core-flow.product.md) / [Overview](docs/overviews/integration-test-core-flow.overview.md)
 
 ---
 

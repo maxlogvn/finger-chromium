@@ -9,6 +9,16 @@ export default tseslint.config(
   // ── Base: recommended rules cho TypeScript ──────────────────────────
   ...tseslint.configs.recommended,
 
+  // ── Config cho test files ──────────────────────────────────────────
+  {
+    files: ['tests/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/consistent-type-imports': 'off',
+    },
+  },
+
   // ── Config chính ────────────────────────────────────────────────────
   {
     files: ['src/**/*.ts'],
