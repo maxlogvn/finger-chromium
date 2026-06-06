@@ -27,6 +27,24 @@ Như Đang làm, thêm **Bước hiện tại: Hoàn thành** + link Overview (b
 
 ---
 
+## Đang làm
+
+**Chia tách Unit Tests Core** | issue
+Chia `tests/unit/core.spec.ts` thành các file riêng theo từng module.
+- **Nhánh:** `split-unit-tests`
+- **Bước hiện tại:** Code
+- **Tài liệu:** [Issue](docs/issues/split-unit-tests.md) / [Design](docs/designs/split-unit-tests.design.md) / [Spec](docs/specs/split-unit-tests.spec.md) / [Plan](docs/plans/split-unit-tests.plan.md)
+
+---
+
+## Dự định làm
+
+**Chia tách Smoke Tests E2E** | issue
+Chia `tests/smoke/browser-engine.spec.ts` thành 4 file riêng: `minimal-flow.spec.ts`, `fluent-api.spec.ts`, `error-handling.spec.ts`, `new-fingerprint.spec.ts`.
+- **Issue:** [`docs/issues/split-smoke-tests.md`](docs/issues/split-smoke-tests.md)
+
+---
+
 ## Đã hoàn thành
 
 **Test Utilities (`tests/helpers.ts`)** | feature
