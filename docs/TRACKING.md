@@ -27,13 +27,15 @@ Như Đang làm, thêm **Bước hiện tại: Hoàn thành** + link Overview (b
 
 ---
 
-## Đang làm
+## Đã hoàn thành
 
 **Test Utilities (`tests/helpers.ts`)** | feature
 Xây dựng file tiện ích dùng chung: `skipTestIfNoKey()`, `createEngine()`, `withEngine()`, constants mẫu.
 - **Nhánh:** `rewrite-test`
-- **Bước hiện tại:** Tài liệu + Commit
-- **Tài liệu:** [Issue](docs/issues/test-helpers.md) / [Design](docs/designs/test-helpers.design.md) / [Spec](docs/specs/test-helpers.spec.md) / [Plan](docs/plans/test-helpers.plan.md) / [Product](docs/products/test-helpers.product.md) / [Overview](docs/overviews/test-helpers.overview.md)
+- **Bước hiện tại:** Hoàn thành
+- **Tài liệu:** [Issue](docs/issues/test-helpers.md) / [Design](docs/designs/test-helpers.design.md) / [Spec](docs/specs/test-helpers.spec.md) / [Plan](docs/plans/test-helpers.plan.md)
+- **Overview:** [`docs/overviews/test-helpers.overview.md`](docs/overviews/test-helpers.overview.md)
+- **Product:** [`docs/products/test-helpers.product.md`](docs/products/test-helpers.product.md)
 
 ---
 
@@ -48,16 +50,3 @@ Test luồng chính BrowserEngine: minimal flow, full fluent API flow, error han
 Issue: [`docs/issues/test-smoke-browser-engine.md`](docs/issues/test-smoke-browser-engine.md)
 
 ---
-
-## Đang làm
-
-*(Chưa có mục nào.)*
-
----
-
-## Đã hoàn thành
-
-*(Chưa có mục nào.)*
-
----
-
