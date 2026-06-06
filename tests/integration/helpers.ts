@@ -50,8 +50,9 @@ export class MockConnector {
 
 export interface MockBrowserContext {
   once: (event: string, handler: () => void) => void;
-  pages: () => [];
+  pages: () => Array<unknown>;
   close: () => Promise<void>;
+  newPage: () => Promise<Record<string, unknown>>;
 }
 
 export interface MockLauncher {
@@ -70,7 +71,7 @@ export function createMockBrowserContext(): MockBrowserContext {
     close: async () => {
       handlers['close']?.forEach((h) => h());
     },
-    newPage: async () => ({}),
+    newPage: async () => ({} as Record<string, unknown>),
   };
 }
 
