@@ -58,7 +58,7 @@ const MIN_POLL_INTERVAL = 100;
  * Dùng interval ngắn hơn giúp synchronize nhanh hơn (từ 4s xuống ~1s mặc định),
  * nhưng không được quá ngắn để tránh race condition với engine worker.
  */
-const getValidPollInterval = (interval: number | undefined): number => {
+export const getValidPollInterval = (interval: number | undefined): number => {
   if (typeof interval !== 'number' || Number.isNaN(interval) || interval < 0) {
     return DEFAULT_POLL_INTERVAL;
   }

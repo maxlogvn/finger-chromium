@@ -39,13 +39,13 @@ Xây dựng file tiện ích dùng chung: `skipTestIfNoKey()`, `createEngine()`,
 
 ---
 
-## Đang làm
-
 **Unit Tests Core (`tests/unit/core.spec.ts`)** | feature
-Test error classes (PluginError, MissingKeyError, ...), export check, config logic. Không cần BABLOSOFT_KEY.
+30 unit test cho 3 module core (errors, exports, config). Không cần BABLOSOFT_KEY.
 - **Nhánh:** `unit-test-core`
-- **Bước hiện tại:** 2. Thiết kế (Design)
-- **Tài liệu:** [Issue](docs/issues/test-unit-core.md)
+- **Bước hiện tại:** Hoàn thành
+- **Tài liệu:** [Issue](docs/issues/test-unit-core.md) / [Design](docs/designs/test-unit-core.design.md) / [Spec](docs/specs/test-unit-core.spec.md) / [Plan](docs/plans/test-unit-core.plan.md)
+- **Overview:** [`docs/overviews/test-unit-core.overview.md`](docs/overviews/test-unit-core.overview.md)
+- **Product:** [`docs/products/test-unit-core.product.md`](docs/products/test-unit-core.product.md)
 
 ---
 
