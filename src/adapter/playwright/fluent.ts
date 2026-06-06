@@ -13,6 +13,7 @@ import path from 'node:path';
 import type { BrowserContext, BrowserType } from 'playwright-core';
 
 import { PlaywrightFingerprintPlugin } from './bridge';
+import type Connector from '../../plugin/connector';
 import { AdapterDataManager } from './data';
 import { PluginError } from '@src/plugin/errors';
 
@@ -78,8 +79,12 @@ export class BrowserEngine implements PWChromium {
   private fingerprints?: [string, FingerprintOptions?];
   private proxyData?: [string, ProxyOptions?];
 
-  constructor(launcher?: Launcher) {
-    this.engine = new PlaywrightFingerprintPlugin(launcher);
+  /**
+   * @param launcher - Playwright launcher tuỳ chỉnh (dùng để test hoặc thay thế browser)
+   * @param connector - Connector tuỳ chỉnh (dùng để test với mock connector)
+   */
+  constructor(launcher?: Launcher, connector?: Connector) {
+    this.engine = new PlaywrightFingerprintPlugin(launcher, connector);
     this.options = { ...DEFAULT_CONTEXT_OPTIONS };
     this.privateKey = PRIVATE_KEY;
     this.engineWorkingDirPath = ENGINE_WORKING_DIR;
