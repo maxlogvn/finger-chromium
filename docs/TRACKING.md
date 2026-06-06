@@ -32,7 +32,7 @@ Như Đang làm, thêm **Bước hiện tại: Hoàn thành** + link Overview (b
 **Chia tách Smoke Tests E2E** | issue
 Chia `tests/smoke/browser-engine.spec.ts` thành 4 file riêng: `minimal-flow.spec.ts`, `fluent-api.spec.ts`, `error-handling.spec.ts`, `new-fingerprint.spec.ts`.
 - **Nhánh:** `split-smoke-tests`
-- **Bước hiện tại:** Chuẩn bị
+- **Bước hiện tại:** Code
 - **Tài liệu:** [Issue](docs/issues/split-smoke-tests.md)
 
 ---
