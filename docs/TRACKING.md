@@ -49,12 +49,14 @@ Xây dựng file tiện ích dùng chung: `skipTestIfNoKey()`, `createEngine()`,
 
 ---
 
-## Đang làm
+## Đã hoàn thành
 
 **Smoke Test E2E (`tests/smoke/browser-engine.spec.ts`)** | feature
-Test luồng chính BrowserEngine: minimal flow, full fluent API flow, error handling, fingerprint fetch. Skip nếu thiếu key.
+8 smoke test cho BrowserEngine: minimal flow, fluent API, error handling, newFingerprint. Skip nếu thiếu key.
 - **Nhánh:** `smoke-test-engine`
-- **Bước hiện tại:** Thiết kế
-- **Tài liệu:** [Issue](docs/issues/test-smoke-browser-engine.md)
+- **Bước hiện tại:** Hoàn thành
+- **Tài liệu:** [Issue](docs/issues/test-smoke-browser-engine.md) / [Design](docs/designs/test-smoke-engine.design.md) / [Spec](docs/specs/test-smoke-engine.spec.md) / [Plan](docs/plans/test-smoke-engine.plan.md)
+- **Overview:** [`docs/overviews/test-smoke-engine.overview.md`](docs/overviews/test-smoke-engine.overview.md)
+- **Product:** [`docs/products/test-smoke-engine.product.md`](docs/products/test-smoke-engine.product.md)
 
 ---
