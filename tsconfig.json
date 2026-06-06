@@ -17,5 +17,5 @@
     },
   },
   "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "tests/**/*", "node_modules"]
 }
