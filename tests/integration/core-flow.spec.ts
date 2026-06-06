@@ -1,13 +1,11 @@
 import assert from 'node:assert';
 
 import { BrowserEngine } from '../../src/adapter/playwright/fluent';
-import { MockConnector, createMockLauncher } from './helpers';
+import { createMockEngine } from './helpers';
 
 describe('Integration: Core Flow', function () {
   it('launch -> newContext -> quit with mock connector', async () => {
-    const mockConnector = new MockConnector();
-    const mockLauncher = createMockLauncher();
-    const engine = new BrowserEngine(mockLauncher, mockConnector);
+    const engine = createMockEngine();
 
     engine.launch();
 

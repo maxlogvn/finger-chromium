@@ -1,5 +1,6 @@
-import type Connector from '../../src/plugin/connector';
+import type { default as ConnectorType } from '../../src/plugin/connector';
 import type { Launcher } from '../../src/adapter/playwright/fluent';
+import { BrowserEngine } from '../../src/adapter/playwright/fluent';
 
 export interface MockSetupResponse {
   id: string;
@@ -71,4 +72,10 @@ export function createMockLauncher(): Launcher {
     launch: async () => mockContext,
     launchPersistentContext: async () => mockContext,
   } as unknown as Launcher;
+}
+
+export function createMockEngine(): BrowserEngine {
+  const mockConnector = new MockConnector() as unknown as ConnectorType;
+  const mockLauncher = createMockLauncher();
+  return new BrowserEngine(mockLauncher, mockConnector);
 }
