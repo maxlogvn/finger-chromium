@@ -14,6 +14,7 @@ import type { Launcher } from '../src/adapter/playwright/fluent';
 import type { FingerprintOptions } from '../src/types/fingerprint';
 import type { ProxyOptions } from '../src/types/proxy';
 import type { ProfileOptions } from '../src/types/profile';
+import type { FetchOptions } from '../src/types/fetch';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -162,3 +163,9 @@ export const MOCK_PROFILE_OPTIONS: ProfileOptions = {
   loadProxy: false,
   loadFingerprint: false,
 };
+
+/**
+ * Fingerprint data JSON tối thiểu dùng trong smoke test.
+ * Vì MOCK_FINGERPRINT_OPTIONS tắt hết tính năng, engine không xử lý data này.
+ */
+export const MOCK_FINGERPRINT_DATA = '{}';
