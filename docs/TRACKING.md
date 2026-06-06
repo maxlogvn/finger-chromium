@@ -39,8 +39,8 @@ Các bước:
 - Code: mock layer + test file
 - Chạy được: `npm test` không cần key, pass trong CI
 - **Nhánh:** `integration-test-core-flow`
-- **Bước hiện tại:** Code xong — chờ tài liệu + review
-- **Tài liệu:** [Issue](docs/issues/integration-test-coverage.md) / [Design](docs/designs/integration-test-coverage.design.md) / [Plan](docs/plans/integration-test-core-flow.plan.md)
+- **Bước hiện tại:** Tài liệu xong — chờ review + merge
+- **Tài liệu:** [Issue](docs/issues/integration-test-coverage.md) / [Design](docs/designs/integration-test-coverage.design.md) / [Plan](docs/plans/integration-test-core-flow.plan.md) / [Product](docs/products/integration-test-core-flow.product.md) / [Overview](docs/overviews/integration-test-core-flow.overview.md)
 
 ---
 
