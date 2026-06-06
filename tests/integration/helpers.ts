@@ -1,4 +1,5 @@
 import type Connector from '../../src/plugin/connector';
+import type { Launcher } from '../../src/adapter/playwright/fluent';
 
 export interface MockSetupResponse {
   id: string;
@@ -48,19 +49,7 @@ export class MockConnector {
   }
 }
 
-export interface MockBrowserContext {
-  once: (event: string, handler: () => void) => void;
-  pages: () => Array<unknown>;
-  close: () => Promise<void>;
-  newPage: () => Promise<Record<string, unknown>>;
-}
-
-export interface MockLauncher {
-  launch: (opts?: Record<string, unknown>) => Promise<MockBrowserContext>;
-  launchPersistentContext: (userDataDir: string, opts?: Record<string, unknown>) => Promise<MockBrowserContext>;
-}
-
-export function createMockBrowserContext(): MockBrowserContext {
+export function createMockBrowserContext() {
   const handlers: Record<string, Array<() => void>> = {};
 
   return {
@@ -71,15 +60,15 @@ export function createMockBrowserContext(): MockBrowserContext {
     close: async () => {
       handlers['close']?.forEach((h) => h());
     },
-    newPage: async () => ({} as Record<string, unknown>),
+    newPage: async () => ({}),
   };
 }
 
-export function createMockLauncher(): MockLauncher {
+export function createMockLauncher(): Launcher {
   const mockContext = createMockBrowserContext();
 
   return {
     launch: async () => mockContext,
     launchPersistentContext: async () => mockContext,
-  };
+  } as unknown as Launcher;
 }
