@@ -4,7 +4,6 @@ import path from 'node:path';
 import os from 'node:os';
 
 import {
-  skipTestIfNoKey,
   withEngine,
   MOCK_FINGERPRINT_DATA,
   MOCK_FINGERPRINT_OPTIONS,
@@ -13,7 +12,6 @@ import {
 } from '../helpers';
 
 describe('Smoke: Fluent API', function () {
-  if (skipTestIfNoKey()) return;
   this.timeout(60000);
 
   it('useFingerprint -> useProxy -> useProfile -> launch -> newContext -> quit', async () => {

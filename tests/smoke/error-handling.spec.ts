@@ -1,10 +1,9 @@
 import assert from 'node:assert';
 
 import { PluginError } from '../../src/plugin/errors';
-import { skipTestIfNoKey, createEngine } from '../helpers';
+import { createEngine } from '../helpers';
 
 describe('Smoke: Error Handling', function () {
-  if (skipTestIfNoKey()) return;
   this.timeout(60000);
 
   it('newContext trước launch throw PluginError', async () => {

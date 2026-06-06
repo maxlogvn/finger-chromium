@@ -1,9 +1,9 @@
 import assert from 'node:assert';
 
-import { skipTestIfNoKey, withEngine } from '../helpers';
+import { skipIfNoPremiumKey, withEngine } from '../helpers';
 
 describe('Smoke: newFingerprint', function () {
-  if (skipTestIfNoKey()) return;
+  if (skipIfNoPremiumKey()) return;
   this.timeout(60000);
 
   it('gọi API trả về JSON string hợp lệ', async () => {
