@@ -27,9 +27,25 @@ Như Đang làm, thêm **Bước hiện tại: Hoàn thành** + link Overview (b
 
 ---
 
+## Đang làm
+
+**Test Utilities (`tests/helpers.ts`)** | feature
+Xây dựng file tiện ích dùng chung: `skipTestIfNoKey()`, `createEngine()`, `withEngine()`, constants mẫu.
+- **Nhánh:** `rewrite-test`
+- **Bước hiện tại:** Tài liệu + Commit
+- **Tài liệu:** [Issue](docs/issues/test-helpers.md) / [Design](docs/designs/test-helpers.design.md) / [Spec](docs/specs/test-helpers.spec.md) / [Plan](docs/plans/test-helpers.plan.md) / [Product](docs/products/test-helpers.product.md) / [Overview](docs/overviews/test-helpers.overview.md)
+
+---
+
 ## Dự định làm
 
-*(Chưa có mục nào.)*
+**Unit Tests Core (`tests/unit/core.spec.ts`)** | feature
+Test error classes (PluginError, MissingKeyError, ...), export check, config logic. Không cần BABLOSOFT_KEY.
+Issue: [`docs/issues/test-unit-core.md`](docs/issues/test-unit-core.md)
+
+**Smoke Test E2E (`tests/smoke/browser-engine.spec.ts`)** | feature
+Test luồng chính BrowserEngine: minimal flow, full fluent API flow, error handling. Skip nếu thiếu key.
+Issue: [`docs/issues/test-smoke-browser-engine.md`](docs/issues/test-smoke-browser-engine.md)
 
 ---
 
