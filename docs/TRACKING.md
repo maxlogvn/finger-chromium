@@ -29,11 +29,7 @@ Như Đang làm, thêm **Bước hiện tại: Hoàn thành** + link Overview (b
 
 ## Đang làm
 
-**Chia tách Unit Tests Core** | issue
-Chia `tests/unit/core.spec.ts` thành các file riêng theo từng module.
-- **Nhánh:** `split-unit-tests`
-- **Bước hiện tại:** Code
-- **Tài liệu:** [Issue](docs/issues/split-unit-tests.md) / [Design](docs/designs/split-unit-tests.design.md) / [Spec](docs/specs/split-unit-tests.spec.md) / [Plan](docs/plans/split-unit-tests.plan.md)
+*Không có.*
 
 ---
 
@@ -46,6 +42,15 @@ Chia `tests/smoke/browser-engine.spec.ts` thành 4 file riêng: `minimal-flow.sp
 ---
 
 ## Đã hoàn thành
+
+**Chia tách Unit Tests Core** | issue
+Chia `tests/unit/core.spec.ts` thành 3 file riêng: `errors.spec.ts`, `exports.spec.ts`, `config.spec.ts`.
+- **Nhánh:** `split-unit-tests`
+- **Bước hiện tại:** Hoàn thành
+- **Tài liệu:** [Issue](docs/issues/split-unit-tests.md) / [Design](docs/designs/split-unit-tests.design.md) / [Spec](docs/specs/split-unit-tests.spec.md) / [Plan](docs/plans/split-unit-tests.plan.md)
+- **Overview:** [`docs/overviews/split-unit-tests.overview.md`](docs/overviews/split-unit-tests.overview.md)
+
+---
 
 **Test Utilities (`tests/helpers.ts`)** | feature
 Xây dựng file tiện ích dùng chung: `skipTestIfNoKey()`, `createEngine()`, `withEngine()`, constants mẫu.
