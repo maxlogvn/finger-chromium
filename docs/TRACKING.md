@@ -39,11 +39,17 @@ Xây dựng file tiện ích dùng chung: `skipTestIfNoKey()`, `createEngine()`,
 
 ---
 
-## Dự định làm
+## Đang làm
 
 **Unit Tests Core (`tests/unit/core.spec.ts`)** | feature
 Test error classes (PluginError, MissingKeyError, ...), export check, config logic. Không cần BABLOSOFT_KEY.
-Issue: [`docs/issues/test-unit-core.md`](docs/issues/test-unit-core.md)
+- **Nhánh:** `unit-test-core`
+- **Bước hiện tại:** 2. Thiết kế (Design)
+- **Tài liệu:** [Issue](docs/issues/test-unit-core.md)
+
+---
+
+## Dự định làm
 
 **Smoke Test E2E (`tests/smoke/browser-engine.spec.ts`)** | feature
 Test luồng chính BrowserEngine: minimal flow, full fluent API flow, error handling. Skip nếu thiếu key.
