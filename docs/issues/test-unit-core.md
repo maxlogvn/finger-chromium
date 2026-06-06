@@ -1,40 +1,50 @@
-# Task: Unit Tests cho Core (`tests/unit/core.spec.ts`)
+# Known Issue: Unit Tests cho Core (`tests/unit/core.spec.ts`)
 
-> Kiểm tra các thành phần không cần browser: error classes, types, config.
+> **Chú ý:** Template này dùng cho **body của GitHub issue**, chỉ mô tả vấn đề -- không đề xuất giải pháp.
 
 ## Mô tả
 
-Tạo file `tests/unit/core.spec.ts` với các unit test cho những module không phụ thuộc `BABLOSOFT_KEY` hay browser thật.
+Hiện tại dự án chưa có unit test cho các module core không phụ thuộc `BABLOSOFT_KEY` hay browser thật. Cụ thể:
 
-## Nội dung cần test
+- **`src/plugin/errors.ts`**: 5 error class (`PluginError`, `MissingKeyError`, `InvalidEngineError`, `EngineTimeoutError`, `RequestTimeoutError`) chưa có test nào.
+- **`src/index.ts`**: Export check chưa được kiểm tra -- không đảm bảo các export tồn tại và đúng kiểu.
+- **`src/plugin/config.ts`**: `ConfigManager` class và `getValidPollInterval()` helper có logic xử lý (validate, lock, read/write file) nhưng chưa có test.
 
-### Error Classes
+Thiếu unit test dẫn đến:
+- Refactor gặp phải test thủ công.
+- Không phát hiện sớm các lỗi như `instanceof` chain sai, export bị thiếu, hoặc config logic sai.
+- Tăng technical debt khi mở rộng codebase.
 
-Test tất cả error class từ `src/plugin/errors.ts`:
-- `PluginError` -- base error, message + name.
-- `MissingKeyError` -- kế thừa `PluginError`, message mặc định.
-- `InvalidEngineError` -- kế thừa `PluginError`.
-- `EngineTimeoutError` -- kế thừa `PluginError`.
-- `RequestTimeoutError` -- kế thừa `PluginError`.
+### Steps to reproduce (Các bước tái hiện)
 
-Mỗi class test:
-- `new XXXError()` không tham số.
-- `new XXXError("custom message")` với custom message.
-- `instanceof PluginError` (`instanceof` chain).
+1. Chạy `npm test` -- không có unit test core nào được chạy.
+2. Mở `tests/unit/` -- thư mục chưa tồn tại.
+3. Kiểm tra `src/plugin/errors.ts` -- 5 class Error không có test coverage.
 
-### Export check
+### Environment
 
-Đảm bảo các export từ `src/index.ts` tồn tại và đúng kiểu:
-- `BrowserEngine` là class.
-- Các error class kế thừa `PluginError`.
-- Các type export là object types.
+- **OS:** Windows 11
+- **Node version:** 20.x
+- **Plugin version:** commit hiện tại
 
-### Config (nếu có logic phức tạp)
+### Flow hiện tại (nếu có)
 
-Test các hàm trong `src/plugin/config.ts` nếu có logic xử lý.
+```
+src/plugin/errors.ts          ← 5 error classes, không test
+src/index.ts                  ← export check, không test
+src/plugin/config.ts          ← ConfigManager + helpers, không test
+```
 
-## Tiêu chí hoàn thành
+## Nguyên nhân gốc rễ
 
-- Chạy được với `npm test`, không cần biến môi trường nào.
-- Không spawn browser hay engine.
-- Mỗi describe group cho một nhóm (errors, exports, config).
+- Khi khởi tạo dự án, ưu tiên dành cho smoke test (cần engine thật) trước, unit test core bị trì hoãn lại.
+- Chưa có convention bắt buộc unit test cho module không phụ thuộc browser.
+- `ConfigManager` có logic đồng bộ file (read/write, lock, poll interval) cần được kiểm tra bằng unit test với mock filesystem, hiện tại chưa có cơ chế test này.
+
+## Tác động
+
+| Tác động | Mức độ | Ai bị ảnh hưởng | Chi tiết |
+|----------|--------|-----------------|----------|
+| Thiếu coverage core | Cao | Developer | Mỗi lần refactor error classes hay config, phải test thủ công hoặc bỏ sót bug. |
+| Export không được kiểm tra | Trung bình | Developer | Thay đổi export trong `src/index.ts` có thể bị sót mà không ai biết. |
+| Config logic không test | Trung bình | Developer | `getValidPollInterval()` và `ConfigManager` có edge cases (NaN, âm, giá trị biên) không được bao phủ. |
