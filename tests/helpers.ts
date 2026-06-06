@@ -1,13 +1,12 @@
 // ─── File: tests/helpers.ts ────────────────────────────────────────────────
 // Tiện ích dùng chung cho toàn bộ test -- tránh boilerplate trùng lặp.
 //
-//   1. skipTestIfNoKey() -- kiểm tra BABLOSOFT_KEY, trả về true nếu thiếu
+//   1. skipTestIfNoKey() / skipIfNoPremiumKey() -- kiểm tra BABLOSOFT_KEY
 //   2. createEngine() -- factory tạo BrowserEngine instance
 //   3. withEngine() -- lifecycle wrapper: tạo → dùng → tự động quit()
 //   4. Mock constants -- object hợp lệ cho các option types
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { MissingKeyError } from '../src/plugin/errors';
 import { BrowserEngine } from '../src/adapter/playwright/fluent';
 
 import type { Launcher } from '../src/adapter/playwright/fluent';
@@ -53,17 +52,42 @@ export function skipTestIfNoKey(): boolean {
   return true;
 }
 
+// ─── skipIfNoPremiumKey ────────────────────────────────────────────────────────
+
+/**
+ * Kiểm tra BABLOSOFT_KEY cho tính năng premium.
+ * Trả về `true` nếu thiếu key — dùng trong test cần fingerprint trả phí.
+ *
+ * @example
+ * ```ts
+ * describe('cần premium key', function () {
+ *   if (skipIfNoPremiumKey()) return;
+ *   it('test premium ...', () => { ... });
+ * });
+ * ```
+ */
+export function skipIfNoPremiumKey(): boolean {
+  if (PRIVATE_KEY) return false;
+
+  console.warn(
+    '[skipIfNoPremiumKey] BABLOSOFT_KEY chưa được set. ' +
+    'Bỏ qua test cần premium fingerprint.\n' +
+    'Set key bằng lệnh: $env:BABLOSOFT_KEY = "your-key"'
+  );
+  return true;
+}
+
 // ─── createEngine ─────────────────────────────────────────────────────────────
 
 /**
  * Tạo BrowserEngine instance mới.
  * Dùng key từ tham số hoặc fallback về PRIVATE_KEY (từ env).
+ * Nếu không có key, instance được tạo với key rỗng — engine dùng fingerprint free.
  * Luôn gọi `engine.quit()` sau khi dùng xong để tránh rò rỉ tiến trình.
  *
  * @param key - Key bablosoft (optional, fallback về process.env.BABLOSOFT_KEY)
  * @param launcher - Playwright launcher tuỳ chỉnh (optional)
  * @returns BrowserEngine instance sẵn sàng để launch
- * @throws MissingKeyError nếu không có key
  *
  * @example
  * ```ts
@@ -75,12 +99,6 @@ export function skipTestIfNoKey(): boolean {
  */
 export function createEngine(key?: string, launcher?: Launcher): BrowserEngine {
   const resolvedKey = key !== undefined ? key : PRIVATE_KEY;
-
-  if (!resolvedKey) {
-    throw new MissingKeyError(
-      'Cần set BABLOSOFT_KEY để tạo BrowserEngine instance.'
-    );
-  }
 
   const engine = launcher ? new BrowserEngine(launcher) : new BrowserEngine();
 

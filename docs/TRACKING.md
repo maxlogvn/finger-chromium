@@ -27,19 +27,32 @@ Như Đang làm, thêm **Bước hiện tại: Hoàn thành** + link Overview (b
 
 ---
 
-## Đang làm
-
-*Không có.*
-
----
-
 ## Dự định làm
 
-*Không có.*
+**Viết Integration Tests cho Core Flow** | feature
+Xây dựng integration test cho toàn bộ core flow (launch → newContext → quit) với `RemoteEngine` được mock, không cần BABLOSOFT_KEY.
+Tách riêng thư mục `tests/integration/`, file `core-flow.spec.ts`.
+Các bước:
+- Design: kiến trúc mock cho `RemoteEngine` + `Connector`
+- Spec: test cases chi tiết (thành công, lỗi, edge cases)
+- Plan: triển khai từng bước
+- Code: mock layer + test file
+- Chạy được: `npm test` không cần key, pass trong CI
+- **Tài liệu:** [Issue](docs/issues/integration-test-coverage.md)
 
 ---
 
 ## Đã hoàn thành
+
+**Cho phép Smoke Tests chạy không cần BABLOSOFT_KEY** | issue
+Engine binary chấp nhận key rỗng cho fingerprint miễn phí (Windows). `createEngine()` trong `tests/helpers.ts` throw `MissingKeyError` quá sớm, ngăn smoke test chạy browser thật dù không cần key.
+Fix: sửa `createEngine()` không throw khi thiếu key, cho phép smoke test launch browser thật với fingerprint free.
+- **Nhánh:** `fix/smoke-test-key-requirement`
+- **Bước hiện tại:** Hoàn thành
+- **Tài liệu:** [Issue](docs/issues/smoke-test-key-requirement.md) / [Spec](docs/specs/smoke-test-key-requirement.spec.md) / [Plan](docs/plans/smoke-test-key-requirement.plan.md)
+- **Overview:** [`docs/overviews/smoke-test-key-requirement.overview.md`](docs/overviews/smoke-test-key-requirement.overview.md)
+
+---
 
 **Chia tách Smoke Tests E2E** | issue
 Chia `tests/smoke/browser-engine.spec.ts` thành 4 file riêng: `minimal-flow.spec.ts`, `fluent-api.spec.ts`, `error-handling.spec.ts`, `new-fingerprint.spec.ts`.
@@ -78,8 +91,6 @@ Xây dựng file tiện ích dùng chung: `skipTestIfNoKey()`, `createEngine()`,
 - **Product:** [`docs/products/test-unit-core.product.md`](docs/products/test-unit-core.product.md)
 
 ---
-
-## Đã hoàn thành
 
 **Smoke Test E2E (`tests/smoke/browser-engine.spec.ts`)** | feature
 8 smoke test cho BrowserEngine: minimal flow, fluent API, error handling, newFingerprint. Skip nếu thiếu key.

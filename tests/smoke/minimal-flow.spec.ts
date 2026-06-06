@@ -1,9 +1,8 @@
 import assert from 'node:assert';
 
-import { skipTestIfNoKey, withEngine } from '../helpers';
+import { withEngine } from '../helpers';
 
 describe('Smoke: Minimal Flow', function () {
-  if (skipTestIfNoKey()) return;
   this.timeout(60000);
 
   it('launch -> newContext -> quit', async () => {
