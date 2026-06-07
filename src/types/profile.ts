@@ -1,7 +1,3 @@
-// ─── File: types/profile.ts ────────────────────────────────────────────────
-// Tuỳ chọn profile -- load proxy/fingerprint từ profile cũ khi khởi động.
-// ─────────────────────────────────────────────────────────────────────────────
-
 /**
  * Tùy chọn cấu hình profile cho trình duyệt.
  *

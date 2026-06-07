@@ -10,10 +10,12 @@ node_modules/
 /.idea/
 /.env
 /bun.lock
-/data/*
+/data/profiles/*
 .npmrc
 /tests/.tmp/
 /dist/
 /.tmp/
 /docs/.obsidian/
 package-lock.json
+/.opencode/
+/.decomment/

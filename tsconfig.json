@@ -6,7 +6,7 @@
     "declaration": true,
     "declarationDir": "dist",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,8 +14,8 @@
     "baseUrl": ".",
     "paths": {
       "@src/*": ["src/*"]
-    },
+    }
   },
   "include": ["src/**/*"],
-  "exclude": ["dist", "tests/**/*", "node_modules"]
+  "exclude": ["dist", "node_modules"]
 }

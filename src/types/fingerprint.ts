@@ -1,8 +1,3 @@
-// ─── File: types/fingerprint.ts ────────────────────────────────────────────
-// Tuỳ chọn fingerprint -- kiểm soát các kỹ thuật giả lập thiết bị:
-// PerfectCanvas, WebGL, Audio, Canvas, Battery, Sensor, HiDPI, FontPack, ElementSize.
-// ─────────────────────────────────────────────────────────────────────────────
-
 /**
  * Tùy chọn kiểm soát các kỹ thuật giả lập fingerprint trên trình duyệt.
  *
