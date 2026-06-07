@@ -96,7 +96,7 @@ engine.useLauncher(playwrightChromium);
 Khởi tạo engine với toàn bộ cấu hình đã thiết lập. **Chỉ được gọi một lần** cho mỗi instance.
 
 ```ts
-engine.launch({ headless: false });
+const browser = engine.launch({ headless: false });
 ```
 
 | Tham số   | Kiểu                   | Mặc định                       | Mô tả                              |
@@ -110,7 +110,7 @@ Trả về `this` để tiếp tục chain.
 Tạo `BrowserContext` của Playwright để bắt đầu phiên duyệt web. **Phải gọi `launch()` trước.**
 
 ```ts
-const context: BrowserContext = await engine.newContext();
+const context: BrowserContext = await browser.newContext();
 const page = await context.newPage();
 ```
 

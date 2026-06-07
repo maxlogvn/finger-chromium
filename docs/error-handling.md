@@ -24,8 +24,8 @@ Lớp lỗi cơ bản. Dùng cho hầu hết các tình huống lỗi không thu
 import { PluginError } from 'fingerprint-chromium-engine';
 
 try {
-  await engine.launch();
-  await engine.launch(); // Lần thứ hai
+  engine.launch();
+  engine.launch(); // Lần thứ hai
 } catch (err) {
   if (err instanceof PluginError) {
     console.error('Lỗi engine:', err.message);
@@ -92,7 +92,8 @@ Ném ra khi engine binary chưa được tải xuống hoặc giải nén đúng
 import { InvalidEngineError } from 'fingerprint-chromium-engine';
 
 try {
-  await engine.launch().newContext();
+  const browser = engine.launch();
+  await browser.newContext();
 } catch (err) {
   if (err instanceof InvalidEngineError) {
     console.error('Engine bị hỏng hoặc chưa được tải.');
@@ -128,7 +129,8 @@ Ném ra khi quá trình tải engine vượt quá thời gian cho phép.
 import { EngineTimeoutError } from 'fingerprint-chromium-engine';
 
 try {
-  await engine.launch().newContext();
+  const browser = engine.launch();
+  await browser.newContext();
 } catch (err) {
   if (err instanceof EngineTimeoutError) {
     console.error('Tải engine quá thời gian cho phép.');
@@ -207,7 +209,7 @@ async function runBrowser() {
     });
 
     // Cấu hình
-    const context = await engine
+    const browser = engine
       .useFingerprint(fp, {
         usePerfectCanvas: true,
         safeWebGL: true,
@@ -220,8 +222,9 @@ async function runBrowser() {
         loadFingerprint: true,
         loadProxy: true,
       })
-      .launch({ headless: false })
-      .newContext();
+      .launch({ headless: false });
+
+    const context = await browser.newContext();
 
     const page = await context.newPage();
     await page.goto('https://example.com');
@@ -244,7 +247,7 @@ async function runBrowser() {
   } finally {
     // Luôn đóng engine trong finally để đảm bảo cleanup
     try {
-      await engine.close();
+      await browser.close();
     } catch {
       // Bỏ qua lỗi khi close
     }

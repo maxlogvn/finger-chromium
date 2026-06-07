@@ -159,7 +159,7 @@ Không. Nhiều phiên cùng ghi vào một thư mục profile sẽ gây hỏng 
 
 3. **Dùng headless mode**:
    ```ts
-   engine.launch({ headless: true });
+   const browser = engine.launch({ headless: true });
    ```
 
 4. **Dùng database nội bộ cho IP info** (mặc định):

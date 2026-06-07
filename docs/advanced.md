@@ -12,12 +12,13 @@ import { chromium as playwrightChromium } from 'playwright-core';
 
 const engine = new BrowserEngine();
 
-const context = await engine
+const browser = engine
   .useFingerprint(fp)
   .useProxy(proxyUrl)
   .useLauncher(playwrightChromium)
-  .launch({ headless: false })
-  .newContext();
+  .launch({ headless: false });
+
+const context = await browser.newContext();
 ```
 
 **Khi nào cần launcher tuỳ chỉnh**:
@@ -98,11 +99,12 @@ set DEBUG=browser-with-fingerprints:cleaner
 ## Chạy ở chế độ headless
 
 ```ts
-const context = await engine
+const browser = engine
   .useFingerprint(fp)
   .useProxy(proxyUrl)
-  .launch({ headless: true })
-  .newContext();
+  .launch({ headless: true });
+
+const context = await browser.newContext();
 ```
 
 **Lưu ý về headless**:
@@ -115,15 +117,16 @@ const context = await engine
 ## Tuỳ chỉnh viewport
 
 ```ts
-const context = await engine
+const browser = engine
   .useFingerprint(fp)
   .launch({
     headless: false,
     viewport: { width: 1920, height: 1080 },
-  })
-  .newContext({
-    viewport: { width: 1280, height: 720 },
   });
+
+const context = await browser.newContext({
+  viewport: { width: 1280, height: 720 },
+});
 ```
 
 Viewport có thể được đặt ở cả `launch()` (mặc định) và `newContext()` (ghi đè).
@@ -133,7 +136,7 @@ Viewport có thể được đặt ở cả `launch()` (mặc định) và `newC
 ## Tuỳ chỉnh locale và timezone
 
 ```ts
-const context = await engine
+const browser = engine
   .useFingerprint(fp)
   .useProxy('http://proxy-de:8080', {
     changeTimezone: true,
@@ -142,8 +145,9 @@ const context = await engine
   .launch({
     locale: 'de-DE',
     timezoneId: 'Europe/Berlin',
-  })
-  .newContext();
+  });
+
+const context = await browser.newContext();
 ```
 
 Khi `changeTimezone` và `changeBrowserLanguage` được bật, các giá trị này sẽ bị ghi đè bởi proxy. Chỉ đặt thủ công khi muốn giá trị cố định.
@@ -163,12 +167,13 @@ async function runConcurrentSessions(count: number) {
         timeLimit: '30 days',
       });
 
-      const context = await engine
+      const browser = engine
         .useFingerprint(fp)
         .useProxy(`http://user:pass@proxy-${i}:8080`)
         .useProfile(`./profiles/session_${i}`)
-        .launch({ headless: true })
-        .newContext();
+        .launch({ headless: true });
+
+      const context = await browser.newContext();
 
       const page = await context.newPage();
       await page.goto('https://example.com');
@@ -176,7 +181,7 @@ async function runConcurrentSessions(count: number) {
     } catch (err) {
       console.error(`[session_${i}] Lỗi:`, err);
     } finally {
-      await engine.close();
+      await browser.close();
     }
   });
 
@@ -213,7 +218,7 @@ Các method này chỉ nên được gọi trước `launch()`.
 
 ```ts
 const engine = new BrowserEngine();
-engine.useFingerprint(fp).launch();
+const browser = engine.useFingerprint(fp).launch();
 
 // Truy cập engine gốc cho các tác vụ nâng cao
 const rawEngine = engine.engine;
@@ -229,7 +234,7 @@ async function runWithMemoryLimit() {
   const engine = new BrowserEngine();
 
   try {
-    const context = await engine
+    const browser = engine
       .useFingerprint(fp)
       .launch({
         headless: true,
@@ -237,12 +242,13 @@ async function runWithMemoryLimit() {
           '--max_old_space_size=512',  // Giới hạn heap 512MB
           '--disable-dev-shm-usage',    // Tránh dùng /dev/shm (container)
         ],
-      })
-      .newContext();
+      });
+
+    const context = await browser.newContext();
 
     // ... thao tác ...
   } finally {
-    await engine.close(); // Giải phóng bộ nhớ
+    await browser.close(); // Giải phóng bộ nhớ
   }
 }
 ```

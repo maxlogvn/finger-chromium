@@ -64,7 +64,7 @@ async function main() {
   // Khởi tạo engine với cấu hình
   const engine = new BrowserEngine();
 
-  const context = await engine
+  const browser = engine
     .useFingerprint(fingerprint, {
       usePerfectCanvas: true,
       safeWebGL: true,
@@ -77,8 +77,9 @@ async function main() {
       loadProxy: true,
       loadFingerprint: true,
     })
-    .launch({ headless: false })
-    .newContext();
+    .launch({ headless: false });
+
+  const context = await browser.newContext();
 
   // Tạo page và thao tác
   const page = await context.newPage();
@@ -86,7 +87,7 @@ async function main() {
   console.log(await page.title());
 
   // Đóng và lưu profile
-  await engine.close();
+  await browser.close();
 }
 
 main();
@@ -99,18 +100,19 @@ async function resumeSession() {
   const engine = new BrowserEngine();
 
   // Chỉ cần useProfile() -- fingerprint và proxy sẽ được load tự động
-  const context = await engine
+  const browser = engine
     .useProfile('./profiles/user_01', {
       loadFingerprint: true,
       loadProxy: true,
     })
-    .launch({ headless: false })
-    .newContext();
+    .launch({ headless: false });
+
+  const context = await browser.newContext();
 
   const page = await context.newPage();
   await page.goto('https://example.com');
 
-  await engine.close();
+  await browser.close();
 }
 ```
 

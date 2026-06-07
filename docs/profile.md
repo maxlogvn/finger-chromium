@@ -9,26 +9,27 @@ Profile là một thư mục trên ổ đĩa chứa toàn bộ dữ liệu phiê
 ```ts
 // Phiên đầu tiên
 const engine = new BrowserEngine();
-await engine
+const browser = engine
   .useFingerprint(fp)
   .useProxy(proxyUrl)
   .useProfile('./profiles/user_01')
-  .launch()
-  .newContext();
+  .launch();
 
+const context = await browser.newContext();
 // ... thao tác với trang web ...
 
-await engine.close(); // Profile được lưu về ./profiles/user_01
+await browser.close(); // Profile được lưu về ./profiles/user_01
 
 // Phiên tiếp theo
 const engine2 = new BrowserEngine();
-await engine2
+const browser2 = engine2
   .useProfile('./profiles/user_01', {
     loadFingerprint: true,
     loadProxy: true,
   })
-  .launch()
-  .newContext();
+  .launch();
+
+const context2 = await browser2.newContext();
 // Fingerprint và proxy được tự động load từ profile
 ```
 
@@ -77,12 +78,13 @@ Khi gọi `engine.launch()` với `useProfile()`:
 
 ```ts
 const engine = new BrowserEngine();
-const context = await engine
+const browser = engine
   .useFingerprint(fp)
   .useProxy(proxyUrl)
   .useProfile('./profiles/user_01')
-  .launch({ headless: false })
-  .newContext();
+  .launch({ headless: false });
+
+const context = await browser.newContext();
 
 const page = await context.newPage();
 await page.goto('https://example.com/login');
@@ -96,20 +98,21 @@ await page.click('button[type="submit"]');
 await page.waitForSelector('.dashboard');
 
 // Đóng và lưu -- cookie được lưu lại
-await engine.close();
+await browser.close();
 ```
 
 ### Tải lại profile
 
 ```ts
 const engine = new BrowserEngine();
-const context = await engine
+const browser = engine
   .useProfile('./profiles/user_01', {
     loadFingerprint: true,
     loadProxy: true,
   })
-  .launch({ headless: false })
-  .newContext();
+  .launch({ headless: false });
+
+const context = await browser.newContext();
 
 const page = await context.newPage();
 await page.goto('https://example.com/dashboard');
@@ -120,28 +123,30 @@ await page.goto('https://example.com/dashboard');
 
 ```ts
 const engine = new BrowserEngine();
-const context = await engine
+const browser = engine
   .useFingerprint(newFingerprint)     // Fingerprint mới
   .useProfile('./profiles/user_01', {
     loadFingerprint: false,            // Không load fingerprint cũ
     loadProxy: true,                   // Vẫn load proxy cũ
   })
-  .launch()
-  .newContext();
+  .launch();
+
+const context = await browser.newContext();
 ```
 
 ### Lưu profile sang thư mục khác
 
 ```ts
 const engine = new BrowserEngine();
-const context = await engine
+const browser = engine
   .useProfile('./profiles/user_01')   // Load từ đây
-  .launch()
-  .newContext();
+  .launch();
+
+const context = await browser.newContext();
 
 // ... thao tác ...
 
-await engine.close('./profiles/user_01_backup');  // Nhưng lưu sang đây
+await browser.close('./profiles/user_01_backup');  // Nhưng lưu sang đây
 ```
 
 ---
@@ -213,18 +218,19 @@ for (const profileName of profiles) {
     // Proxy riêng cho mỗi profile
     const proxy = `http://user:pass@proxy-${profileName}:8080`;
 
-    const context = await engine
+    const browser = engine
       .useFingerprint(fp)
       .useProxy(proxy)
       .useProfile(`./profiles/${profileName}`)
-      .launch({ headless: true })
-      .newContext();
+      .launch({ headless: true });
+
+    const context = await browser.newContext();
 
     const page = await context.newPage();
     await page.goto('https://example.com');
     console.log(`${profileName}: ${await page.title()}`);
   } finally {
-    await engine.close();
+    await browser.close();
   }
 }
 ```
@@ -236,14 +242,15 @@ async function backupProfile(src: string, dest: string) {
   const engine = new BrowserEngine();
 
   try {
-    const context = await engine
+    const browser = engine
       .useProfile(src)
-      .launch()
-      .newContext();
+      .launch();
+
+    const context = await browser.newContext();
 
     // Không thao tác gì, chỉ mở và đóng để lưu
   } finally {
-    await engine.close(dest);
+    await browser.close(dest);
   }
 }
 
