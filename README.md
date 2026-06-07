@@ -28,7 +28,6 @@ Khác với các thư viện stealth thông thường can thiệp vào JavaScrip
 - **[Proxy đồng bộ](docs/proxy.md)** — Tự động đồng bộ timezone, geolocation, WebRTC, DNS theo proxy.
 - **[Profile bền vững](docs/profile.md)** — Lưu cookie, localStorage, session giữa các phiên, tránh corrupt dữ liệu.
 - **[PerfectCanvas](docs/fingerprint.md#perfectcanvas)** — Render canvas chính xác theo fingerprint thật, tránh canvas fingerprinting.
-- **Nhiễu phần cứng** — Làm nhiễu WebGL, Audio, Canvas để che giấu thông tin phần cứng thật.
 - **Chỉ Windows** — Hỗ trợ Windows 10/11 (32-bit và 64-bit).
 
 ---
