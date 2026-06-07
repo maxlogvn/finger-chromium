@@ -118,7 +118,6 @@ Xem thêm: [docs/profile.md](docs/profile.md)
 
 ## Tài liệu tham khảo
 
-- [docs/getting-started.md](docs/getting-started.md) — Hướng dẫn từ đầu đến cuối.
 - [docs/api.md](docs/api.md) — Toàn bộ type, method, và tùy chọn.
 - [docs/error-handling.md](docs/error-handling.md) — Xử lý lỗi: MissingKey, InvalidEngine, Timeout...
 - [docs/advanced.md](docs/advanced.md) — Debug log, chạy đồng thời, quản lý bộ nhớ.
