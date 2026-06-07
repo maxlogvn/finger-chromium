@@ -1,15 +1,14 @@
-// ─── File: src/index.ts ────────────────────────────────────────────────────
-// Public API -- export tất cả type, class và error cho người dùng thư viện.
+// ─── File: index.ts ──────────────────────────────────────────────────────
+// Entry point của package. Export toàn bộ public API.
 //
-//   1. PWChromium -- interface chính
-//   2. BrowserEngine -- class (dùng new BrowserEngine())
-//   3. PluginError, MissingKeyError, ... -- error classes để catch lỗi đúng type
-//   4. FetchOptions, FingerprintOptions, Launcher, PluginLaunchOptions,
-//      ProfileOptions, ProxyOptions -- type hỗ trợ
+//   1. Export types từ types/
+//   2. Export error classes từ plugin/errors
+//   3. Export BrowserEngine và các type từ adapter/playwright/fluent
 // ─────────────────────────────────────────────────────────────────────────────
 
-export { type PWChromium } from './types/PWChromium';
+// ─── Export ──────────────────────────────────────────────────────────────────
 
+export { type PWChromium } from './types/PWChromium';
 export {
   PluginError,
   MissingKeyError,
@@ -17,9 +16,8 @@ export {
   EngineTimeoutError,
   RequestTimeoutError,
 } from './plugin/errors';
-
 export {
-  BrowserEngine,
+  BrowserEngine as chromium,
   type FetchOptions,
   type FingerprintOptions,
   type Launcher,

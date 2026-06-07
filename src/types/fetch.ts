@@ -1,8 +1,3 @@
-// ─── File: types/fetch.ts ──────────────────────────────────────────────────
-// Bộ lọc fingerprint -- tags, timeLimit, screen resolution, browser version,
-// PerfectCanvas request, custom server.
-// ─────────────────────────────────────────────────────────────────────────────
-
 /**
  * Khoảng thời gian lọc fingerprint theo ngày thu thập.
  * Dùng `*` để không giới hạn thời gian.

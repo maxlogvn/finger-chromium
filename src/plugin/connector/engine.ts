@@ -1,71 +1,52 @@
-// ─── File: connector/bridge.ts ─────────────────────────────────────────────
-// RemoteEngine -- tải, giải nén, và IPC với engine binary (FastExecuteScript.exe).
-// File-based IPC: viết JSON request, chokidar watch phản hồi.
+// ─── File: engine.ts ─────────────────────────────────────────────────────
+// RemoteEngine – quản lý vòng đời của BAS engine process.
 //
-//   1. Khởi tạo -- setCwd, setArgs, setTimeout
-//   2. runFunction() -- start process, tạo request file, watch response
-//   3. startProcess() -- verify checksum, download, extract, spawn
-//   4. updateMeta() -- đọc project.xml, fetch metadata từ bablosoft
+//   1. Khởi tạo với options (cwd, timeout, args)
+//   2. Download/extract engine ZIP
+//   3. Start process với file-based IPC
+//   4. runFunction – gọi method qua request/response file
+//   5. kill – dừng process với fallback SIGKILL
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Imports ─────────────────────────────────────────────────────────────────
 
 import path from 'node:path';
 import * as fs from 'node:fs/promises';
 import { kill } from 'node:process';
-import chokidar from 'chokidar';
-import axios from 'axios';
-import extract from 'extract-zip';
 import EventEmitter from 'node:events';
-import { pipeline } from 'node:stream/promises';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { type ChildProcess, execFile as nodeExecFile } from 'node:child_process';
-import { createReadStream, createWriteStream } from 'node:fs';
-import debugFactory from 'debug';
-import { EngineTimeoutError, InvalidEngineError, PluginError, RequestTimeoutError } from '../errors';
-import { createTimer } from '../../common/timer';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+
+import chokidar from 'chokidar';
+import extract from 'extract-zip';
+import debugFactory from 'debug';
+
+import { EngineTimeoutError, InvalidEngineError, PluginError, RequestTimeoutError } from '../errors';
+import { createTimer } from '@src/common/timer';
+import { Downloader, type DownloadProgress } from './download';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
-
 const debug = debugFactory('browser-with-fingerprints:connector:engine');
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-/** Thời gian tối đa chờ engine đóng (ms). Dùng để tránh treo vô hạn khi kill. */
 export const CLOSE_TIMEOUT = 60_000;
-
-/** Timeout mặc định cho engine (ms). Đủ lớn để tải và khởi động engine lần đầu. */
-export const DEFAULT_TIMEOUT = 300_000;
-
-/** Thời gian chờ SIGKILL sau SIGTERM (ms). Nếu process không chết sau SIGTERM, buộc kill. */
+export const DEFAULT_TIMEOUT = 900_000;
 export const KILL_TIMEOUT = 5_000;
-
-/** Kiến trúc hệ thống: 32-bit hay 64-bit. Dùng để chọn đúng binary engine. */
 export const ARCH = process.arch.includes('32') ? '32' : '64';
-
-/** Thư mục làm việc mặc định của engine (trong project root). */
 export const CWD = path.join(process.cwd(), 'data');
 
-// ─── Package Root Resolution ─────────────────────────────────────────────────
-
-/**
- * Tìm thư mục gốc của package bằng cách đi ngược từ __dirname cho đến khi
- * tìm thấy package.json có name là 'fingerprint-chromium-engine'.
- * Đảm bảo PROJECT_PATH luôn đúng bất kể cấu trúc dist/ thay đổi.
- */
 function resolvePackageRoot(startDir: string): string {
   let current = startDir;
-
   while (true) {
     try {
       const pkg = require(path.join(current, 'package.json'));
       if (pkg.name === 'fingerprint-chromium-engine') return current;
-    } catch {
-      // Chưa tìm thấy -- tiếp tục đi lên
-    }
-
+    } catch {}
     const parent = path.dirname(current);
     if (parent === current) {
       throw new PluginError('[RemoteEngine] Không tìm thấy thư mục gốc của package fingerprint-chromium-engine.');
@@ -73,168 +54,36 @@ function resolvePackageRoot(startDir: string): string {
     current = parent;
   }
 }
-
 const PACKAGE_ROOT = resolvePackageRoot(__dirname);
-
-/** Đường dẫn đến file project.xml chứa cấu hình engine (phiên bản, tham số). */
 export const PROJECT_PATH = path.join(PACKAGE_ROOT, 'project.xml');
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-/**
- * Tuỳ chọn khởi tạo RemoteEngine.
- */
 export interface EngineOptions {
-  /** Thư mục làm việc. Mặc định dùng CWD. */
   cwd?: string;
-  /** Tham số truyền vào tiến trình engine. */
   args?: string[];
-  /** Timeout khởi động engine (ms). */
   engineTimeout?: string | number;
-  /** Timeout chờ phản hồi (ms). */
   requestTimeout?: string | number;
-  /** Hàm spawn process -- dùng để inject mock trong test. Mặc định dùng child_process.execFile. */
   execFile?: typeof nodeExecFile;
-  /** Thời gian chờ process đóng (ms). Mặc định CLOSE_TIMEOUT. */
   closeTimeout?: number;
 }
-
-/**
- * Ghi đè timeout cho một lần gọi runFunction.
- */
 export interface RunFunctionOptions {
-  /** Timeout khởi động engine (ms). Ghi đè engineTimeout toàn cục. */
   engineTimeout?: number;
-  /** Timeout chờ phản hồi (ms). Ghi đè requestTimeout toàn cục. */
   requestTimeout?: number;
 }
-
-/**
- * Metadata engine từ bablosoft.
- */
 export interface EngineMeta {
-  /** Phiên bản engine (VD: 1.2.3). */
   version: string;
-  /** SHA-1 checksum của file zip. Dùng để xác thực tính toàn vẹn. */
   checksum: string;
-  /** URL tải engine. */
   url: string;
 }
-
-/**
- * Kết quả từ engine sau khi thực thi hàm.
- */
 export interface FunctionResult {
-  /** Thông báo lỗi nếu có. */
   error?: string;
-  /** Dữ liệu phản hồi thành công. */
   response?: unknown;
   [key: string]: unknown;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── RemoteEngine ────────────────────────────────────────────────────────────
 
-/**
- * Kiểm tra file hoặc thư mục tồn tại.
- * Dùng fs.access để tránh exception khi không tìm thấy.
- */
-export async function exists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Tính SHA-1 checksum của file.
- * Dùng pipeline và stream để xử lý file lớn mà không tốn RAM.
- */
-export async function checksum(filePath: string): Promise<string> {
-  const reader = createReadStream(filePath);
-  const hash = createHash('sha1');
-  await pipeline(reader, hash);
-  return hash.digest('hex');
-}
-
-/**
- * Tải file từ URL về đĩa, có fallback HTTPS -> HTTP.
- * Dùng file tạm .tmp để tránh ghi trực tiếp vào đích (tránh file hỏng nếu tải thất bại).
- */
-export async function download(url: string, filePath: string): Promise<void> {
-  const httpsUrl = url.replace(/^http:/, 'https:');
-  const tmpPath = filePath + '.tmp';
-  const writer = createWriteStream(tmpPath);
-  try {
-    try {
-      const response = await axios.get(httpsUrl, { responseType: 'stream' });
-      await pipeline(response.data, writer);
-    } catch (err) {
-      const axiosErr = err as { code?: string; response?: { status: number } };
-      // Fallback sang HTTP nếu gặp lỗi network (không fallback cho 4xx/5xx vì đó là lỗi server)
-      if (
-        axiosErr.code === 'ERR_NETWORK' ||
-        axiosErr.code === 'ECONNREFUSED' ||
-        axiosErr.code === 'ECONNRESET' ||
-        !axiosErr.response
-      ) {
-        debug(`HTTPS download failed, falling back to HTTP: ${url}`);
-        const response = await axios.get(url, { responseType: 'stream' });
-        await pipeline(response.data, writer);
-      } else {
-        throw err;
-      }
-    }
-
-    // Rename temp file to target, fallback to copy+unlink if cross-device
-    try {
-      await fs.rename(tmpPath, filePath);
-    } catch (renameErr) {
-      const renameError = renameErr as NodeJS.ErrnoException;
-      if (renameError.code === 'EXDEV') {
-        await fs.copyFile(tmpPath, filePath);
-        await fs.unlink(tmpPath);
-      } else {
-        throw renameErr;
-      }
-    }
-  } catch (err) {
-    await fs.unlink(tmpPath).catch(() => {});
-    throw err;
-  }
-}
-
-/**
- * Wrapper axios request -- thử HTTPS trước, fallback HTTP nếu lỗi network.
- * Chỉ fallback khi là lỗi network (không fallback cho 4xx/5xx) vì các lỗi đó cần được báo lên caller.
- */
-export async function fetchWithFallback<T = unknown>(url: string, options?: Record<string, unknown>) {
-  const httpsUrl = url.replace(/^http:/, 'https:');
-  try {
-    return await axios.get<T>(httpsUrl, options);
-  } catch (httpsErr) {
-    const axiosErr = httpsErr as { code?: string; response?: { status: number } };
-    if (
-      axiosErr.code === 'ERR_NETWORK' ||
-      axiosErr.code === 'ECONNREFUSED' ||
-      axiosErr.code === 'ECONNRESET' ||
-      !axiosErr.response
-    ) {
-      debug(`HTTPS failed, falling back to HTTP: ${url}`);
-      return await axios.get<T>(url, options);
-    }
-    throw httpsErr;
-  }
-}
-
-// ─── RemoteEngine Class ───────────────────────────────────────────────────────
-
-/**
- * Engine từ xa -- quản lý vòng đời của FastExecuteScript.exe.
- * Giao tiếp qua file-based IPC: ghi JSON request, chokidar watch response.
- * Tự động tải, verify checksum, giải nén engine khi cần.
- */
 export default class RemoteEngine extends EventEmitter {
   #meta: EngineMeta | null = null;
   #cwd: string | null = null;
@@ -255,64 +104,44 @@ export default class RemoteEngine extends EventEmitter {
     this.setRequestTimeout(options.requestTimeout);
   }
 
-  /**
-   * Thiết lập thư mục làm việc cho engine.
-   * Đường dẫn được resolve tuyệt đối để tránh phụ thuộc CWD hiện tại.
-   */
+  // ─── Configuration Methods ─────────────────────────────────────────────────
+
   setCwd(value?: string): void {
     this.#cwd = path.resolve(value || CWD);
   }
 
-  /**
-   * Thiết lập tham số dòng lệnh truyền cho engine.
-   */
   setArgs(value?: string[]): void {
     this.#args = Array.isArray(value) ? value : [];
   }
 
-  /**
-   * Thiết lập timeout khởi động engine (ms).
-   * Nếu giá trị <=0, dùng DEFAULT_TIMEOUT.
-   */
   setEngineTimeout(value?: string | number): void {
-    const timeout = Number(value) || 0;
-    this.#engineTimeout = timeout >= 0 ? timeout : DEFAULT_TIMEOUT;
+    const timeout = Number(value);
+    this.#engineTimeout = timeout > 0 ? timeout : DEFAULT_TIMEOUT;
   }
 
-  /** Lấy timeout chờ phản hồi hiện tại (ms). */
   get requestTimeout(): number {
     return this.#requestTimeout;
   }
 
-  /**
-   * Thiết lập timeout chờ phản hồi từ engine (ms).
-   * Nếu giá trị <=0, dùng DEFAULT_TIMEOUT.
-   */
   setRequestTimeout(value?: string | number): void {
-    const timeout = Number(value) || 0;
-    this.#requestTimeout = timeout >= 0 ? timeout : DEFAULT_TIMEOUT;
+    const timeout = Number(value);
+    this.#requestTimeout = timeout > 0 ? timeout : DEFAULT_TIMEOUT;
   }
 
-  /**
-   * Gọi hàm trên engine -- tạo request file, chokidar watch response.
-   * Dọn dẹp request file cũ không còn process sở hữu trước khi tạo mới
-   * để tránh xung đột watcher và rác file từ các phiên bản trước.
-   */
+  // ─── Runtime Methods ───────────────────────────────────────────────────────
+
   async runFunction(
     name: string,
     params: unknown,
     { engineTimeout = this.#engineTimeout, requestTimeout = this.#requestTimeout }: RunFunctionOptions = {}
   ): Promise<FunctionResult> {
-    if (!this.#meta) await this.#updateMeta();
-
+    if (!this.#meta) await this.#updateMeta(engineTimeout);
     const engineProcess = await this.#startProcess(engineTimeout);
     debug(`Đang gọi method "${name}" (timeout: ${requestTimeout}ms)`);
-
     const requestDir = path.join(path.dirname(engineProcess.spawnfile), 'r');
-    await fs.mkdir(requestDir, { recursive: true });
-
-    // --- Bước 1: Dọn dẹp file request cũ không còn process cha
-    // Các process cũ có thể đã chết nhưng file còn sót lại, gây nhiễu cho watcher mới.
+    await fs.mkdir(requestDir, {
+      recursive: true,
+    });
     for (const requestName of await fs.readdir(requestDir)) {
       try {
         const pid = Number(requestName.split('_')[0]);
@@ -326,28 +155,29 @@ export default class RemoteEngine extends EventEmitter {
         }
       }
     }
-
-    // --- Bước 2: Tạo file request JSON
     const requestPath = path.join(requestDir, `${engineProcess.pid}_${randomUUID()}.json`);
     debug(`Tạo file request mới cho hàm "${name}" - ${requestPath}`);
-    await fs.writeFile(requestPath, JSON.stringify({ name, params }));
-
-    // --- Bước 3: Watch phản hồi từ engine (file change)
-    const requestWatcher = chokidar.watch(requestPath, { awaitWriteFinish: true });
+    await fs.writeFile(
+      requestPath,
+      JSON.stringify({
+        name,
+        params,
+      })
+    );
+    const requestWatcher = chokidar.watch(requestPath, {
+      awaitWriteFinish: true,
+    });
     let responseStr: string | undefined;
-
     try {
       responseStr = await new Promise<string>((resolve, reject) => {
         let requestTimer: ReturnType<typeof createTimer> | undefined;
         let closeTimer: ReturnType<typeof createTimer> | undefined;
-
         if (requestTimeout) {
           requestTimer = createTimer(requestTimeout);
           requestTimer.promise.then(() => {
             reject(new RequestTimeoutError(`Hết thời gian chờ khi gọi method "${name}".`));
           });
         }
-
         const closeHandler = () => {
           closeTimer = createTimer(this.#closeTimeout);
           closeTimer.promise.then(() => {
@@ -355,80 +185,89 @@ export default class RemoteEngine extends EventEmitter {
             resolve('');
           });
         };
-
         requestWatcher.on('change', async () => {
           const content = await fs.readFile(requestPath, 'utf8');
           debug('Đã nhận kết quả từ engine thành công');
-
           requestTimer?.clear();
           closeTimer?.clear();
           engineProcess.off('close', closeHandler);
-
           await fs.unlink(requestPath);
           resolve(content);
         });
-
         engineProcess.once('close', closeHandler);
       });
     } finally {
       await requestWatcher.close();
     }
-
-    // --- Bước 4: Parse kết quả JSON
-    if (!responseStr) return { error: 'Engine process closed unexpectedly' };
+    if (!responseStr)
+      return {
+        error: 'Engine process closed unexpectedly',
+      };
     try {
       return JSON.parse(responseStr) as FunctionResult;
     } catch {
-      return { error: 'Invalid response format from engine' };
+      return {
+        error: 'Invalid response format from engine',
+      };
     }
   }
 
-  /**
-   * Khởi tạo tiến trình engine -- download + extract + spawn.
-   * Kiểm tra checksum, xoá engine cũ nếu checksum không khớp để đảm bảo tính toàn vẹn.
-   */
+  // ─── Process Management ────────────────────────────────────────────────────
+
   async #startProcessInternal(): Promise<ChildProcess> {
     const scriptDir = path.join(this.#cwd!, 'script', this.#meta!.version);
     const engineDir = path.join(this.#cwd!, 'engine', this.#meta!.version);
     const zipPath = path.join(engineDir, `FastExecuteScript.x${ARCH}.zip`);
-
-    // --- Bước 1: Kiểm tra checksum -- xoá engine cũ nếu sai (tránh dùng binary hỏng)
-    if (this.#meta && (await exists(zipPath))) {
-      if (this.#meta.checksum !== (await checksum(zipPath))) {
-        await fs.rm(engineDir, { recursive: true, force: true });
+    const tmpPath = zipPath + '.tmp';
+    if (await Downloader.exists(tmpPath)) {
+      await fs.unlink(tmpPath).catch(() => {});
+      debug('Đã xoá file .tmp còn sót từ lần tải trước');
+    }
+    if (this.#meta?.checksum && (await Downloader.exists(zipPath))) {
+      if (this.#meta.checksum !== (await Downloader.checksum(zipPath))) {
+        await fs.rm(engineDir, {
+          recursive: true,
+          force: true,
+        });
         debug('Đã xóa engine bị lỗi (sai checksum)');
       }
     }
-
-    // --- Bước 2: Download engine nếu chưa có
-    if (!(await exists(engineDir))) {
-      this.emit('beforeDownload');
-      await fs.mkdir(engineDir, { recursive: true });
-      await download(this.#meta!.url, zipPath);
-      debug('Engine tải xuống thành công');
+    if (!(await Downloader.exists(zipPath))) {
+      await fs.mkdir(engineDir, {
+        recursive: true,
+      });
+      const localZip = path.join(PACKAGE_ROOT, 'plugin', `FastExecuteScript.x${ARCH}.zip`);
+      if (await Downloader.exists(localZip)) {
+        await fs.copyFile(localZip, zipPath);
+        debug('Engine copied from local zip');
+      } else {
+        this.emit('beforeDownload');
+        const onProgress = (p: DownloadProgress) => this.emit('downloadProgress', p);
+        await Downloader.download(this.#meta!.url, zipPath, onProgress, this.#engineTimeout);
+        debug('Engine tải xuống thành công');
+      }
     }
-
-    // --- Bước 3: Giải nén engine nếu chưa có
-    if (!(await exists(scriptDir))) {
+    if (!(await Downloader.exists(scriptDir))) {
       this.emit('beforeExtract');
-      await fs.mkdir(scriptDir, { recursive: true });
-      await extract(zipPath, { dir: scriptDir });
+      await fs.mkdir(scriptDir, {
+        recursive: true,
+      });
+      await extract(zipPath, {
+        dir: scriptDir,
+      });
       debug('Engine giải nén thành công');
     }
-
-    // --- Bước 4: Copy project.xml + tạo file cấu hình
     await fs.copyFile(PROJECT_PATH, path.join(scriptDir, 'project.xml'));
     await fs.writeFile(path.join(scriptDir, 'worker_command_line.txt'), '--mock-connector');
     await fs.writeFile(path.join(scriptDir, 'settings.ini'), 'RunProfileRemoverImmediately=true');
-
     debug(`Đang khởi chạy tiến trình engine (cwd: ${scriptDir})`);
-
-    // --- Bước 5: Spawn FastExecuteScript.exe
     return new Promise<ChildProcess>((resolve, reject) => {
       const proc = this.#execFile(
         path.join(scriptDir, 'FastExecuteScript.exe'),
         ['--silent', ...this.#args],
-        { cwd: scriptDir },
+        {
+          cwd: scriptDir,
+        },
         (error) => {
           if (error) {
             reject(new InvalidEngineError(`Không thể khởi chạy tiến trình engine (mã lỗi: ${error.code})`));
@@ -440,10 +279,6 @@ export default class RemoteEngine extends EventEmitter {
     });
   }
 
-  /**
-   * Kiểm tra tiến trình engine còn sống hay không.
-   * Dùng signal 0 (không gửi signal thật) để kiểm tra PID tồn tại mà không ảnh hưởng.
-   */
   #isProcessAlive(proc?: ChildProcess): boolean {
     if (!proc) return false;
     if (proc.killed) return false;
@@ -455,57 +290,32 @@ export default class RemoteEngine extends EventEmitter {
     }
   }
 
-  /**
-   * Kill engine process -- dừng FastExecuteScript.exe và đợi process thoát hẳn.
-   * Dùng timeout + SIGKILL fallback để tránh treo vô hạn (process có thể bị treo và không phản hồi SIGTERM).
-   * Cleaner sẽ không chạy khi process còn ghi file -- tránh EBUSY trên Windows.
-   *
-   * @param timeout - Thời gian chờ process thoát (ms), mặc định KILL_TIMEOUT
-   */
   async kill(timeout = KILL_TIMEOUT): Promise<void> {
     if (!this.#process || this.#process.killed) return;
     const proc = this.#process;
-
     const exitPromise = new Promise<void>((resolve) => {
       proc.once('exit', () => resolve());
     });
-
-    // --- Bước 1: Kiểm tra process đã exit trước khi gửi tín hiệu
-    // Nếu process đã thoát trước khi listener 'exit' được đăng ký,
-    // exitPromise sẽ không bao giờ resolve -- gây treo vô hạn.
     if (proc.exitCode !== null) {
       this.#process = undefined;
       return;
     }
-
-    // --- Bước 2: Gửi SIGTERM, nếu không chết sau timeout thì SIGKILL
     proc.kill();
-
     const sigkillTimer = createTimer(timeout);
     sigkillTimer.promise.then(() => {
       proc.kill('SIGKILL');
     });
-
     await exitPromise;
     sigkillTimer.clear();
     this.#process = undefined;
   }
 
-  /**
-   * Lấy tiến trình engine đang chạy, hoặc spawn mới nếu chưa có.
-   * Cache process để tránh spawn lại mỗi lần gọi API (engine chỉ cần một instance).
-   * Chỉ áp dụng timeout khi thực sự spawn process mới.
-   */
   async #startProcess(timeout?: number): Promise<ChildProcess> {
-    // --- Bước 1: Tái sử dụng process nếu còn sống
     if (this.#isProcessAlive(this.#process)) {
       debug('Tái sử dụng tiến trình engine hiện tại');
       return this.#process!;
     }
-
-    // --- Bước 2: Spawn mới, có timeout nếu được yêu cầu
     if (!timeout) return await this.#startProcessInternal();
-
     let timer: NodeJS.Timeout | null = null;
     const engineProcess = await Promise.race<ChildProcess>([
       this.#startProcessInternal(),
@@ -516,43 +326,20 @@ export default class RemoteEngine extends EventEmitter {
         ).unref();
       }),
     ]);
-
     if (timer) clearTimeout(timer);
     return engineProcess;
   }
 
-  /**
-   * Đọc metadata engine -- từ cache hoặc fetch từ bablosoft.
-   * Cache theo version_ARCH.json để tránh request mỗi lần (metadata ít thay đổi).
-   */
-  async #updateMeta(): Promise<void> {
-    // --- Bước 1: Đọc project.xml để lấy version engine
+  async #updateMeta(_timeout: number = DEFAULT_TIMEOUT): Promise<void> {
     const project = await fs.readFile(PROJECT_PATH, 'utf8');
     const versionMatch = project.match(/<EngineVersion>(\d+\.\d+\.\d+)<\/EngineVersion>/);
     if (!versionMatch) throw new InvalidEngineError('Không thể đọc phiên bản Engine từ project.xml');
-
     const version = versionMatch[1];
     debug(`Cập nhật metadata cho engine (arch: ${ARCH}, version: ${version})`);
-
-    const url = `https://bablosoft.com/distr/FastExecuteScript${ARCH}/${version}/FastExecuteScript.x${ARCH}.zip.meta.json`;
-    const metaPath = path.join(this.#cwd!, `${version}_${ARCH}.json`);
-
-    // --- Bước 2: Dùng cache nếu có
-    if (await exists(metaPath)) {
-      debug(`Sử dụng metadata đã lưu tại ${metaPath}`);
-      this.#meta = JSON.parse(await fs.readFile(metaPath, 'utf8'));
-    } else {
-      // --- Bước 3: Fetch metadata mới từ bablosoft
-      debug(`Yêu cầu metadata mới từ ${url}`);
-      const { data } = await fetchWithFallback<{ Checksum: string; Url: string }>(url);
-      this.#meta = {
-        checksum: data.Checksum,
-        url: data.Url,
-        version,
-      };
-
-      await fs.mkdir(path.dirname(metaPath), { recursive: true });
-      await fs.writeFile(metaPath, JSON.stringify(this.#meta));
-    }
+    this.#meta = {
+      version,
+      checksum: '',
+      url: `https://github.com/maxlogvn/finger-chromium/releases/download/engine-v${version}/FastExecuteScript.x${ARCH}.zip`,
+    };
   }
 }

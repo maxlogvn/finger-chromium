@@ -1,242 +1,197 @@
-// ─── File: adapter/playwright/fluent.ts ──────────────────────────────────
-// Namespace điều khiển trình duyệt Fluent với hỗ trợ fingerprint, proxy và profile.
+// ─── File: fluent.ts ──────────────────────────────────────────────────────
+// Điều khiển trình duyệt với hỗ trợ fingerprint, proxy và profile.
 //
-//   1. Tạo instance mới: `new BrowserEngine()` — mỗi instance độc lập
-//   2. Đăng ký cấu hình (fingerprint, proxy, profile) qua Fluent API
-//   3. Khởi động engine -- launch()
-//   4. Tạo Playwright BrowserContext -- newContext()
-//   5. Dọn dẹp tài nguyên và lưu profile -- quit()
+//   const engine = await new BrowserEngine()
+//     .useFingerprint(data)
+//     .useProxy(proxy)
+//     .useProfile(dirPath)
+//     .launch();
+//
+//   const context = await engine.newContext();
+//   await engine.close();
 // ─────────────────────────────────────────────────────────────────────────────
 
-import path from 'node:path';
+// ─── Imports ──────────────────────────────────────────────────────────────────
 
+import path from 'node:path';
 import type { BrowserContext, BrowserType } from 'playwright-core';
 
 import { PlaywrightFingerprintPlugin } from './bridge';
-import type Connector from '../../plugin/connector';
 import { AdapterDataManager } from './data';
 import { PluginError } from '@src/plugin/errors';
-
+import { collectErrors } from './utils';
 import type { PWChromium } from '@src/types/PWChromium';
-import type { ProfileOptions } from '@src/types/profile';
-import type { FingerprintOptions } from '@src/types/fingerprint';
-import type { ProxyOptions } from '@src/types/proxy';
 import type { FetchOptions } from '@src/types/fetch';
+import type { FingerprintOptions } from '@src/types/fingerprint';
+import type { ProfileOptions } from '@src/types/profile';
+import type { ProxyOptions } from '@src/types/proxy';
+import type Connector from '../../plugin/connector';
+
+export type { ProfileOptions, FingerprintOptions, ProxyOptions, FetchOptions };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/**
- * Re-export các tùy chọn phổ biến để người dùng không cần import sâu vào package.
- * Giữ cho API bề mặt luôn gọn – chỉ cần import từ `fluent.ts`.
- */
-export type { ProfileOptions, FingerprintOptions, ProxyOptions, FetchOptions };
-
-/** Options cho launchPersistentContext -- trích xuất từ kiểu Playwright. */
 export type PluginLaunchOptions = Parameters<BrowserType['launchPersistentContext']>[1];
-
-/** Launcher có thể tuỳ chỉnh -- cho phép dùng Playwright patch hoặc mặc định. */
 export type Launcher = Pick<BrowserType, 'launch' | 'launchPersistentContext'>;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Key bảo mật từ biến môi trường BABLOSOFT_KEY -- dùng cho API engine. */
 export const PRIVATE_KEY = process.env.BABLOSOFT_KEY ?? '';
-
-/** Thư mục tạm cho browser đang chạy -- lưu profile runtime, bị xoá khi quit. */
-export const BROWSER_RUNNING_DIR = path.join(process.cwd(), process.env.BROWSER_RUNNING_DIR ?? '.tmp/browser/running');
-
-/** Thư mục làm việc của engine -- nơi giải nén và chạy worker.exe. */
 export const ENGINE_WORKING_DIR = path.join(process.cwd(), process.env.ENGINE_WORKING_DIR ?? '.tmp/browser/engine');
-
-/**
- * Options mặc định cho context -- headless: false vì fingerprint check phát hiện headless,
- * hasTouch: true để giả lập thiết bị cảm ứng.
- */
+export const BROWSER_RUNNING_DIR = path.join(process.cwd(), process.env.BROWSER_RUNNING_DIR ?? '.tmp/browser/running');
+export const DEFAULT_PROFILE_DIR = path.join(process.cwd(), 'data', 'profiles', 'default');
 export const DEFAULT_CONTEXT_OPTIONS: PluginLaunchOptions = {
   headless: false,
   hasTouch: true,
 };
+export const DEFAULT_FINGERPRINT_OPTIONS: FetchOptions = {
+  tags: ['Microsoft Windows', 'Chrome'],
+};
 
+// ─── BrowserEngine ────────────────────────────────────────────────────────────
 
-/**
- * Engine điều khiển Fluent -- tích hợp fingerprint, proxy, profile.
- * Dùng `new BrowserEngine()` để tạo instance riêng cho mỗi session.
- */
 export class BrowserEngine implements PWChromium {
-  public engine: PlaywrightFingerprintPlugin;
-
-  private options: PluginLaunchOptions;
-  private privateKey: string;
-  private readonly engineWorkingDirPath: string;
-  private readonly dataManager: AdapterDataManager;
+  private launcher?: Launcher;
+  private connector?: Connector;
+  private fingerprintData?: [string, FingerprintOptions?];
+  private proxyData?: [string, ProxyOptions?];
+  private profileDirPath?: string;
   private saveProfileDirPath?: string;
-  private profileData: [string, ProfileOptions?];
+  private profileOptions?: ProfileOptions;
 
-  // ─── Runtime ──────────────────────────────────────────────────────────────
-
+  // Khởi tạo lazy trong launch() -- undefined trước khi launch()
+  private _engine!: PlaywrightFingerprintPlugin;
+  private dataManager!: AdapterDataManager;
+  private launchOptions: PluginLaunchOptions = { ...DEFAULT_CONTEXT_OPTIONS };
+  private profileData!: [string, ProfileOptions?];
   private context?: BrowserContext;
   private isLaunched = false;
-  private fingerprints?: [string, FingerprintOptions?];
-  private proxyData?: [string, ProxyOptions?];
+  private contextCreating = false;
+
+  // ─── Static shortcuts ──────────────────────────────────────────────────────
 
   /**
-   * @param launcher - Playwright launcher tuỳ chỉnh (dùng để test hoặc thay thế browser)
-   * @param connector - Connector tuỳ chỉnh (dùng để test với mock connector)
+   * Fetch một fingerprint mới độc lập, không cần tạo BrowserEngine đầy đủ.
+   * Engine tạm được cleanup tự động sau khi fetch xong.
    */
-  constructor(launcher?: Launcher, connector?: Connector) {
-    this.engine = new PlaywrightFingerprintPlugin(launcher, connector);
-    this.options = { ...DEFAULT_CONTEXT_OPTIONS };
-    this.privateKey = PRIVATE_KEY;
-    this.engineWorkingDirPath = ENGINE_WORKING_DIR;
-    this.dataManager = new AdapterDataManager();
-    this.profileData = [path.join(BROWSER_RUNNING_DIR, 'profile')];
+  static async newFingerprint(options: FetchOptions = DEFAULT_FINGERPRINT_OPTIONS): Promise<string> {
+    const engine = new PlaywrightFingerprintPlugin();
+    engine.setServiceKey(PRIVATE_KEY);
+    engine.setWorkingFolder(ENGINE_WORKING_DIR);
+    return engine.fetch(options);
   }
 
-  // ─── Configuration Methods ────────────────────────────────────────────────
+  // ─── Fluent config ─────────────────────────────────────────────────────────
 
-  /**
-   * Thay thế Playwright launcher mặc định bằng bản patch -- dùng khi cần custom.
-   *
-   * @param launcher - Launcher tuỳ chỉnh (phải hỗ trợ launch + launchPersistentContext)
-   */
-  repackChromium(launcher: Launcher): this {
-    this.engine = new PlaywrightFingerprintPlugin(launcher);
-    return this;
-  }
-
-  /**
-   * Gắn fingerprint cho browser -- data và tuỳ chọn làm nhiễu WebGL, Audio, Canvas...
-   *
-   * @param data - Fingerprint data (JSON string)
-   * @param options - PerfectCanvas, WebGL noise, Audio noise...
-   */
   useFingerprint(data: string, options?: FingerprintOptions): this {
-    this.fingerprints = [data, options];
+    this.fingerprintData = [data, options];
     return this;
   }
 
-  /**
-   * Định tuyến traffic qua proxy -- HTTP/HTTPS/SOCKS4/SOCKS5.
-   *
-   * @param data - URL proxy (vd: http://user:pass@host:port)
-   * @param options - timezone, geolocation, WebRTC, DNS...
-   */
   useProxy(data: string, options?: ProxyOptions): this {
     this.proxyData = [data, options];
     return this;
   }
 
   /**
-   * Liên kết profile -- thư mục chứa cookie, localStorage.
-   * Profile được map sang thư mục tạm tránh corrupt dữ liệu gốc.
-   *
-   * @param dirPath - Đường dẫn thư mục profile
-   * @param options - loadProxy, loadFingerprint từ profile cũ
+   * Đặt thư mục profile để đọc khi khởi động.
+   * Mặc định cũng lưu về đây khi close().
+   * Để lưu sang nơi khác, truyền path vào close(saveDataPath).
    */
   useProfile(dirPath: string, options?: ProfileOptions): this {
+    this.profileDirPath = dirPath;
     this.saveProfileDirPath = dirPath;
-    this.profileData = [this.dataManager.map(dirPath), options];
+    this.profileOptions = options;
     return this;
   }
 
-  // ─── Lifecycle Methods ────────────────────────────────────────────────────
+  useLauncher(launcher: Launcher, connector?: Connector): this {
+    this.launcher = launcher;
+    this.connector = connector;
+    return this;
+  }
+
+  // ─── Lifecycle ─────────────────────────────────────────────────────────────
 
   /**
-   * Khởi động engine -- hợp nhất options, đăng ký key, cấu hình engine.
-   * Chỉ được gọi một lần, throw error nếu gọi lại.
+   * Khởi tạo engine và apply toàn bộ config.
+   * Phải gọi trước newContext(). Chỉ được gọi một lần.
    */
   launch(options: Partial<PluginLaunchOptions> = {}): this {
     if (this.isLaunched) {
-      throw new PluginError('[BrowserEngine] Phuong thuc launch() chi duoc goi mot lan.');
+      throw new PluginError('[BrowserEngine] launch() chỉ được gọi một lần.');
     }
 
-    // --- Bước 1: Hợp nhất options -- mặc định < cấu hình trước < truyền vào lúc launch
-    this.options = { ...this.options, ...options };
+    // Khởi tạo nội bộ -- lazy, chỉ xảy ra ở đây
+    this._engine = new PlaywrightFingerprintPlugin(this.launcher, this.connector);
+    this.dataManager = new AdapterDataManager();
+    this.launchOptions = { ...DEFAULT_CONTEXT_OPTIONS, ...options };
 
-    // --- Bước 2: Cấu hình engine với key, thư mục làm việc và profile
-    this.engine.setServiceKey(this.privateKey);
-    this.engine.setWorkingFolder(this.engineWorkingDirPath);
-    this.engine.useProfile(...this.profileData);
+    const profileDir = this.profileDirPath ?? DEFAULT_PROFILE_DIR;
+    this.saveProfileDirPath ??= profileDir;
+    const profilePath = this.dataManager.map(profileDir);
+    this.profileData = [profilePath, this.profileOptions];
 
-    // --- Bước 3: Đăng ký proxy và fingerprint nếu đã được cấu hình
-    if (this.proxyData) this.engine.useProxy(...this.proxyData);
-    if (this.fingerprints) this.engine.useFingerprint(...this.fingerprints);
+    this._engine.setServiceKey(PRIVATE_KEY);
+    this._engine.setWorkingFolder(ENGINE_WORKING_DIR);
+    this._engine.useProfile(...this.profileData);
+    if (this.proxyData) this._engine.useProxy(...this.proxyData);
+    if (this.fingerprintData) this._engine.useFingerprint(...this.fingerprintData);
 
     this.isLaunched = true;
     return this;
   }
 
   /**
-   * Tạo Playwright BrowserContext với fingerprint/proxy/profile đã cấu hình.
-   * Phải gọi launch() trước. Chỉ tạo được một context -- gọi quit() trước nếu muốn tạo mới.
-   *
-   * @param options - Context options (viewport, geolocation...)
-   * @returns BrowserContext đã inject fingerprint
+   * Tạo BrowserContext mới. Phải gọi launch() trước.
+   * Mỗi instance chỉ giữ một context -- gọi close() trước khi tạo context mới.
    */
   async newContext(options: Partial<PluginLaunchOptions> = {}): Promise<BrowserContext> {
     if (!this.isLaunched) {
-      throw new PluginError('[BrowserEngine] Phai goi launch() truoc khi tao context.');
+      throw new PluginError('[BrowserEngine] Phải gọi launch() trước khi tạo context.');
     }
     if (this.context) {
-      throw new PluginError('[BrowserEngine] Context da duoc tao. Vui long goi quit() truoc khi tao moi.');
+      throw new PluginError('[BrowserEngine] Context đã được tạo. Gọi close() trước khi tạo mới.');
+    }
+    if (this.contextCreating) {
+      throw new PluginError('[BrowserEngine] Đang tạo context, không được gọi đồng thời.');
     }
 
-    this.options = { ...this.options, ...options };
-    this.context = await this.engine.launchPersistentContext(this.profileData[0], this.options);
-    return this.context;
+    this.contextCreating = true;
+    try {
+      const mergedOptions = { ...this.launchOptions, ...options };
+      this.context = await this._engine.launchPersistentContext(this.profileData[0], mergedOptions);
+      return this.context;
+    } finally {
+      this.contextCreating = false;
+    }
   }
 
   /**
-   * Lấy fingerprint mới từ service -- gọi lại API fetch.
-   *
-   * @param options - Bộ lọc fingerprint (tags, time...)
-   * @returns JSON string fingerprint
+   * Đóng context, lưu profile nếu cần, dọn dẹp engine.
+   * An toàn khi gọi nhiều lần -- lần thứ hai trở đi là no-op.
    */
-  async newFingerprint(options: FetchOptions | undefined): Promise<string> {
-    return await this.engine.fetch(options);
-  }
-
-  /**
-   * Dọn dẹp tài nguyên -- đóng context, lưu profile, unmap thư mục tạm.
-   * An toàn khi gọi nhiều lần (kiểm tra isLaunched).
-   *
-   * @param saveDataPath - Đường dẫn lưu profile (ghi đè lên đường dẫn gốc nếu có)
-   */
-  async quit(saveDataPath?: string): Promise<void> {
+  async close(saveDataPath?: string): Promise<void> {
     if (!this.isLaunched) return;
     this.isLaunched = false;
 
-    if (this.context) {
-      // --- Bước 1: Đóng context -- giải phóng port, process
-      await this.context.close();
-      this.context = undefined;
+    const ctx = this.context;
+    this.context = undefined;
 
-      // --- Bước 2: Lưu profile -- map từ thư mục tạm về thư mục đích
-      const targetSavePath = saveDataPath ?? this.saveProfileDirPath;
-      if (targetSavePath) {
-        this.dataManager.map(this.profileData[0], targetSavePath);
-      }
-    }
+    const targetSavePath = saveDataPath ?? this.saveProfileDirPath;
 
-    // --- Bước 3: Dọn dẹp engine -- kill worker.exe, engine process, PCAP server, cleaner, mutex
-    await this.engine.cleanup();
+    const errs = await collectErrors(
+      ['close-context', () => ctx?.close()],
+      [
+        'save-profile',
+        () => {
+          if (targetSavePath) this.dataManager.map(this.profileData[0], targetSavePath);
+        },
+      ],
+      ['cleanup-engine', () => this._engine.cleanup()],
+      ['dispose-data', () => this.dataManager.dispose()]
+    );
 
-    // --- Bước 4: Dọn dẹp thư mục tạm của instance hiện tại
-    this.dataManager.dispose();
+    if (errs.length) throw new PluginError(`[BrowserEngine] close() failed:\n${errs.join('\n')}`);
   }
 }
-
-// ─── Export ───────────────────────────────────────────────────────────────────
-
-/**
- * Alias backward compatibility cho code cũ import `Fluent`.
- * Giờ là class, không phải instance — dùng `new BrowserEngine()` hoặc `new Fluent()`.
- *
- * @example
- * const engine = new BrowserEngine();
- * const context = await engine
- *   .useFingerprint(fp)
- *   .launch()
- *   .newContext();
- */
-export const Fluent = BrowserEngine;

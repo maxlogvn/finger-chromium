@@ -1,8 +1,3 @@
-// ─── File: types/proxy.ts ──────────────────────────────────────────────────
-// Tuỳ chọn proxy -- định tuyến traffic, đồng bộ timezone/geolocation,
-// WebRTC, DNS, tunneling, QUIC, IP detection.
-// ─────────────────────────────────────────────────────────────────────────────
-
 /**
  * Phương thức trích xuất địa chỉ IP từ response của service URL.
  *
@@ -163,7 +158,7 @@ export interface ProxyOptions {
   ipInfoMethod?: 'database' | 'ip-api.com';
 
   /**
-   * API key của dịch vụ [ip-api.com](https://ip-api.com/) (bản trả phí).
+   * API key của dịch vụ ip-api.com (bản trả phí).
    * Chỉ có hiệu lực khi `ipInfoMethod` là `ip-api.com`.
    *
    * @default ''
