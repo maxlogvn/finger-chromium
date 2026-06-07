@@ -24,24 +24,19 @@ Khác với các thư viện stealth thông thường can thiệp vào JavaScrip
 
 ## Tính năng
 
-| Tính năng | Mô tả |
-| --- | --- |
-| **Fingerprint thật** | Inject từ thiết bị thực tế ở tầng C/C++, không để lại vết override JS. |
-| **Proxy đồng bộ** | Tự động đồng bộ timezone, geolocation, WebRTC, DNS theo proxy. |
-| **Profile bền vững** | Lưu cookie, localStorage, session giữa các phiên, tránh corrupt dữ liệu. |
-| **PerfectCanvas** | Render canvas chính xác theo fingerprint thật, tránh canvas fingerprinting. |
-| **Nhiễu phần cứng** | Làm nhiễu WebGL, Audio, Canvas để che giấu thông tin phần cứng thật. |
-| **Chỉ Windows** | Hỗ trợ Windows 10/11 (32-bit và 64-bit). |
+- **[Fingerprint thật](docs/fingerprint.md)** — Inject từ thiết bị thực tế ở tầng C/C++, không để lại vết override JS.
+- **[Proxy đồng bộ](docs/proxy.md)** — Tự động đồng bộ timezone, geolocation, WebRTC, DNS theo proxy.
+- **[Profile bền vững](docs/profile.md)** — Lưu cookie, localStorage, session giữa các phiên, tránh corrupt dữ liệu.
+- **[PerfectCanvas](docs/fingerprint.md#perfectcanvas)** — Render canvas chính xác theo fingerprint thật, tránh canvas fingerprinting.
+- **Chỉ Windows** — Hỗ trợ Windows 10/11 (32-bit và 64-bit).
 
 ---
 
 ## Yêu cầu hệ thống
 
-| Thành phần | Yêu cầu |
-| --- | --- |
-| Node.js | >= 18.0.0 |
-| Playwright | >= 1.60.0 |
-| Hệ điều hành | Windows 10/11 (32-bit hoặc 64-bit) |
+- Node.js >= 18.0.0
+- Playwright >= 1.60.0
+- Windows 10/11 (32-bit hoặc 64-bit)
 
 ---
 
@@ -86,6 +81,8 @@ const browser = new BrowserEngine()
   .launch();
 ```
 
+Xem thêm: [docs/fingerprint.md](docs/fingerprint.md)
+
 ### Thêm proxy
 
 ```ts
@@ -100,6 +97,8 @@ const browser = new BrowserEngine()
   .launch();
 ```
 
+Xem thêm: [docs/proxy.md](docs/proxy.md)
+
 ### Tải lại profile
 
 ```ts
@@ -113,27 +112,17 @@ const browser = new BrowserEngine()
   .launch();
 ```
 
+Xem thêm: [docs/profile.md](docs/profile.md)
+
 ---
 
-## Tài liệu
+## Tài liệu tham khảo
 
-### Hướng dẫn
-
-| Tài liệu | Mô tả |
-| --- | --- |
-| [docs/getting-started.md](docs/getting-started.md) | Cài đặt và sử dụng cơ bản từ đầu đến cuối. |
-| [docs/fingerprint.md](docs/fingerprint.md) | Cấu hình fingerprint: PerfectCanvas, nhiễu, FontPack. |
-| [docs/proxy.md](docs/proxy.md) | Cấu hình proxy: timezone, geolocation, WebRTC, DNS. |
-| [docs/profile.md](docs/profile.md) | Quản lý profile: lưu/tải cookie, session, dữ liệu trình duyệt. |
-
-### Tham khảo
-
-| Tài liệu | Mô tả |
-| --- | --- |
-| [docs/api.md](docs/api.md) | API đầy đủ với tất cả type, method, và tùy chọn. |
-| [docs/error-handling.md](docs/error-handling.md) | Xử lý lỗi: MissingKey, InvalidEngine, Timeout... |
-| [docs/advanced.md](docs/advanced.md) | Debug log, chạy đồng thời, quản lý bộ nhớ, hiệu năng. |
-| [docs/faq.md](docs/faq.md) | Câu hỏi thường gặp về fingerprint, proxy, profile. |
+- [docs/getting-started.md](docs/getting-started.md) — Hướng dẫn từ đầu đến cuối.
+- [docs/api.md](docs/api.md) — Toàn bộ type, method, và tùy chọn.
+- [docs/error-handling.md](docs/error-handling.md) — Xử lý lỗi: MissingKey, InvalidEngine, Timeout...
+- [docs/advanced.md](docs/advanced.md) — Debug log, chạy đồng thời, quản lý bộ nhớ.
+- [docs/faq.md](docs/faq.md) — Câu hỏi thường gặp.
 
 ---
 
