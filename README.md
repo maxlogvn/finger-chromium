@@ -28,7 +28,7 @@ Khác với các thư viện stealth thông thường can thiệp vào JavaScrip
 - **[Proxy đồng bộ](docs/proxy.md)** — Tự động đồng bộ timezone, geolocation, WebRTC, DNS theo proxy.
 - **[Profile bền vững](docs/profile.md)** — Lưu cookie, localStorage, session giữa các phiên, tránh corrupt dữ liệu.
 - **[PerfectCanvas](docs/fingerprint.md#perfectcanvas)** — Render canvas chính xác theo fingerprint thật, tránh canvas fingerprinting.
-- **Chỉ Windows** — Hỗ trợ Windows 10/11 (32-bit và 64-bit).
+- **[Chỉ Windows](docs/linux-feasibility-report.md)** — Hỗ trợ Windows 10/11 (32-bit và 64-bit).
 
 ---
 
@@ -122,6 +122,8 @@ Xem thêm: [docs/profile.md](docs/profile.md)
 - [docs/error-handling.md](docs/error-handling.md) — Xử lý lỗi: MissingKey, InvalidEngine, Timeout...
 - [docs/advanced.md](docs/advanced.md) — Debug log, chạy đồng thời, quản lý bộ nhớ.
 - [docs/faq.md](docs/faq.md) — Câu hỏi thường gặp.
+- [docs/engine-architecture.md](docs/engine-architecture.md) — Kiến trúc engine BAS: IPC, vòng đời browser, cơ chế inject fingerprint.
+- [docs/linux-feasibility-report.md](docs/linux-feasibility-report.md) — Báo cáo đánh giá tính khả thi của phiên bản Linux.
 
 ---
 
