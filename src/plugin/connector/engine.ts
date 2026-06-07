@@ -25,7 +25,7 @@ import debugFactory from 'debug';
 
 import { EngineTimeoutError, InvalidEngineError, PluginError, RequestTimeoutError } from '../errors';
 import { createTimer } from '@src/common/timer';
-import { Downloader, type DownloadProgress } from './download';
+import { exists, checksum, download, type DownloadProgress } from './download';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -42,9 +42,9 @@ export const CWD = path.join(process.cwd(), 'data');
 
 function resolvePackageRoot(startDir: string): string {
   let current = startDir;
-  while (true) {
+  for (;;) {
     try {
-      const pkg = require(path.join(current, 'package.json'));
+      const pkg = require(path.join(current, 'package.json')) as { name: string };
       if (pkg.name === 'fingerprint-chromium-engine') return current;
     } catch {}
     const parent = path.dirname(current);
@@ -137,7 +137,7 @@ export default class RemoteEngine extends EventEmitter {
   ): Promise<FunctionResult> {
     if (!this.#meta) await this.#updateMeta(engineTimeout);
     const engineProcess = await this.#startProcess(engineTimeout);
-    debug(`Đang gọi method "${name}" (timeout: ${requestTimeout}ms)`);
+    debug(`Đang gọi method "${name}" (timeout: ${String(requestTimeout)}ms)`);
     const requestDir = path.join(path.dirname(engineProcess.spawnfile), 'r');
     await fs.mkdir(requestDir, {
       recursive: true,
@@ -155,7 +155,7 @@ export default class RemoteEngine extends EventEmitter {
         }
       }
     }
-    const requestPath = path.join(requestDir, `${engineProcess.pid}_${randomUUID()}.json`);
+    const requestPath = path.join(requestDir, `${String(engineProcess.pid)}_${randomUUID()}.json`);
     debug(`Tạo file request mới cho hàm "${name}" - ${requestPath}`);
     await fs.writeFile(
       requestPath,
@@ -174,25 +174,27 @@ export default class RemoteEngine extends EventEmitter {
         let closeTimer: ReturnType<typeof createTimer> | undefined;
         if (requestTimeout) {
           requestTimer = createTimer(requestTimeout);
-          requestTimer.promise.then(() => {
+          void requestTimer.promise.then(() => {
             reject(new RequestTimeoutError(`Hết thời gian chờ khi gọi method "${name}".`));
           });
         }
         const closeHandler = () => {
           closeTimer = createTimer(this.#closeTimeout);
-          closeTimer.promise.then(() => {
+          void closeTimer.promise.then(() => {
             debug('Tiến trình engine đã đóng trong lúc chờ phản hồi');
             resolve('');
           });
         };
-        requestWatcher.on('change', async () => {
-          const content = await fs.readFile(requestPath, 'utf8');
-          debug('Đã nhận kết quả từ engine thành công');
-          requestTimer?.clear();
-          closeTimer?.clear();
-          engineProcess.off('close', closeHandler);
-          await fs.unlink(requestPath);
-          resolve(content);
+        requestWatcher.on('change', () => {
+          void fs.readFile(requestPath, 'utf8').then((content) => {
+            debug('Đã nhận kết quả từ engine thành công');
+            requestTimer?.clear();
+            closeTimer?.clear();
+            engineProcess.off('close', closeHandler);
+            void fs.unlink(requestPath).then(() => {
+              resolve(content);
+            });
+          });
         });
         engineProcess.once('close', closeHandler);
       });
@@ -215,16 +217,19 @@ export default class RemoteEngine extends EventEmitter {
   // ─── Process Management ────────────────────────────────────────────────────
 
   async #startProcessInternal(): Promise<ChildProcess> {
-    const scriptDir = path.join(this.#cwd!, 'script', this.#meta!.version);
-    const engineDir = path.join(this.#cwd!, 'engine', this.#meta!.version);
+    const cwd = this.#cwd;
+    const meta = this.#meta;
+    if (!cwd || !meta) throw new PluginError('[RemoteEngine] Chưa được khởi tạo.');
+    const scriptDir = path.join(cwd, 'script', meta.version);
+    const engineDir = path.join(cwd, 'engine', meta.version);
     const zipPath = path.join(engineDir, `FastExecuteScript.x${ARCH}.zip`);
     const tmpPath = zipPath + '.tmp';
-    if (await Downloader.exists(tmpPath)) {
+    if (await exists(tmpPath)) {
       await fs.unlink(tmpPath).catch(() => {});
       debug('Đã xoá file .tmp còn sót từ lần tải trước');
     }
-    if (this.#meta?.checksum && (await Downloader.exists(zipPath))) {
-      if (this.#meta.checksum !== (await Downloader.checksum(zipPath))) {
+    if (meta.checksum && (await exists(zipPath))) {
+      if (meta.checksum !== (await checksum(zipPath))) {
         await fs.rm(engineDir, {
           recursive: true,
           force: true,
@@ -232,22 +237,22 @@ export default class RemoteEngine extends EventEmitter {
         debug('Đã xóa engine bị lỗi (sai checksum)');
       }
     }
-    if (!(await Downloader.exists(zipPath))) {
+    if (!(await exists(zipPath))) {
       await fs.mkdir(engineDir, {
         recursive: true,
       });
       const localZip = path.join(PACKAGE_ROOT, 'plugin', `FastExecuteScript.x${ARCH}.zip`);
-      if (await Downloader.exists(localZip)) {
+      if (await exists(localZip)) {
         await fs.copyFile(localZip, zipPath);
         debug('Engine copied from local zip');
       } else {
         this.emit('beforeDownload');
         const onProgress = (p: DownloadProgress) => this.emit('downloadProgress', p);
-        await Downloader.download(this.#meta!.url, zipPath, onProgress, this.#engineTimeout);
+        await download(meta.url, zipPath, onProgress, this.#engineTimeout);
         debug('Engine tải xuống thành công');
       }
     }
-    if (!(await Downloader.exists(scriptDir))) {
+    if (!(await exists(scriptDir))) {
       this.emit('beforeExtract');
       await fs.mkdir(scriptDir, {
         recursive: true,
@@ -270,7 +275,7 @@ export default class RemoteEngine extends EventEmitter {
         },
         (error) => {
           if (error) {
-            reject(new InvalidEngineError(`Không thể khởi chạy tiến trình engine (mã lỗi: ${error.code})`));
+            reject(new InvalidEngineError(`Không thể khởi chạy tiến trình engine (mã lỗi: ${String(error.code)})`));
           }
         }
       );
@@ -283,7 +288,7 @@ export default class RemoteEngine extends EventEmitter {
     if (!proc) return false;
     if (proc.killed) return false;
     try {
-      process.kill(proc.pid!, 0);
+      process.kill(proc.pid as number, 0);
       return true;
     } catch {
       return false;
@@ -294,7 +299,7 @@ export default class RemoteEngine extends EventEmitter {
     if (!this.#process || this.#process.killed) return;
     const proc = this.#process;
     const exitPromise = new Promise<void>((resolve) => {
-      proc.once('exit', () => resolve());
+      proc.once('exit', resolve);
     });
     if (proc.exitCode !== null) {
       this.#process = undefined;
@@ -302,7 +307,7 @@ export default class RemoteEngine extends EventEmitter {
     }
     proc.kill();
     const sigkillTimer = createTimer(timeout);
-    sigkillTimer.promise.then(() => {
+    void sigkillTimer.promise.then(() => {
       proc.kill('SIGKILL');
     });
     await exitPromise;
@@ -313,7 +318,7 @@ export default class RemoteEngine extends EventEmitter {
   async #startProcess(timeout?: number): Promise<ChildProcess> {
     if (this.#isProcessAlive(this.#process)) {
       debug('Tái sử dụng tiến trình engine hiện tại');
-      return this.#process!;
+      return this.#process as ChildProcess;
     }
     if (!timeout) return await this.#startProcessInternal();
     let timer: NodeJS.Timeout | null = null;
@@ -321,11 +326,12 @@ export default class RemoteEngine extends EventEmitter {
       this.#startProcessInternal(),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () => reject(new EngineTimeoutError('Hết thời gian chờ khi khởi tạo engine plugin.')),
+          () => { reject(new EngineTimeoutError('Hết thời gian chờ khi khởi tạo engine plugin.')); },
           timeout
         ).unref();
       }),
     ]);
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (timer) clearTimeout(timer);
     return engineProcess;
   }

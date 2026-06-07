@@ -26,20 +26,11 @@ interface EngineOptions {
   engineTimeout?: string | number;
   requestTimeout?: string | number;
 }
-interface RunFunctionOptions {
-  requestTimeout?: number;
-}
 interface ApiParams {
   key?: string;
   options?: unknown;
   [key: string]: unknown;
 }
-interface EngineResult {
-  error?: string;
-  response?: unknown;
-  [key: string]: unknown;
-}
-
 // ─── Connector ───────────────────────────────────────────────────────────────
 
 let initPromise: Promise<number> | undefined;
@@ -54,7 +45,7 @@ export default class Connector {
       engineTimeout: process.env.FINGERPRINT_TIMEOUT,
       requestTimeout: process.env.FINGERPRINT_TIMEOUT,
       ...options,
-    } as EngineOptions);
+    });
     this.#engine.on('beforeExtract', () => {
       console.log('Dang cai dat browser -- qua trinh nay co the mat mot chut thoi gian.');
     });
@@ -64,7 +55,7 @@ export default class Connector {
     this.#engine.on('downloadProgress', (p: { bytes: number; total?: number; percent?: number }) => {
       const mb = (p.bytes / 1024 / 1024).toFixed(1);
       const totalMb = p.total ? '/' + (p.total / 1024 / 1024).toFixed(1) + 'MB' : 'MB';
-      const pct = p.percent != null ? p.percent + '%' : mb + totalMb;
+      const pct = p.percent != null ? String(p.percent) + '%' : mb + totalMb;
       process.stdout.write('\rDang tai browser: ' + pct);
     });
   }
@@ -72,7 +63,7 @@ export default class Connector {
   async #ensurePcapPort(): Promise<number> {
     if (!initPromise) {
       initPromise = pcapServer.listen().then((port: number) => {
-        debug(`PCAP server dang lang nghe tai port ${port}`);
+        debug(`PCAP server dang lang nghe tai port ${String(port)}`);
         return port;
       });
     }
@@ -97,7 +88,7 @@ export default class Connector {
 
   async api(name: string, params: ApiParams = {}): Promise<unknown> {
     const port = await this.#ensurePcapPort();
-    this.#engine.setArgs([`--mock-pcap-port=${port}`]);
+    this.#engine.setArgs([`--mock-pcap-port=${String(port)}`]);
     let notifyTimer:
       | {
           clear: () => void;
@@ -105,9 +96,9 @@ export default class Connector {
       | undefined;
     return this.#lock.acquire('client', async () => {
       try {
-        const { error, ...result } = (await this.#engine.runFunction(name, params, {
+        const { error, ...result } = await this.#engine.runFunction(name, params, {
           requestTimeout: (
-            params?.options as
+            params.options as
               | {
                   perfectCanvasRequest?: boolean;
                 }
@@ -115,7 +106,7 @@ export default class Connector {
           )?.perfectCanvasRequest
             ? 0
             : this.requestTimeout,
-        } as RunFunctionOptions)) as EngineResult;
+        });
         if (error) {
           if (error.includes('key is missing')) {
             notifyTimer = notify(params.key);

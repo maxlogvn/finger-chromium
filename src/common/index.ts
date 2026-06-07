@@ -11,7 +11,7 @@ export const scripts: Record<string, (...args: unknown[]) => unknown> = {
   waitForResize: () => {
     return new Promise(done => {
       new ResizeObserver((_, observer) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => done(observer.disconnect())));
+        requestAnimationFrame(() => requestAnimationFrame(() => { observer.disconnect(); done(undefined); }));
       }).observe(document.body);
     });
   },

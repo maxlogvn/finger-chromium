@@ -189,7 +189,7 @@ export class BrowserEngine implements PWChromium {
         },
       ],
       ['cleanup-engine', () => this._engine.cleanup()],
-      ['dispose-data', () => this.dataManager.dispose()]
+      ['dispose-data', () => { this.dataManager.dispose(); }]
     );
 
     if (errs.length) throw new PluginError(`[BrowserEngine] close() failed:\n${errs.join('\n')}`);

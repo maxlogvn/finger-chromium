@@ -93,13 +93,13 @@ export const setViewport = async (browser: Browser, {
       success = true;
       break;
     }
-    debug(`Lần thử ${i + 1}: sai lệch viewport = (${viewport.width - width}, ${viewport.height - height})`);
+    debug(`Lần thử ${String(i + 1)}: sai lệch viewport = (${String(viewport.width - width)}, ${String(viewport.height - height)})`);
     delta.height += height - viewport.height;
     delta.width += width - viewport.width;
   }
   await cdp.close();
   if (!success) {
-    throw new PluginError(`[BrowserEngine] Không thể đặt viewport chính xác (${width}x${height}) sau ${MAX_RESIZE_RETRIES} lần thử.`);
+    throw new PluginError(`[BrowserEngine] Không thể đặt viewport chính xác (${String(width)}x${String(height)}) sau ${String(MAX_RESIZE_RETRIES)} lần thử.`);
   }
 };
 
@@ -108,7 +108,7 @@ export const getViewport = async (cdp: Client): Promise<ViewportBounds> => {
     const {
       result
     } = (await cdp.Runtime.evaluate({
-      expression: `(${scripts.getViewport})()`,
+      expression: `(${String(scripts.getViewport)})()`,
       returnByValue: true
     })) as RuntimeEvaluateResult<ViewportBounds>;
     return result.value;
@@ -120,7 +120,7 @@ export const getViewport = async (cdp: Client): Promise<ViewportBounds> => {
 const waitForResize = async (cdp: Client): Promise<void> => {
   try {
     await cdp.Runtime.evaluate({
-      expression: `(${scripts.waitForResize})()`,
+      expression: `(${String(scripts.waitForResize)})()`,
       returnByValue: true,
       awaitPromise: true
     });

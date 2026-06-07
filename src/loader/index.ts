@@ -32,9 +32,9 @@ export default class Loader {
     if (!packages.length) return undefined;
     for (const id of packages) {
       try {
-        const mod = require(id);
-        const pkgVersion: string = require(`${id}/package.json`).version;
-        return [mod, pkgVersion];
+        const mod = require(id) as Record<string, unknown>;
+        const pkg = require(`${id}/package.json`) as { version: string };
+        return [mod, pkg.version];
       } catch {
         continue;
       }
@@ -42,7 +42,7 @@ export default class Loader {
     throw new PluginError(`None of the following packages could be found - "${packages.join('", "')}".`);
   }
 
-  load<T = unknown>(property = 'chromium'): T {
+  load(property = 'chromium'): unknown {
     const result = Loader.import([this.target, ...this.packages]);
     if (!result) {
       throw new PluginError(`Failed to resolve package "${this.target}".`);
@@ -52,6 +52,6 @@ export default class Loader {
       throw new PluginError(`Version ${version} of the "${this.target}" package is not supported - use version ${this.version} or higher.`);
     }
     const mod = module as Record<string, unknown>;
-    return property in mod ? mod[property] as T : module as T;
+    return property in mod ? mod[property] : module;
   }
 }

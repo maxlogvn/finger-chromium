@@ -36,8 +36,7 @@ export interface GetProfilePathOptions {
 }
 
 interface BrowserLauncher {
-  launch: (...args: unknown[]) => Promise<unknown> | unknown;
-  [key: string]: unknown;
+  launch: (...args: unknown[]) => unknown;
 }
 
 // ─── Default Args ────────────────────────────────────────────────────────────
@@ -100,9 +99,9 @@ export const validateLauncher = (launcher: unknown): void => {
 
 export function resolvePackageRoot(startDir: string): string {
   let current = startDir;
-  while (true) {
+  for (;;) {
     try {
-      const pkg = requireNative(path.join(current, 'package.json'));
+      const pkg = requireNative(path.join(current, 'package.json')) as { name: string };
       if (pkg.name === 'fingerprint-chromium-engine') return current;
     } catch {}
     const parent = path.dirname(current);

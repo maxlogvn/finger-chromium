@@ -28,7 +28,7 @@ export const LAUNCH_FALLBACK_WARNING = ['[Fingerprint] Phương thức "launch" 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function createDefaultLauncher(): Launcher {
-  const browserType: BrowserType = defaultLoader.load();
+  const browserType = defaultLoader.load() as BrowserType;
   return {
     launch: browserType.launch.bind(browserType),
     launchPersistentContext: browserType.launchPersistentContext.bind(browserType)
@@ -57,15 +57,12 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
       ignoreDefaultArgs
     } = options;
     const method = 'launchPersistentContext' as const;
-    if (!this.pwLauncher[method]) {
-      throw new PluginError(`Launcher không hỗ trợ phương thức "${method}".`);
-    }
     return this._launch(false, {
       ...options,
       userDataDir,
       viewport: null,
       launcher: {
-        launch: async (opts: BaseLaunchOptions = {}) => {
+        launch: (opts: BaseLaunchOptions = {}) => {
           const filteredArgs = (opts.args ?? []).filter((arg: string) => !arg.startsWith('--user-data-dir'));
           return this.pwLauncher[method](userDataDir, {
             ...opts,
@@ -87,7 +84,7 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
     }, sync: <T>(fn: () => Promise<T> | T) => Promise<T>
   ): Promise<void> {
     const context = browser as BrowserContext;
-    onClose(context, () => cleanup(context));
+    onClose(context, () => { cleanup(context); });
     if (bounds.width && bounds.height) {
       const resize = async (page: Page) => {
         const {
@@ -102,7 +99,7 @@ export class PlaywrightFingerprintPlugin extends FingerprintPlugin {
         onPageCreated: resize
       });
       const [firstPage] = context.pages();
-      if (firstPage) await resize(firstPage);
+      await resize(firstPage);
     }
   }
 

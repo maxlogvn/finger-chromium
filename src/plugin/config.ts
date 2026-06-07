@@ -48,7 +48,7 @@ export class ConfigManager {
   #lock = new AsyncLock();
 
   async configure(cleanup: CleanupFn, browser: Browser, bounds: ConfigureOptions = {}, sync: SyncWrapper = async fn => fn()): Promise<void> {
-    browser.process.once('exit', () => cleanup(browser));
+    browser.process.once('exit', () => { void cleanup(browser); });
     browser.configure = async (): Promise<void> => {
       if (bounds.width && bounds.height) {
         await sync(() => setViewport(browser, bounds as Required<ConfigureOptions>));
@@ -69,7 +69,7 @@ export class ConfigManager {
         for (const [iniKey, boundsKey] of [['availWidth', 'width'], ['availHeight', 'height']] as const) {
           configContent = configContent.replace(new RegExp(`${iniKey}=(.+)`), (): string => {
             const value = reset ? 'BAS_NOT_SET' : bounds[boundsKey] ?? 'BAS_NOT_SET';
-            return `${iniKey}=${value}`;
+            return `${iniKey}=${String(value)}`;
           });
         }
         await writeFile(configPath, configContent);

@@ -11,7 +11,7 @@
 
 import * as fs from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
-import { Transform, type TransformCallback } from 'node:stream';
+import { Transform, type TransformCallback, type Readable } from 'node:stream';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 
@@ -31,115 +31,114 @@ const GRACE_TIMEOUT = 30_000;
 
 // ─── Downloader ──────────────────────────────────────────────────────────────
 
-export class Downloader {
-  static async exists(filePath: string): Promise<boolean> {
-    return fs.access(filePath).then(() => true, () => false);
-  }
+export async function exists(filePath: string): Promise<boolean> {
+  return fs.access(filePath).then(() => true, () => false);
+}
 
-  static async checksum(filePath: string): Promise<string> {
-    const hash = createHash('sha1');
-    await pipeline(createReadStream(filePath), hash);
-    return hash.digest('hex');
-  }
+export async function checksum(filePath: string): Promise<string> {
+  const hash = createHash('sha1');
+  await pipeline(createReadStream(filePath), hash);
+  return hash.digest('hex');
+}
 
-  static async download(url: string, filePath: string, onProgress?: (p: DownloadProgress) => void, timeout = 0): Promise<void> {
-    const writer = createWriteStream(filePath);
+export async function download(url: string, filePath: string, onProgress?: (p: DownloadProgress) => void, timeout = 0): Promise<void> {
+  const writer = createWriteStream(filePath);
 
-    try {
-      const response = await axios.get(url, {
-        responseType: 'stream',
-        timeout,
+  try {
+    const response = await axios.get(url, {
+      responseType: 'stream',
+      timeout,
+    });
+    const data = response.data as Readable;
+    const total = Number(response.headers['content-length']) || undefined;
+    let bytes = 0;
+    let finished = false;
+
+    const progress = new Transform({
+      transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback) {
+        bytes += chunk.length;
+        if (onProgress) {
+          onProgress({
+            bytes,
+            total,
+            percent: total ? Math.round(bytes / total * 100) : undefined,
+          });
+        }
+        callback(null, chunk);
+      },
+    });
+
+    // Pipe thủ công thay vì pipeline() để kiểm soát kết thúc stream.
+    // GitHub CDN đôi khi không gửi tín hiệu kết thúc stream đúng cách,
+    // khiến pipeline() treo vô hạn dù đã nhận đủ bytes.
+    data.pipe(progress).pipe(writer);
+
+    await new Promise<void>((resolve, reject) => {
+      let graceTimer: ReturnType<typeof setTimeout> | undefined;
+      let forceClosing = false;
+
+      const done = () => {
+        if (graceTimer) clearTimeout(graceTimer);
+        if (!finished) {
+          finished = true;
+          resolve();
+        }
+      };
+
+      writer.on('finish', () => {
+        writer.once('close', done);
       });
-      const total = Number(response.headers['content-length']) || undefined;
-      let bytes = 0;
-      let finished = false;
-
-      const progress = new Transform({
-        transform(chunk, _encoding, callback) {
-          bytes += chunk.length;
-          if (onProgress) {
-            onProgress({
-              bytes,
-              total,
-              percent: total ? Math.round(bytes / total * 100) : undefined,
-            });
-          }
-          callback(null, chunk);
-        },
-      });
-
-      // Pipe thủ công thay vì pipeline() để kiểm soát kết thúc stream.
-      // GitHub CDN đôi khi không gửi tín hiệu kết thúc stream đúng cách,
-      // khiến pipeline() treo vô hạn dù đã nhận đủ bytes.
-      response.data.pipe(progress).pipe(writer);
-
-      await new Promise<void>((resolve, reject) => {
-        let graceTimer: ReturnType<typeof setTimeout> | undefined;
-        let forceClosing = false;
-
-        const done = () => {
-          if (graceTimer) clearTimeout(graceTimer);
-          if (!finished) {
-            finished = true;
-            resolve();
-          }
-        };
-
-        writer.on('finish', () => {
-          writer.once('close', done);
-        });
-        writer.on('error', (err) => {
-          if (graceTimer) clearTimeout(graceTimer);
-          if (!finished) {
-            finished = true;
-            if (forceClosing) resolve();
-            else reject(err);
-          }
-        });
-        progress.on('error', (err) => {
-          if (graceTimer) clearTimeout(graceTimer);
-          if (!finished) {
-            finished = true;
-            if (forceClosing) resolve();
-            else reject(err);
-          }
-        });
-        response.data.on('error', (err: Error) => {
-          if (graceTimer) clearTimeout(graceTimer);
-          if (!finished) {
-            finished = true;
-            if (forceClosing) resolve();
-            else reject(err);
-          }
-        });
-
-        // Safety: nếu biết total, force-close writer sau 30s kể từ khi nhận đủ bytes
-        if (total) {
-          const origTransform = progress._transform.bind(progress);
-          progress._transform = function (this: Transform, chunk: unknown, _encoding: BufferEncoding, callback: TransformCallback) {
-            origTransform(chunk, _encoding, callback);
-            if (bytes >= total && !graceTimer) {
-              graceTimer = setTimeout(() => {
-                if (!finished) {
-                  forceClosing = true;
-                  response.data.unpipe(progress);
-                  progress.unpipe(writer);
-                  response.data.destroy();
-                  progress.destroy();
-                  writer.end();
-                }
-              }, GRACE_TIMEOUT);
-            }
-          };
+      writer.on('error', (err) => {
+        if (graceTimer) clearTimeout(graceTimer);
+        if (!finished) {
+          finished = true;
+          if (forceClosing) resolve();
+          else reject(err);
         }
       });
-    } catch (err) {
-      await fs.unlink(filePath).catch(() => {});
-      throw err;
-    }
-  }
+      progress.on('error', (err) => {
+        if (graceTimer) clearTimeout(graceTimer);
+        if (!finished) {
+          finished = true;
+          if (forceClosing) resolve();
+          else reject(err);
+        }
+      });
+      data.on('error', (err: Error) => {
+        if (graceTimer) clearTimeout(graceTimer);
+        if (!finished) {
+          finished = true;
+          if (forceClosing) resolve();
+          else reject(err);
+        }
+      });
 
-  static async fetch<T = unknown>(url: string, options?: Record<string, unknown>) {
-    return axios.get<T>(url, options);
+      // Safety: nếu biết total, force-close writer sau 30s kể từ khi nhận đủ bytes
+      if (total) {
+        const origTransform = progress._transform.bind(progress);
+        progress._transform = function (this: Transform, chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback) {
+          origTransform(chunk, _encoding, callback);
+          if (bytes >= total && !graceTimer) {
+            graceTimer = setTimeout(() => {
+              if (!finished) {
+                forceClosing = true;
+                data.unpipe(progress);
+                progress.unpipe(writer);
+                data.destroy();
+                progress.destroy();
+                writer.end();
+              }
+            }, GRACE_TIMEOUT);
+          }
+        };
+      }
+    });
+  } catch (err) {
+    await fs.unlink(filePath).catch(() => {});
+    throw err;
   }
+}
+
+export async function fetch<T = unknown>(url: string, options?: Record<string, unknown>) {
+  return axios.get<T>(url, options);
 }

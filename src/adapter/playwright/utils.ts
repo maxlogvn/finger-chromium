@@ -26,7 +26,7 @@ export const onClose = (target: Browser | BrowserContext, listener: () => void):
   if (isBrowser(target)) {
     target.once('disconnected', listener);
   } else {
-    target.once('close', () => listener());
+    target.once('close', listener);
   }
 };
 
@@ -36,31 +36,31 @@ export type BrowserHooks = {
 
 export const bindHooks = (target: Browser | BrowserContext, hooks: BrowserHooks = {}): void => {
   if (isBrowser(target)) {
-    target.newContext = new Proxy(target.newContext, {
+    target.newContext = new Proxy(target.newContext.bind(target), {
       apply: (fn, ctx, [opts]) => fn.call(ctx, resetOptions(opts)).then(patchContext)
-    }) as typeof target.newContext;
+    });
   }
   function patchContext(ctx: BrowserContext): BrowserContext {
-    ctx.newPage = new Proxy(ctx.newPage, {
+    ctx.newPage = new Proxy(ctx.newPage.bind(ctx), {
       async apply(fn, ctx) {
         const page = await fn.call(ctx);
         await hooks.onPageCreated?.(page);
         return patchPage(page);
       }
-    }) as typeof ctx.newPage;
+    });
     return ctx;
   }
   function patchPage(page: Page): Page {
     originalSetViewportSize.set(page, page.setViewportSize.bind(page));
-    page.setViewportSize = new Proxy(page.setViewportSize, {
-      apply: async () => {
+    page.setViewportSize = new Proxy(page.setViewportSize.bind(page), {
+      apply: () => {
         console.warn('[Fingerprint] Không thể thay đổi viewport: kích thước đã bị khoá bởi fingerprint.');
       }
-    }) as typeof page.setViewportSize;
+    });
     return page;
   }
   if (!isBrowser(target) && !('newContext' in target)) {
-    patchContext(target as BrowserContext);
+    patchContext(target);
   }
 };
 
@@ -136,11 +136,9 @@ const waitForResize = (page: Page) => page.evaluate(scripts.waitForResize);
 const resetOptions = <T extends Record<string, unknown>>(options: T = {} as T): T & {
   viewport: null;
 } => ({
-  ...(options != null && typeof options === 'object' ? options : {}),
+  ...options,
   viewport: null
-}) as T & {
-  viewport: null;
-};
+});
 
 export async function collectErrors(
   ...steps: [string, () => unknown][]

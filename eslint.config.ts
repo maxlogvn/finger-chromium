@@ -7,7 +7,7 @@ export default tseslint.config(
   },
 
   // ── Base: recommended rules cho TypeScript ──────────────────────────
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
 
   // ── Config cho test files ──────────────────────────────────────────
   {

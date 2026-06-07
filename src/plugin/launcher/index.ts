@@ -48,7 +48,7 @@ export const launch = async ({
     throw new PluginError('[BrowserLauncher] executablePath là bắt buộc.');
   }
   const resolvedArgs = userDataDir ? [...args, `--user-data-dir=${path.resolve(userDataDir)}`] : [...args];
-  const childProcess = spawn(executablePath, [...resolvedArgs, `--remote-debugging-port=${debuggingPort}`], {
+  const childProcess = spawn(executablePath, [...resolvedArgs, `--remote-debugging-port=${String(debuggingPort)}`], {
     detached: false,
     shell: false,
     stdio: ['ignore', 'pipe', 'pipe']
@@ -59,19 +59,19 @@ export const launch = async ({
     if (timeout) {
       timeoutId = setTimeout(() => {
         timeoutId = undefined;
-        reject(new PluginError(`Timed out after ${timeout}ms while waiting for DevTools URL.`));
+        reject(new PluginError(`Timed out after ${String(timeout)}ms while waiting for DevTools URL.`));
       }, timeout);
     }
     const cleanup = () => {
       if (timeoutId) clearTimeout(timeoutId);
-      readlineStderr?.close();
-      readlineStdout?.close();
+      readlineStderr.close();
+      readlineStdout.close();
     };
     const readlineStderr = createInterface({
-      input: childProcess.stderr!
+      input: childProcess.stderr
     });
     const readlineStdout = createInterface({
-      input: childProcess.stdout!
+      input: childProcess.stdout
     });
     const onLine = (line: string) => {
       const match = line.match(/DevTools listening on (wss?:\/\/\S+)/);
@@ -84,7 +84,7 @@ export const launch = async ({
     readlineStdout.on('line', onLine);
     childProcess.once('exit', (code, signal) => {
       cleanup();
-      reject(new PluginError(`Child process exited before providing DevTools URL. Exit code: ${code}, signal: ${signal}`));
+      reject(new PluginError(`Child process exited before providing DevTools URL. Exit code: ${String(code)}, signal: ${String(signal)}`));
     });
     childProcess.once('error', err => {
       cleanup();
@@ -102,13 +102,13 @@ export const launch = async ({
     isClosed = true;
     if (!childProcess.pid || childProcess.killed) return;
     return new Promise<void>(resolve => {
-      exec(`taskkill /pid ${childProcess.pid} /T /F`, (err, _stdout, _stderr) => {
+      exec(`taskkill /pid ${String(childProcess.pid)} /T /F`, (err, _stdout, _stderr) => {
         if (err) {
           console.error(`[BrowserLauncher] taskkill failed (${err.message}), falling back to childProcess.kill()`);
           childProcess.kill('SIGKILL');
         } else {
           if (process.env.DEBUG?.includes('browser-with-fingerprints:launcher')) {
-            console.debug(`[BrowserLauncher] Killed process tree PID ${childProcess.pid}`);
+            console.debug(`[BrowserLauncher] Killed process tree PID ${String(childProcess.pid)}`);
           }
         }
         resolve();

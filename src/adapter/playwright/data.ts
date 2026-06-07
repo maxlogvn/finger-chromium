@@ -31,8 +31,6 @@ export class AdapterDataManager {
     this.instanceTempDir = path.join(this.tempRootDir, this.generateUniqueName());
   }
 
-  map(sourceProfileDir: string): string;
-  map(tempProfileDir: string, destinationDir: string): string;
   map(inputDir: string, targetDir?: string): string {
     const dest = targetDir ?? this.instanceTempDir;
     const srcResolved = path.resolve(inputDir);
@@ -78,6 +76,6 @@ export class AdapterDataManager {
 
   private generateUniqueName(): string {
     const hex = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
-    return `${Date.now()}_${hex}`;
+    return `${String(Date.now())}_${hex}`;
   }
 }

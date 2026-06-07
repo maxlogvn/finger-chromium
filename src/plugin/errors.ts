@@ -18,9 +18,7 @@ export class PluginError extends Error {
   constructor(message: string) {
     super(message);
     this.name = this.constructor.name;
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
+    Error.captureStackTrace(this, this.constructor);
   }
   get [Symbol.toStringTag](): string {
     return this.constructor.name;

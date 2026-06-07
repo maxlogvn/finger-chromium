@@ -166,7 +166,7 @@ export default class FingerprintPlugin {
   async versions<T extends 'default' | 'extended' = 'default'>(format: T = 'default' as T): Promise<T extends 'extended' ? Version[] : string[]> {
     return (await this.#connector.api('versions', {
       format
-    })) as unknown as T extends 'extended' ? Version[] : string[];
+    })) as T extends 'extended' ? Version[] : string[];
   }
 
   // ─── Lifecycle Methods ─────────────────────────────────────────────────────

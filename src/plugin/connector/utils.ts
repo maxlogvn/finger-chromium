@@ -12,7 +12,7 @@ import { createTimer } from '../../common/timer';
 
 // ─── Notify ──────────────────────────────────────────────────────────────────
 
-const printOnce = once((msg: string) => console.log(msg));
+const printOnce = once((msg: string) => { console.log(msg); });
 
 const notifyOnce = once((): void => {
   console.log(dedent`
@@ -30,7 +30,7 @@ export const notify = (key: string | null | undefined): {
   if (!key && process.env.NODE_ENV !== 'test') {
     notifyOnce();
     const timer = createTimer(20_000);
-    timer.promise.then(() => {
+    void timer.promise.then(() => {
       printOnce('Việc lấy fingerprint có thể tốn nhiều thời gian hơn khi dùng phiên bản miễn phí.');
     });
     return {

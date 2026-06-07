@@ -38,7 +38,7 @@ export function createTimer(ms: number): TimerHandle {
     timeoutId = setTimeout(() => {
       resolve();
     }, ms);
-    if (timeoutId && typeof timeoutId.unref === 'function') {
+    if (typeof timeoutId.unref === 'function') {
       timeoutId.unref();
     }
   });
@@ -57,5 +57,5 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, message?: string
   const timer = createTimer(ms);
   return Promise.race([promise, timer.promise.then(() => {
     throw new TimeoutError(message ?? 'Timeout');
-  })]).finally(() => timer.clear());
+  })]).finally(() => { timer.clear(); });
 }

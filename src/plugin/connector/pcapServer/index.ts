@@ -34,7 +34,7 @@ export function listen(port = 0, host = '127.0.0.1'): Promise<number> {
           socket.write(new Uint8Array([0x07, 0x00, 0x00, 0x00, 0x00]));
         }
       });
-      socket.on('error', (error: Error) => log(error));
+      socket.on('error', (error: Error) => { log(error); });
     });
     server = svr;
     const onListening = (): void => {
