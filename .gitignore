@@ -17,5 +17,6 @@ node_modules/
 /.tmp/
 /docs/.obsidian/
 package-lock.json
+/coverage/
 /.opencode/
 /.decomment/
