@@ -50,12 +50,17 @@
   },
   "scripts": {
     "lint": "eslint src/",
+    "lint:all": "eslint src/ tests/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
     "test": "playwright test",
     "test:watch": "playwright test --ui",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "clean": "tsup --clean",
     "typecheck": "tsc -b --noEmit",
+    "typecheck:all": "tsc --noEmit -p tsconfig.test.json",
     "build": "tsup",
     "prepare": "npm run build",
     "dev": "tsup --watch",
@@ -85,12 +90,14 @@
   "devDependencies": {
     "@cheshire-caat/prettier-config": "^1.0.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@types/async-lock": "^1.4.2",
     "@types/chrome-remote-interface": "^0.33.0",
     "@types/debug": "^4.1.12",
     "@types/node": "^25.7.0",
     "@types/once": "^1.4.4",
     "@types/proper-lockfile": "^4.1.4",
+    "@vitest/coverage-v8": "^4.1.8",
     "dotenv": "^17.4.1",
     "jiti": "^2.7.0",
     "napi-macros": "^2.2.2",
@@ -98,7 +105,7 @@
     "tsup": "^8.5.1",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.59.3",
-    "@playwright/test": "^1.60.0"
+    "vitest": "^4.1.8"
   },
   "prettier": "@cheshire-caat/prettier-config"
 }

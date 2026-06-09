@@ -11,40 +11,16 @@ và dự án này sử dụng [Semantic Versioning](https://semver.org/spec/v2.0
 
 ### Added
 
-- **Fingerprint Storage**: Hệ thống lưu trữ và quản lý fingerprint cục bộ.
-  - Tự động đồng bộ fingerprint mới sau mỗi lần tạo.
-  - Cache fingerprint theo tags để tái sử dụng, tránh tạo mới mỗi lần.
-  - API `listFingerprints()`, `getFingerprint(id)`, `deleteFingerprint(id)`.
-  - Tích hợp với `BrowserEngine.useFingerprint()` để tự động tra cứu cache trước khi tạo mới.
-  - Lưu trữ an toàn, hỗ trợ mã hoá dữ liệu nhạy cảm.
-
----
-
-## [1.0.1] - 2026-06-09
-
-### Added
-
-- **Unit tests cho các module còn thiếu**:
-  - `src/plugin/cleaner.ts`: Test SettingsCleaner vòng đời, lock xuyên tiến trình, khoảng thời gian dọn dẹp.
-  - `src/adapter/playwright/bridge.ts`: Test bridge pattern, hook binding, lan truyền lỗi.
-  - `src/adapter/playwright/data.ts`: Test DataManager lưu trữ, bộ nhớ đệm, mã hoá.
-  - `src/plugin/mutex/index.ts`: Test Windows named mutex acquire/release.
-  - `src/plugin/index.ts`: Test plugin exports và khởi tạo.
-  - `src/index.ts`: Test entry point và re-exports.
-- **Integration tests**: `tests/integration/` test luồng thực tế engine thật + Playwright không mock.
-- **Snapshot tests**: `defaultArgs` snapshot cho utils.test.ts.
-
-### Changed
-
-- **Chuẩn hoá mock paths**: Chuyển relative paths (`../../../../src/`) sang `@src/` alias trong toàn bộ unit tests.
-- **Tách helpers chung**: Tạo `tests/helpers/` directory để tái sử dụng mock setup, giảm code trùng lặp.
-- **Sửa tên file**: `tests/e2e/lauch.spec.ts` -> `tests/e2e/launch.spec.ts`.
-
-### Fixed
-
-- **Typo tên file**: `lauch.spec.ts` thiếu chữ `n` -> `launch.spec.ts`.
-- **Type safety**: Thay `as any` casts trong test mocks bằng type definitions chính xác.
-- **Branch coverage**: Tăng branch coverage `src/plugin/` từ 46% lên >70%.
+- **Unit tests cho các module còn thiếu** (5 files, 66 tests):
+  - `tests/unit/adapter/playwright/bridge.test.ts` (21 tests): `PlaywrightFingerprintPlugin` -- constructor, `launch`, `launchPersistentContext`, `configure`, constants.
+  - `tests/unit/adapter/playwright/data.test.ts` (13 tests): `AdapterDataManager` -- `map`, `unmap`, `dispose` với real file system.
+  - `tests/unit/plugin/cleaner.test.ts` (17 tests): `SettingsCleaner` -- `ignore`/`include`, `watch`/`stop`, cleanup interval, lock handling.
+  - `tests/unit/plugin/mutex/index.test.ts` (7 tests): Native mutex -- `create`, `release`, module exports, error handling.
+  - `tests/unit/index.test.ts` (8 tests): Public API -- error classes, `chromium`/`BrowserEngine` exports, fluent methods.
+- **ESLint config cho test files**: Nới lỏng strict type-checked rules (`no-unsafe-*`, `explicit-function-return-type`, etc.) trong `tests/**/*.ts`.
+- **`test:unit` / `test:coverage` scripts**: `vitest run`, `vitest run --coverage`, và `typecheck:all` script vào `package.json`.
+- **Vitest config**: `vitest.config.ts` với path alias `@src`, coverage provider `v8`.
+- **Documentation**: Cập nhật `CONVENTIONS.md` và `STACK.md` với hướng dẫn viết unit test bằng Vitest.
 
 ---
 
@@ -138,6 +114,5 @@ và dự án này sử dụng [Semantic Versioning](https://semver.org/spec/v2.0
 - **Dynamic Loader**: Load Playwright tại runtime, fallback `playwright` -> `playwright-core`.
 - **Hook Binding**: Proxy `newContext()`/`newPage()`/`setViewportSize()` để lock viewport sau fingerprint.
 
-[1.0.1]: https://github.com/maxlogvn/finger-chromium/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/maxlogvn/finger-chromium/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/maxlogvn/finger-chromium/releases/tag/v0.1.0

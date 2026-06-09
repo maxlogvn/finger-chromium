@@ -113,11 +113,24 @@ Các lỗi có sẵn:
 
 ## Testing
 
-- Dùng `@playwright/test` làm test runner (xem `playwright.config.ts`)
-- File test đặt trong `tests/`
+Dự án sử dụng **hai** test framework song song:
+
+### Unit tests (Vitest)
+- Dùng `vitest` cho unit test (xem `vitest.config.ts`)
+- File test đặt trong `tests/unit/**/*.test.ts`
+- Đặt tên file test: `<module>.test.ts`
+- Dùng `describe` / `it` / `expect` block (theo chuẩn Vitest/Jest)
+- Dùng `vi.mock()`, `vi.fn()`, `vi.spyOn()` để mock module và function
+- Có thể mock browser-related modules (không chạy browser thật)
+- Chạy: `npm run test:unit`
+
+### Integration/E2E tests (Playwright)
+- Dùng `@playwright/test` cho integration/E2E test (xem `playwright.config.ts`)
+- File test đặt trong `tests/e2e/**/*.spec.ts`
 - Đặt tên file test: `<module>.spec.ts`
 - Dùng `test.describe` / `test` block (theo chuẩn Playwright Test)
 - Không mock Playwright browser -- test với browser thật
+- Chạy: `npm test`
 
 ---
 
@@ -153,12 +166,4 @@ Ngoại lệ: file adapter có thể re-export type để tiện import (`export
 
 ---
 
-## Tài liệu (Documentation)
 
-### Quy tắc tập trung Tracking
-
-`docs/TRACKING.md` là **entry point duy nhất** cho mọi bug, feature, và fix đã được ghi nhận.
-Issue chi tiết lưu tại `docs/issues/`, mỗi issue một file markdown. Dùng template [`docs/templates/known-issue.template.md`](templates/known-issue.template.md) để tạo file issue mới.
-
-- **Welcome** (`Welcome.md`): Chỉ giữ link tóm tắt đến `TRACKING.md`. Không chứa chi tiết issue nào.
-- **Quét định kỳ**: Khi thêm issue mới, kiểm tra Welcome.md có tham chiếu inline đến issue đó không; nếu có, thay bằng link `TRACKING.md`.

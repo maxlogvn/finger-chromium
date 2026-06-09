@@ -138,6 +138,19 @@
 
 ## Testing
 
+### `vitest` ^4.1.8 (dev dependency)
+
+**Vai trò:** Unit test runner và assertion library. Chạy test nhanh cho các module không cần browser thật (utils, helpers, pure functions).
+
+**Lý do chọn:**
+- Siêu nhanh nhờ cơ chế native ESM, HMR và watch mode -- chạy lại test ngay khi file thay đổi.
+- API tương thích với Jest (`expect`, `describe`, `it`, `beforeEach`, `mock`, `spyOn`) -- không cần học lại.
+- `vi.mock()` và `vi.fn()` cho phép mock module và function dễ dàng, phù hợp test unit không cần browser.
+- Tích hợp TypeScript sẵn -- không cần cấu hình thêm (dùng `tsx` hoặc `jiti` để transpile).
+- Chạy song song theo mặc định -- tận dụng đa luồng cho test suite lớn.
+- Khả năng mở rộng: dễ dàng thêm `@vitest/coverage-v8` cho coverage report khi cần.
+- Khác biệt với Playwright test: Vitest dành cho **unit test** (không cần browser), Playwright dành cho **integration/E2E test** (cần browser thật).
+
 ### `@playwright/test` ^1.60.0 (dev dependency)
 
 **Vai trò:** Test runner và assertion library cho integration tests. Chạy test với browser thật qua `BrowserEngine`.
