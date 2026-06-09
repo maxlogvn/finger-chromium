@@ -20,6 +20,34 @@ và dự án này sử dụng [Semantic Versioning](https://semver.org/spec/v2.0
 
 ---
 
+## [1.0.1] - 2026-06-09
+
+### Added
+
+- **Unit tests cho các module còn thiếu**:
+  - `src/plugin/cleaner.ts`: Test SettingsCleaner vòng đời, lock xuyên tiến trình, khoảng thời gian dọn dẹp.
+  - `src/adapter/playwright/bridge.ts`: Test bridge pattern, hook binding, lan truyền lỗi.
+  - `src/adapter/playwright/data.ts`: Test DataManager lưu trữ, bộ nhớ đệm, mã hoá.
+  - `src/plugin/mutex/index.ts`: Test Windows named mutex acquire/release.
+  - `src/plugin/index.ts`: Test plugin exports và khởi tạo.
+  - `src/index.ts`: Test entry point và re-exports.
+- **Integration tests**: `tests/integration/` test luồng thực tế engine thật + Playwright không mock.
+- **Snapshot tests**: `defaultArgs` snapshot cho utils.test.ts.
+
+### Changed
+
+- **Chuẩn hoá mock paths**: Chuyển relative paths (`../../../../src/`) sang `@src/` alias trong toàn bộ unit tests.
+- **Tách helpers chung**: Tạo `tests/helpers/` directory để tái sử dụng mock setup, giảm code trùng lặp.
+- **Sửa tên file**: `tests/e2e/lauch.spec.ts` -> `tests/e2e/launch.spec.ts`.
+
+### Fixed
+
+- **Typo tên file**: `lauch.spec.ts` thiếu chữ `n` -> `launch.spec.ts`.
+- **Type safety**: Thay `as any` casts trong test mocks bằng type definitions chính xác.
+- **Branch coverage**: Tăng branch coverage `src/plugin/` từ 46% lên >70%.
+
+---
+
 ## [1.0.0] - 2026-06-08
 
 ### Added
@@ -110,5 +138,6 @@ và dự án này sử dụng [Semantic Versioning](https://semver.org/spec/v2.0
 - **Dynamic Loader**: Load Playwright tại runtime, fallback `playwright` -> `playwright-core`.
 - **Hook Binding**: Proxy `newContext()`/`newPage()`/`setViewportSize()` để lock viewport sau fingerprint.
 
+[1.0.1]: https://github.com/maxlogvn/finger-chromium/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/maxlogvn/finger-chromium/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/maxlogvn/finger-chromium/releases/tag/v0.1.0
