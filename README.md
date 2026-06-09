@@ -72,15 +72,9 @@ await browser.close();
 
 ```ts
 import { BrowserEngine } from 'fingerprint-chromium-engine';
-
-const fp = await BrowserEngine.newFingerprint({
-  tags: ['Chrome', 'Desktop', 'Windows 10'],
-  timeLimit: '30 days',
-});
-
-const browser = new BrowserEngine()
-  .useFingerprint(fp, { safeWebGL: true })
-  .launch();
+const engine = new BrowserEngine();
+const fingerprint = engine.newFingerprint();
+const browser = engine.useFingerprint(fingerprint).launch();
 ```
 
 Xem thêm: [docs/fingerprint.md](docs/fingerprint.md)
@@ -89,14 +83,9 @@ Xem thêm: [docs/fingerprint.md](docs/fingerprint.md)
 
 ```ts
 import { BrowserEngine } from 'fingerprint-chromium-engine';
-
-const browser = new BrowserEngine()
-  .useFingerprint(fp)
-  .useProxy('http://user:pass@proxy:8080', {
-    changeTimezone: true,
-    changeWebRTC: 'replace',
-  })
-  .launch();
+const engine = new BrowserEngine();
+const fingerprint = engine.newFingerprint();
+const browser = engine.useFingerprint(fingerprint).useProxy('http://user:pass@proxy:8080').launch()
 ```
 
 Xem thêm: [docs/proxy.md](docs/proxy.md)
@@ -106,34 +95,12 @@ Xem thêm: [docs/proxy.md](docs/proxy.md)
 ```ts
 import { BrowserEngine } from 'fingerprint-chromium-engine';
 
-const browser = new BrowserEngine()
-  .useProfile('./profiles/user_01', {
-    loadFingerprint: true,
-    loadProxy: true,
-  })
-  .launch();
+const engine = new BrowserEngine();
+const browser = engine.useProfile('./profiles/user_01').launch();
 ```
 
 Xem thêm: [docs/profile.md](docs/profile.md)
 
-### Sử dụng Fingerprint Storage
-
-```ts
-import { BrowserEngine } from 'fingerprint-chromium-engine';
-
-// Liệt kê fingerprint đã lưu
-const list = await BrowserEngine.listFingerprints({ tags: ['Windows 10'] });
-
-// Tái sử dụng fingerprint có sẵn thay vì tạo mới
-const fp = list.length > 0
-  ? list[0]
-  : await BrowserEngine.newFingerprint({ tags: ['Chrome', 'Desktop'] });
-
-const browser = new BrowserEngine()
-  .useFingerprint(fp)
-  .launch();
-```
----
 
 ## Nhật ký thay đổi
 
@@ -169,7 +136,6 @@ Xem toàn bộ lịch sử: [CHANGELOG.md](CHANGELOG.md)
 - [docs/error-handling.md](docs/error-handling.md) — Xử lý lỗi: MissingKey, InvalidEngine, Timeout...
 - [docs/advanced.md](docs/advanced.md) — Debug log, chạy đồng thời, quản lý bộ nhớ.
 - [docs/faq.md](docs/faq.md) — Câu hỏi thường gặp.
-- [docs/engine-architecture.md](docs/engine-architecture.md) — Kiến trúc engine BAS: IPC, vòng đời browser, cơ chế inject fingerprint.
 - [docs/linux-feasibility-report.md](docs/linux-feasibility-report.md) — Báo cáo đánh giá tính khả thi của phiên bản Linux.
 
 ---
@@ -183,7 +149,7 @@ npm run build      # Bundle ESM + CJS
 npm test           # Playwright E2E test
 ```
 
-Xem thêm [CONVENTIONS.md](CONVENTIONS.md) và [STACK.md](STACK.md).
+Xem thêm [CONVENTIONS.md](CONVENTIONS.md) , [STACK.md](STACK.md) , [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
