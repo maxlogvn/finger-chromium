@@ -78,7 +78,11 @@ export class BrowserEngine implements PWChromium {
     const engine = new PlaywrightFingerprintPlugin();
     engine.setServiceKey(PRIVATE_KEY);
     engine.setWorkingFolder(ENGINE_WORKING_DIR);
-    return engine.fetch(options);
+    try {
+      return await engine.fetch(options);
+    } finally {
+      await engine.cleanup();
+    }
   }
 
   // ─── Fluent config ─────────────────────────────────────────────────────────
