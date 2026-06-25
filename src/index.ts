@@ -17,6 +17,7 @@ export {
   RequestTimeoutError,
 } from './plugin/errors';
 export {
+  BrowserEngine,
   BrowserEngine as chromium,
   type FetchOptions,
   type FingerprintOptions,
